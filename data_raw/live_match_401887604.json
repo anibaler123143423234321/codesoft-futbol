@@ -1,0 +1,2106 @@
+{
+  "format": {
+    "regulation": {
+      "periods": 2,
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 2700
+    },
+    "overtime": {
+      "periods": 2,
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 900
+    },
+    "suddenDeath": {
+      "periods": 2,
+      "clock": 900
+    },
+    "shootout": {
+      "periods": 1,
+      "displayName": "Penalties",
+      "slug": "penalties"
+    }
+  },
+  "gameInfo": {
+    "venue": {
+      "id": "11333",
+      "fullName": "Vidas Field",
+      "shortName": "Vidas Field",
+      "address": {
+        "country": "USA"
+      },
+      "images": []
+    }
+  },
+  "lastFiveGames": [
+    {
+      "displayOrder": 2,
+      "team": {
+        "id": "20458",
+        "uid": "s:600~t:20458",
+        "displayName": "Drexel Dragons",
+        "abbreviation": "DREX",
+        "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2182.png",
+        "logos": [
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2182.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "default"
+            ],
+            "lastUpdated": "2018-06-05T12:08Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2182.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "dark"
+            ],
+            "lastUpdated": "2018-06-05T12:08Z"
+          }
+        ]
+      },
+      "events": [
+        {
+          "id": "751303",
+          "atVs": "@",
+          "gameDate": "2025-10-12T17:00Z",
+          "score": "3-0",
+          "homeTeamId": "20451",
+          "awayTeamId": "20458",
+          "homeTeamScore": "3",
+          "awayTeamScore": "0",
+          "homeAggregateScore": "0",
+          "awayAggregateScore": "0",
+          "homeShootoutScore": "0",
+          "awayShootoutScore": "0",
+          "gameResult": "L",
+          "competitionName": "2025 NCAA Division I Women's Soccer",
+          "roundName": "2025 NCAA Division I Women",
+          "leagueName": "NCAA Women's Soccer",
+          "leagueAbbreviation": "CWSOC",
+          "opponent": {
+            "id": "20451",
+            "uid": "s:600~t:20451",
+            "displayName": "Hofstra Pride",
+            "abbreviation": "HOF",
+            "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2275.png",
+            "logos": [
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2275.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "default"
+                ],
+                "lastUpdated": "2025-10-24T17:28Z"
+              },
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2275.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "dark"
+                ],
+                "lastUpdated": "2025-10-24T17:28Z"
+              }
+            ]
+          },
+          "opponentLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2275.png"
+        },
+        {
+          "id": "751305",
+          "atVs": "@",
+          "gameDate": "2025-10-16T23:00Z",
+          "score": "4-1",
+          "homeTeamId": "20389",
+          "awayTeamId": "20458",
+          "homeTeamScore": "4",
+          "awayTeamScore": "1",
+          "homeAggregateScore": "0",
+          "awayAggregateScore": "0",
+          "homeShootoutScore": "0",
+          "awayShootoutScore": "0",
+          "gameResult": "L",
+          "competitionName": "2025 NCAA Division I Women's Soccer",
+          "roundName": "2025 NCAA Division I Women",
+          "leagueName": "NCAA Women's Soccer",
+          "leagueAbbreviation": "CWSOC",
+          "opponent": {
+            "id": "20389",
+            "uid": "s:600~t:20389",
+            "displayName": "Elon Phoenix",
+            "abbreviation": "ELON",
+            "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2210.png",
+            "logos": [
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2210.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "default"
+                ],
+                "lastUpdated": "2025-01-03T18:51Z"
+              },
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2210.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "dark"
+                ],
+                "lastUpdated": "2025-01-03T18:51Z"
+              }
+            ]
+          },
+          "opponentLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2210.png"
+        },
+        {
+          "id": "751307",
+          "atVs": "@",
+          "gameDate": "2025-10-19T17:00Z",
+          "score": "2-1",
+          "homeTeamId": "20419",
+          "awayTeamId": "20458",
+          "homeTeamScore": "1",
+          "awayTeamScore": "2",
+          "homeAggregateScore": "0",
+          "awayAggregateScore": "0",
+          "homeShootoutScore": "0",
+          "awayShootoutScore": "0",
+          "gameResult": "W",
+          "competitionName": "2025 NCAA Division I Women's Soccer",
+          "roundName": "2025 NCAA Division I Women",
+          "leagueName": "NCAA Women's Soccer",
+          "leagueAbbreviation": "CWSOC",
+          "opponent": {
+            "id": "20419",
+            "uid": "s:600~t:20419",
+            "displayName": "Campbell Fighting Camels",
+            "abbreviation": "CAM",
+            "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2097.png",
+            "logos": [
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2097.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "default"
+                ],
+                "lastUpdated": "2023-07-26T21:58Z"
+              },
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2097.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "dark"
+                ],
+                "lastUpdated": "2023-07-26T21:59Z"
+              }
+            ]
+          },
+          "opponentLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2097.png"
+        },
+        {
+          "id": "751309",
+          "atVs": "vs",
+          "gameDate": "2025-10-26T17:00Z",
+          "score": "3-0",
+          "homeTeamId": "20458",
+          "awayTeamId": "20452",
+          "homeTeamScore": "0",
+          "awayTeamScore": "3",
+          "homeAggregateScore": "0",
+          "awayAggregateScore": "0",
+          "homeShootoutScore": "0",
+          "awayShootoutScore": "0",
+          "gameResult": "L",
+          "competitionName": "2025 NCAA Division I Women's Soccer",
+          "roundName": "2025 NCAA Division I Women",
+          "leagueName": "NCAA Women's Soccer",
+          "leagueAbbreviation": "CWSOC",
+          "opponent": {
+            "id": "20452",
+            "uid": "s:600~t:20452",
+            "displayName": "Towson Tigers",
+            "abbreviation": "TOW",
+            "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/119.png",
+            "logos": [
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/119.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "default"
+                ],
+                "lastUpdated": "2018-06-05T12:08Z"
+              },
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/119.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "dark"
+                ],
+                "lastUpdated": "2018-06-05T12:08Z"
+              }
+            ]
+          },
+          "opponentLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/119.png"
+        },
+        {
+          "id": "401887603",
+          "atVs": "@",
+          "gameDate": "2026-08-12T23:00Z",
+          "score": "3-2",
+          "homeTeamId": "20359",
+          "awayTeamId": "20458",
+          "homeTeamScore": "3",
+          "awayTeamScore": "2",
+          "homeAggregateScore": "0",
+          "awayAggregateScore": "0",
+          "homeShootoutScore": "0",
+          "awayShootoutScore": "0",
+          "gameResult": "L",
+          "competitionName": "2026 NCAA Division I Women's Soccer",
+          "roundName": "2026 NCAA Division I Women",
+          "leagueName": "NCAA Women's Soccer",
+          "leagueAbbreviation": "CWSOC",
+          "opponent": {
+            "id": "20359",
+            "uid": "s:600~t:20359",
+            "displayName": "Saint Joseph's Hawks",
+            "abbreviation": "JOES",
+            "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2603.png",
+            "logos": [
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2603.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "default"
+                ],
+                "lastUpdated": "2025-10-01T21:47Z"
+              },
+              {
+                "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2603.png",
+                "width": 500,
+                "height": 500,
+                "alt": "",
+                "rel": [
+                  "full",
+                  "dark"
+                ],
+                "lastUpdated": "2025-10-01T21:47Z"
+              }
+            ]
+          },
+          "opponentLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2603.png"
+        }
+      ]
+    },
+    {
+      "displayOrder": 1,
+      "team": {
+        "id": "132330",
+        "uid": "s:600~t:132330",
+        "displayName": "Holy Family",
+        "abbreviation": "HFU",
+        "logos": []
+      },
+      "events": []
+    }
+  ],
+  "broadcasts": [
+    {
+      "type": {
+        "id": "4",
+        "shortName": "STREAMING",
+        "longName": "Streaming",
+        "slug": "streaming"
+      },
+      "market": {},
+      "media": {
+        "callLetters": "FloSports",
+        "name": "FloSports",
+        "shortName": "FloSports"
+      },
+      "lang": "en",
+      "region": "us",
+      "isNational": false
+    }
+  ],
+  "pickcenter": [],
+  "hasOdds": false,
+  "rosters": [
+    {
+      "homeAway": "home",
+      "winner": false,
+      "team": {
+        "id": "20458",
+        "abbreviation": "DREX",
+        "displayName": "Drexel Dragons",
+        "color": "07294D",
+        "alternateColor": "FFC600",
+        "logos": [
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2182.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "default"
+            ],
+            "lastUpdated": "2018-06-05T12:08Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2182.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "dark"
+            ],
+            "lastUpdated": "2018-06-05T12:08Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_white_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "primary_logo_on_white_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_black_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "primary_logo_on_black_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_primary_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "primary_logo_on_primary_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_secondary_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "primary_logo_on_secondary_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_black.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "primary_logo_black"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_white.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "primary_logo_white"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_white_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "secondary_logo_on_white_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_black_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "secondary_logo_on_black_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_primary_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "secondary_logo_on_primary_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_secondary_color.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "secondary_logo_on_secondary_color"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_black.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "secondary_logo_black"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          },
+          {
+            "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_white.png",
+            "width": 4096,
+            "height": 4096,
+            "alt": "",
+            "rel": [
+              "full",
+              "secondary_logo_white"
+            ],
+            "lastUpdated": "2026-07-23T17:24Z"
+          }
+        ]
+      }
+    },
+    {
+      "homeAway": "away",
+      "winner": false,
+      "team": {
+        "id": "132330",
+        "abbreviation": "HFU",
+        "displayName": "Holy Family",
+        "color": "000000",
+        "alternateColor": "C60000"
+      }
+    }
+  ],
+  "videos": [],
+  "news": {
+    "header": "NCAAW Soccer News",
+    "link": {
+      "language": "en",
+      "rel": [
+        "index",
+        "desktop",
+        "league"
+      ],
+      "href": "https://www.espn.com/football/league/_/name/usa.ncaa.w.1",
+      "text": "All NCAAW Soccer News",
+      "shortText": "All News",
+      "isExternal": false,
+      "isPremium": false
+    },
+    "articles": [
+      {
+        "id": 49677186,
+        "nowId": "1-49677186",
+        "contentKey": "49677186-1-293-1",
+        "dataSourceIdentifier": "4179261274cab",
+        "type": "Media",
+        "headline": "Texas vs. Arizona St.: Game Highlights",
+        "description": "Texas vs. Arizona St.: Game Highlights",
+        "lastModified": "2026-08-21T04:47:23Z",
+        "published": "2026-08-21T04:47:23Z",
+        "images": [
+          {
+            "name": "Texas vs. Arizona St.: Game Highlights",
+            "caption": "Texas vs. Arizona St.: Game Highlights",
+            "alt": "",
+            "height": 324,
+            "width": 576,
+            "url": "https://espnmedia-cdn.akamaized.net/espn/media/common/wsc/2026/0821/8ff6f742-2a5b-431a-8d56-900e2e64bd6f/8ff6f742-2a5b-431a-8d56-900e2e64bd6f.jpg"
+          }
+        ],
+        "categories": [
+          {
+            "id": 135105,
+            "type": "team",
+            "uid": "s:600~t:17579",
+            "guid": "5b0827e2-8f44-3bc6-8ca8-4cc9df5419e6",
+            "description": "Texas A&M-Corpus Christi Islanders",
+            "sportId": 600,
+            "teamId": 17579,
+            "team": {
+              "id": 17579,
+              "description": "Texas A&M-Corpus Christi Islanders",
+              "abbreviation": "AMCC",
+              "shortDisplayName": "Texas A&M-CC"
+            }
+          },
+          {
+            "id": 357,
+            "type": "team",
+            "guid": "fd64b749-205d-3846-a487-b36b922a225c",
+            "description": "Texas A&M University-Corpus Christi",
+            "sportId": 3170,
+            "teamId": 357,
+            "team": {
+              "id": 357,
+              "description": "Texas A&M University-Corpus Christi",
+              "abbreviation": "Texas A&M-Corpus Christi",
+              "shortDisplayName": "Texas A&M-Corpus Christi"
+            }
+          },
+          {
+            "id": 426832,
+            "type": "team",
+            "uid": "s:600~t:20529",
+            "guid": "8123f964-2d32-330e-8166-6b33cdff7ef7",
+            "description": "Arizona State Sun Devils",
+            "sportId": 600,
+            "teamId": 20529,
+            "team": {
+              "id": 20529,
+              "description": "Arizona State Sun Devils",
+              "abbreviation": "ASU",
+              "shortDisplayName": "Arizona St"
+            }
+          },
+          {
+            "id": 9,
+            "type": "team",
+            "guid": "7f6c3121-857d-3096-a4f1-f841da598230",
+            "description": "Arizona State University",
+            "sportId": 3170,
+            "teamId": 9,
+            "team": {
+              "id": 9,
+              "description": "Arizona State University",
+              "abbreviation": "Arizona State",
+              "shortDisplayName": "Arizona State"
+            }
+          },
+          {
+            "id": 711821,
+            "type": "editorialindicator",
+            "guid": "f3e05446-8d07-3064-a239-c10c32884ea2",
+            "description": "SC4U - Full Highlight"
+          },
+          {
+            "id": 81497,
+            "type": "league",
+            "uid": "s:600",
+            "guid": "119cfa41-71d4-39bf-a790-6273a52b0259",
+            "description": "Soccer",
+            "sportId": 600,
+            "leagueId": 600,
+            "league": {
+              "id": 600,
+              "description": "Soccer",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 711824,
+            "type": "editorialindicator",
+            "guid": "d348c764-47d9-3e31-bd75-d39dfde52c26",
+            "description": "SC4U  - Eligible"
+          },
+          {
+            "id": 134988,
+            "type": "league",
+            "uid": "s:600~l:5499",
+            "guid": "89269693-c595-3182-a8c1-d3d2a183b2bd",
+            "description": "NCAA Women's Soccer",
+            "sportId": 600,
+            "leagueId": 1929,
+            "league": {
+              "id": 5499,
+              "description": "NCAA Women's Soccer",
+              "abbreviation": "CWSOC",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 711828,
+            "type": "editorialindicator",
+            "guid": "b14f9e1f-2d2c-3b10-b39d-d781f4c4aba7",
+            "description": "4 Star Rating"
+          },
+          {
+            "id": 116550,
+            "type": "topic",
+            "guid": "fe879255-6324-4784-385f-a1a18c22b5cc",
+            "description": "espnw",
+            "sportId": 0,
+            "topicId": 5
+          },
+          {
+            "type": "event",
+            "uid": "s:600~l:5499~e:401886479",
+            "guid": "6c3a528b-a4ba-3769-ae7d-c5cbcb96f5e5",
+            "description": "Texas @ Arizona State",
+            "eventId": 401886479,
+            "event": {
+              "id": 401886479,
+              "sport": "soccer",
+              "league": "usa.ncaa.w.1",
+              "description": "Texas @ Arizona State"
+            }
+          }
+        ],
+        "links": {
+          "api": {
+            "artwork": {
+              "href": "https://artwork.api.espn.com/artwork/collections/media/90f03527-cd27-4909-be1a-959fdb67e654"
+            },
+            "self": {
+              "href": "https://content.core.api.espn.com/v1/video/clips/49677186"
+            }
+          },
+          "sportscenter": {
+            "href": "sportscenter://x-callback-url/showVideo?videoID=49677186&videoDSI=4179261274cab"
+          },
+          "web": {
+            "href": "https://www.espn.com/video/clip/_/id/49677186/game-highlights",
+            "self": {
+              "href": "https://www.espn.com/video/clip/_/id/49677186/game-highlights",
+              "dsi": {
+                "href": "https://www.espn.com/video/clip?id=4179261274cab"
+              }
+            }
+          }
+        },
+        "premium": false
+      },
+      {
+        "id": 49676631,
+        "nowId": "1-49676631",
+        "contentKey": "49676631-1-293-1",
+        "dataSourceIdentifier": "fabde16d54c59",
+        "type": "Media",
+        "headline": "Highlights from the best SEC soccer action",
+        "description": "No. 16 Tennessee and Kentucky earn blowout wins on the pitch as South Carolina takes down rival Clemson with a late strike.",
+        "lastModified": "2026-08-21T03:20:33Z",
+        "published": "2026-08-21T03:20:33Z",
+        "images": [
+          {
+            "name": "Highlights from the best SEC soccer action",
+            "caption": "No. 16 Tennessee and Kentucky earn blowout wins on the pitch as South Carolina takes down rival Clemson with a late strike.",
+            "alt": "",
+            "height": 324,
+            "width": 576,
+            "url": "https://espnmedia-cdn.akamaized.net/espn/media/common/2026/0820/dm_260820_SEC_WSOC_Highlight_Soc_Roundup_260820/dm_260820_SEC_WSOC_Highlight_Soc_Roundup_260820.jpg"
+          }
+        ],
+        "categories": [
+          {
+            "id": 134993,
+            "type": "team",
+            "uid": "s:600~t:20353",
+            "guid": "30dfdaf6-6f6c-38ea-ba06-fb6981bd4214",
+            "description": "Clemson Tigers",
+            "sportId": 600,
+            "teamId": 20353,
+            "team": {
+              "id": 20353,
+              "description": "Clemson Tigers",
+              "abbreviation": "CLEM",
+              "shortDisplayName": "Clemson"
+            }
+          },
+          {
+            "id": 228,
+            "type": "team",
+            "guid": "babdc0ea-f349-3077-9d84-b02f8cdc09e5",
+            "description": "Clemson University",
+            "sportId": 3170,
+            "teamId": 228,
+            "team": {
+              "id": 228,
+              "description": "Clemson University",
+              "abbreviation": "Clemson",
+              "shortDisplayName": "Clemson"
+            }
+          },
+          {
+            "id": 141521,
+            "type": "team",
+            "uid": "s:600~t:20414",
+            "guid": "460f7eeb-0453-3d1d-beb8-120b778ad325",
+            "description": "Dayton Flyers",
+            "sportId": 600,
+            "teamId": 20414,
+            "team": {
+              "id": 20414,
+              "description": "Dayton Flyers",
+              "abbreviation": "DAY",
+              "shortDisplayName": "Dayton"
+            }
+          },
+          {
+            "id": 2168,
+            "type": "team",
+            "guid": "5d708112-3bc9-311a-9f0d-26784b98c316",
+            "description": "University of Dayton",
+            "sportId": 3170,
+            "teamId": 2168,
+            "team": {
+              "id": 2168,
+              "description": "University of Dayton",
+              "abbreviation": "Dayton",
+              "shortDisplayName": "Dayton"
+            }
+          },
+          {
+            "id": 426665,
+            "type": "team",
+            "uid": "s:600~t:20427",
+            "guid": "83c1f3c8-db2e-3e03-a97e-2e29a822e0b4",
+            "description": "Kentucky Wildcats",
+            "sportId": 600,
+            "teamId": 20427,
+            "team": {
+              "id": 20427,
+              "description": "Kentucky Wildcats",
+              "abbreviation": "UK",
+              "shortDisplayName": "Kentucky"
+            }
+          },
+          {
+            "id": 96,
+            "type": "team",
+            "guid": "c343d2aa-1f76-3d14-8a74-4a12bb54f2ba",
+            "description": "University of Kentucky",
+            "sportId": 3170,
+            "teamId": 96,
+            "team": {
+              "id": 96,
+              "description": "University of Kentucky",
+              "abbreviation": "Kentucky",
+              "shortDisplayName": "Kentucky"
+            }
+          },
+          {
+            "id": 514104,
+            "type": "team",
+            "uid": "s:600~t:19313",
+            "guid": "6066d214-1209-3a62-a678-7c0a00e4aa22",
+            "description": "Milwaukee MILWAUKEE PANTHERS",
+            "sportId": 600,
+            "teamId": 19313,
+            "team": {
+              "id": 19313,
+              "description": "Milwaukee MILWAUKEE PANTHERS",
+              "abbreviation": "MILW",
+              "shortDisplayName": "Milwaukee"
+            }
+          },
+          {
+            "id": 270,
+            "type": "team",
+            "guid": "ee20654d-ce24-346c-97c7-ee5e5e7eaae7",
+            "description": "University of Wisconsin-Milwaukee",
+            "sportId": 3170,
+            "teamId": 270,
+            "team": {
+              "id": 270,
+              "description": "University of Wisconsin-Milwaukee",
+              "abbreviation": "Milwaukee",
+              "shortDisplayName": "Milwaukee"
+            }
+          },
+          {
+            "id": 134988,
+            "type": "league",
+            "uid": "s:600~l:5499",
+            "guid": "89269693-c595-3182-a8c1-d3d2a183b2bd",
+            "description": "NCAA Women's Soccer",
+            "sportId": 600,
+            "leagueId": 1929,
+            "league": {
+              "id": 5499,
+              "description": "NCAA Women's Soccer",
+              "abbreviation": "CWSOC",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 126329,
+            "type": "topic",
+            "guid": "78632891-79dd-a9ab-c720-008c86f843de",
+            "description": "sec network",
+            "sportId": 0,
+            "topicId": 89
+          },
+          {
+            "id": 81497,
+            "type": "league",
+            "uid": "s:600",
+            "guid": "119cfa41-71d4-39bf-a790-6273a52b0259",
+            "description": "Soccer",
+            "sportId": 600,
+            "leagueId": 600,
+            "league": {
+              "id": 600,
+              "description": "Soccer",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 426713,
+            "type": "team",
+            "uid": "s:600~t:20368",
+            "guid": "eb09be82-74ab-3d71-bdc9-8b441dd9a432",
+            "description": "South Carolina Gamecocks",
+            "sportId": 600,
+            "teamId": 20368,
+            "team": {
+              "id": 20368,
+              "description": "South Carolina Gamecocks",
+              "abbreviation": "SC",
+              "shortDisplayName": "South Carolina"
+            }
+          },
+          {
+            "id": 2579,
+            "type": "team",
+            "guid": "9a4406c8-9b7f-35b3-858d-2041019203a8",
+            "description": "University of South Carolina",
+            "sportId": 3170,
+            "teamId": 2579,
+            "team": {
+              "id": 2579,
+              "description": "University of South Carolina",
+              "abbreviation": "South Carolina",
+              "shortDisplayName": "South Carolina"
+            }
+          },
+          {
+            "id": 426926,
+            "type": "team",
+            "uid": "s:600~t:20492",
+            "guid": "82c1b6e4-41d9-348a-9dd2-99639812ab77",
+            "description": "Tennessee Volunteers",
+            "sportId": 600,
+            "teamId": 20492,
+            "team": {
+              "id": 20492,
+              "description": "Tennessee Volunteers",
+              "abbreviation": "TENN",
+              "shortDisplayName": "Tennessee"
+            }
+          },
+          {
+            "id": 2633,
+            "type": "team",
+            "guid": "ff43c27b-3b2b-3a29-b1b9-4920b47b1c69",
+            "description": "University of Tennessee",
+            "sportId": 3170,
+            "teamId": 2633,
+            "team": {
+              "id": 2633,
+              "description": "University of Tennessee",
+              "abbreviation": "Tennessee",
+              "shortDisplayName": "Tennessee"
+            }
+          }
+        ],
+        "links": {
+          "api": {
+            "artwork": {
+              "href": "https://artwork.api.espn.com/artwork/collections/media/492e8874-fd49-4e8d-8cfc-03f903707ba8"
+            },
+            "self": {
+              "href": "https://content.core.api.espn.com/v1/video/clips/49676631"
+            }
+          },
+          "sportscenter": {
+            "href": "sportscenter://x-callback-url/showVideo?videoID=49676631&videoDSI=fabde16d54c59"
+          },
+          "web": {
+            "href": "https://www.espn.com/video/clip/_/id/49676631/highlights-best-sec-soccer-action",
+            "self": {
+              "href": "https://www.espn.com/video/clip/_/id/49676631/highlights-best-sec-soccer-action",
+              "dsi": {
+                "href": "https://www.espn.com/video/clip?id=fabde16d54c59"
+              }
+            }
+          }
+        },
+        "premium": false
+      },
+      {
+        "id": 49676338,
+        "nowId": "1-49676338",
+        "contentKey": "49676338-1-293-1",
+        "dataSourceIdentifier": "17b16c4e61526",
+        "type": "Media",
+        "headline": "No. 18 Bama's Ashley Roni grateful to be back from injury",
+        "description": "Roni breaks down her goal that gave Alabama the win over No. 15 TCU while highlighting the hard work she puts in with her teammates and her journey back from injury.",
+        "lastModified": "2026-08-21T02:48:53Z",
+        "published": "2026-08-21T02:48:53Z",
+        "images": [
+          {
+            "name": "No. 18 Bama's Ashley Roni grateful to be back from injury",
+            "caption": "Roni breaks down her goal that gave Alabama the win over No. 15 TCU while highlighting the hard work she puts in with her teammates and her journey back from injury.",
+            "alt": "",
+            "height": 324,
+            "width": 576,
+            "url": "https://espnmedia-cdn.akamaized.net/espn/media/common/2026/0820/dm_260820_SEC_WSOC_Interview_Bama_INT_Roni_260820/dm_260820_SEC_WSOC_Interview_Bama_INT_Roni_260820.jpg"
+          }
+        ],
+        "categories": [
+          {
+            "id": 426837,
+            "type": "team",
+            "uid": "s:600~t:20524",
+            "guid": "77af6623-46fc-3f8e-b49e-281595be5812",
+            "description": "Alabama Crimson Tide",
+            "sportId": 600,
+            "teamId": 20524,
+            "team": {
+              "id": 20524,
+              "description": "Alabama Crimson Tide",
+              "abbreviation": "ALA",
+              "shortDisplayName": "Alabama"
+            }
+          },
+          {
+            "id": 333,
+            "type": "team",
+            "guid": "284484f2-b714-35bc-9162-4dc652590b02",
+            "description": "University of Alabama",
+            "sportId": 3170,
+            "teamId": 333,
+            "team": {
+              "id": 333,
+              "description": "University of Alabama",
+              "abbreviation": "Alabama",
+              "shortDisplayName": "Alabama"
+            }
+          },
+          {
+            "id": 134988,
+            "type": "league",
+            "uid": "s:600~l:5499",
+            "guid": "89269693-c595-3182-a8c1-d3d2a183b2bd",
+            "description": "NCAA Women's Soccer",
+            "sportId": 600,
+            "leagueId": 1929,
+            "league": {
+              "id": 5499,
+              "description": "NCAA Women's Soccer",
+              "abbreviation": "CWSOC",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 126329,
+            "type": "topic",
+            "guid": "78632891-79dd-a9ab-c720-008c86f843de",
+            "description": "sec network",
+            "sportId": 0,
+            "topicId": 89
+          },
+          {
+            "id": 426847,
+            "type": "team",
+            "uid": "s:600~t:20518",
+            "guid": "9edece65-b89e-3025-a800-4bfa27540d8c",
+            "description": "TCU Horned Frogs",
+            "sportId": 600,
+            "teamId": 20518,
+            "team": {
+              "id": 20518,
+              "description": "TCU Horned Frogs",
+              "abbreviation": "TCU",
+              "shortDisplayName": "TCU"
+            }
+          },
+          {
+            "id": 2628,
+            "type": "team",
+            "guid": "b7510593-5889-34d7-bac9-f85b4dd4c198",
+            "description": "Texas Christian University",
+            "sportId": 3170,
+            "teamId": 2628,
+            "team": {
+              "id": 2628,
+              "description": "Texas Christian University",
+              "abbreviation": "TCU",
+              "shortDisplayName": "TCU"
+            }
+          }
+        ],
+        "links": {
+          "api": {
+            "artwork": {
+              "href": "https://artwork.api.espn.com/artwork/collections/media/d805e0a3-cef1-486a-b079-d5a18de565aa"
+            },
+            "self": {
+              "href": "https://content.core.api.espn.com/v1/video/clips/49676338"
+            }
+          },
+          "sportscenter": {
+            "href": "sportscenter://x-callback-url/showVideo?videoID=49676338&videoDSI=17b16c4e61526"
+          },
+          "web": {
+            "href": "https://www.espn.com/video/clip/_/id/49676338/no-18-bama-ashley-roni-grateful-back-injury",
+            "self": {
+              "href": "https://www.espn.com/video/clip/_/id/49676338/no-18-bama-ashley-roni-grateful-back-injury",
+              "dsi": {
+                "href": "https://www.espn.com/video/clip?id=17b16c4e61526"
+              }
+            }
+          }
+        },
+        "premium": false
+      },
+      {
+        "id": 49676030,
+        "nowId": "1-49676030",
+        "contentKey": "49676030-1-293-1",
+        "dataSourceIdentifier": "a92cf254a1ac4",
+        "type": "Media",
+        "headline": "Chloe Taylor details feeling of scoring for Auburn vs. Southern Illinois",
+        "description": "Taylor describes how she was able to start the Tigers off strong with a goal in the first half and discusses how they were able to keep their momentum strong vs. the Salukis.",
+        "lastModified": "2026-08-21T02:11:01Z",
+        "published": "2026-08-21T02:11:01Z",
+        "images": [
+          {
+            "name": "Chloe Taylor details feeling of scoring for Auburn vs. Southern Illinois",
+            "caption": "Taylor describes how she was able to start the Tigers off strong with a goal in the first half and discusses how they were able to keep their momentum strong vs. the Salukis.",
+            "alt": "",
+            "height": 324,
+            "width": 576,
+            "url": "https://espnmedia-cdn.akamaized.net/espn/media/common/2026/0820/dm_260820_SEC_WSOC_Interview_Auburn_soccer_interview_260820/dm_260820_SEC_WSOC_Interview_Auburn_soccer_interview_260820.jpg"
+          }
+        ],
+        "categories": [
+          {
+            "id": 426842,
+            "type": "team",
+            "uid": "s:600~t:20527",
+            "guid": "5597e280-a6a9-3e91-a85e-7632171ef6f7",
+            "description": "Auburn Tigers",
+            "sportId": 600,
+            "teamId": 20527,
+            "team": {
+              "id": 20527,
+              "description": "Auburn Tigers",
+              "abbreviation": "AUB",
+              "shortDisplayName": "Auburn"
+            }
+          },
+          {
+            "id": 2,
+            "type": "team",
+            "guid": "59618d4c-34bc-3c11-a064-c1359b963d27",
+            "description": "Auburn",
+            "sportId": 3170,
+            "teamId": 2,
+            "team": {
+              "id": 2,
+              "description": "Auburn",
+              "abbreviation": "Auburn",
+              "shortDisplayName": "Auburn"
+            }
+          },
+          {
+            "id": 134988,
+            "type": "league",
+            "uid": "s:600~l:5499",
+            "guid": "89269693-c595-3182-a8c1-d3d2a183b2bd",
+            "description": "NCAA Women's Soccer",
+            "sportId": 600,
+            "leagueId": 1929,
+            "league": {
+              "id": 5499,
+              "description": "NCAA Women's Soccer",
+              "abbreviation": "CWSOC",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 126329,
+            "type": "topic",
+            "guid": "78632891-79dd-a9ab-c720-008c86f843de",
+            "description": "sec network",
+            "sportId": 0,
+            "topicId": 89
+          },
+          {
+            "id": 81497,
+            "type": "league",
+            "uid": "s:600",
+            "guid": "119cfa41-71d4-39bf-a790-6273a52b0259",
+            "description": "Soccer",
+            "sportId": 600,
+            "leagueId": 600,
+            "league": {
+              "id": 600,
+              "description": "Soccer",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 665344,
+            "type": "team",
+            "uid": "s:600~t:21101",
+            "guid": "81a2d7e7-5299-3ed8-87e7-8e5391df47ae",
+            "description": "Southern Illinois Salukis",
+            "sportId": 600,
+            "teamId": 21101,
+            "team": {
+              "id": 21101,
+              "description": "Southern Illinois Salukis",
+              "abbreviation": "SIU",
+              "shortDisplayName": "S Illinois"
+            }
+          },
+          {
+            "id": 79,
+            "type": "team",
+            "guid": "f56f5229-221c-3b58-87f7-5fffd4c4797f",
+            "description": "Southern Illinois University",
+            "sportId": 3170,
+            "teamId": 79,
+            "team": {
+              "id": 79,
+              "description": "Southern Illinois University",
+              "abbreviation": "Southern Illinois",
+              "shortDisplayName": "Southern Illinois"
+            }
+          },
+          {
+            "type": "event",
+            "uid": "s:600~l:5499~e:401885782",
+            "guid": "28bc4cf4-a8d3-3954-99e6-86a742dc2422",
+            "description": "Southern Illinois @ Auburn",
+            "eventId": 401885782,
+            "event": {
+              "id": 401885782,
+              "sport": "soccer",
+              "league": "usa.ncaa.w.1",
+              "description": "Southern Illinois @ Auburn"
+            }
+          }
+        ],
+        "links": {
+          "api": {
+            "artwork": {
+              "href": "https://artwork.api.espn.com/artwork/collections/media/5c282e97-853b-426e-bfdb-73c8991f97e6"
+            },
+            "self": {
+              "href": "https://content.core.api.espn.com/v1/video/clips/49676030"
+            }
+          },
+          "sportscenter": {
+            "href": "sportscenter://x-callback-url/showVideo?videoID=49676030&videoDSI=a92cf254a1ac4"
+          },
+          "web": {
+            "href": "https://www.espn.com/video/clip/_/id/49676030/chloe-taylor-details-feeling-scoring-auburn-vs-southern-illinois",
+            "self": {
+              "href": "https://www.espn.com/video/clip/_/id/49676030/chloe-taylor-details-feeling-scoring-auburn-vs-southern-illinois",
+              "dsi": {
+                "href": "https://www.espn.com/video/clip?id=a92cf254a1ac4"
+              }
+            }
+          }
+        },
+        "premium": false
+      },
+      {
+        "id": 49675927,
+        "nowId": "1-49675927",
+        "contentKey": "49675927-1-293-1",
+        "dataSourceIdentifier": "ec36644101bdb",
+        "type": "Media",
+        "headline": "Georgia sets collegiate NCAA attendance record in Samford Stadium",
+        "description": "The Bulldogs earn their first win of the young season, 6-0, over JMU as they break the collegiate soccer attendance record with 25,433 fans inside Samford Stadium.",
+        "lastModified": "2026-08-21T02:08:07Z",
+        "published": "2026-08-21T02:08:07Z",
+        "images": [
+          {
+            "name": "Georgia sets collegiate NCAA attendance record in Samford Stadium",
+            "caption": "The Bulldogs earn their first win of the young season, 6-0, over JMU as they break the collegiate soccer attendance record with 25,433 fans inside Samford Stadium.",
+            "alt": "",
+            "height": 324,
+            "width": 576,
+            "url": "https://espnmedia-cdn.akamaized.net/espn/media/common/2026/0820/dm_260820_SEC_WSOC_Highlight_UGA_record_260820/dm_260820_SEC_WSOC_Highlight_UGA_record_260820.jpg"
+          }
+        ],
+        "categories": [
+          {
+            "id": 426826,
+            "type": "team",
+            "uid": "s:600~t:20532",
+            "guid": "e7014933-d4f9-3dd8-bf9c-789d42628ffa",
+            "description": "Georgia GEORGIA BULLDOGS",
+            "sportId": 600,
+            "teamId": 20532,
+            "team": {
+              "id": 20532,
+              "description": "Georgia GEORGIA BULLDOGS",
+              "abbreviation": "UGA",
+              "shortDisplayName": "Georgia"
+            }
+          },
+          {
+            "id": 61,
+            "type": "team",
+            "guid": "429cd0c4-212a-3660-9508-9e74776b5442",
+            "description": "University of Georgia",
+            "sportId": 3170,
+            "teamId": 61,
+            "team": {
+              "id": 61,
+              "description": "University of Georgia",
+              "abbreviation": "Georgia",
+              "shortDisplayName": "Georgia"
+            }
+          },
+          {
+            "id": 135092,
+            "type": "team",
+            "uid": "s:600~t:20556",
+            "guid": "356ea688-45a5-3650-b98b-38d997b8e7f8",
+            "description": "James Madison Dukes",
+            "sportId": 600,
+            "teamId": 20556,
+            "team": {
+              "id": 20556,
+              "description": "James Madison Dukes",
+              "abbreviation": "JMU",
+              "shortDisplayName": "James Madison"
+            }
+          },
+          {
+            "id": 256,
+            "type": "team",
+            "guid": "108b193b-8e0c-3183-abb4-b76a58c5403b",
+            "description": "James Madison University",
+            "sportId": 3170,
+            "teamId": 256,
+            "team": {
+              "id": 256,
+              "description": "James Madison University",
+              "abbreviation": "James Madison",
+              "shortDisplayName": "James Madison"
+            }
+          },
+          {
+            "id": 134988,
+            "type": "league",
+            "uid": "s:600~l:5499",
+            "guid": "89269693-c595-3182-a8c1-d3d2a183b2bd",
+            "description": "NCAA Women's Soccer",
+            "sportId": 600,
+            "leagueId": 1929,
+            "league": {
+              "id": 5499,
+              "description": "NCAA Women's Soccer",
+              "abbreviation": "CWSOC",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 126329,
+            "type": "topic",
+            "guid": "78632891-79dd-a9ab-c720-008c86f843de",
+            "description": "sec network",
+            "sportId": 0,
+            "topicId": 89
+          }
+        ],
+        "links": {
+          "api": {
+            "artwork": {
+              "href": "https://artwork.api.espn.com/artwork/collections/media/37857486-9087-4120-8732-c534e015785a"
+            },
+            "self": {
+              "href": "https://content.core.api.espn.com/v1/video/clips/49675927"
+            }
+          },
+          "sportscenter": {
+            "href": "sportscenter://x-callback-url/showVideo?videoID=49675927&videoDSI=ec36644101bdb"
+          },
+          "web": {
+            "href": "https://www.espn.com/video/clip/_/id/49675927/georgia-sets-collegiate-ncaa-attendance-record-samford-stadium",
+            "self": {
+              "href": "https://www.espn.com/video/clip/_/id/49675927/georgia-sets-collegiate-ncaa-attendance-record-samford-stadium",
+              "dsi": {
+                "href": "https://www.espn.com/video/clip?id=ec36644101bdb"
+              }
+            }
+          }
+        },
+        "premium": false
+      },
+      {
+        "id": 49675924,
+        "nowId": "1-49675924",
+        "contentKey": "49675924-1-293-1",
+        "dataSourceIdentifier": "50ac74ca0793d",
+        "type": "Media",
+        "headline": "Taylor Cheatham reflects on first goal as a Lady Vol vs. Milwaukee",
+        "description": "Cheatham recaps the exciting feeling of scoring her first goal with Tennessee as she discusses how they were able to dominate the Panthers to secure the win.",
+        "lastModified": "2026-08-21T02:00:19Z",
+        "published": "2026-08-21T02:00:19Z",
+        "images": [
+          {
+            "name": "Taylor Cheatham reflects on first goal as a Lady Vol vs. Milwaukee",
+            "caption": "Cheatham recaps the exciting feeling of scoring her first goal with Tennessee as she discusses how they were able to dominate the Panthers to secure the win.",
+            "alt": "",
+            "height": 324,
+            "width": 576,
+            "url": "https://espnmedia-cdn.akamaized.net/espn/media/common/2026/0820/dm_260820_SEC_WSOC_Interview_Tennessee_soccer_interview_260820/dm_260820_SEC_WSOC_Interview_Tennessee_soccer_interview_260820.jpg"
+          }
+        ],
+        "categories": [
+          {
+            "id": 514104,
+            "type": "team",
+            "uid": "s:600~t:19313",
+            "guid": "6066d214-1209-3a62-a678-7c0a00e4aa22",
+            "description": "Milwaukee MILWAUKEE PANTHERS",
+            "sportId": 600,
+            "teamId": 19313,
+            "team": {
+              "id": 19313,
+              "description": "Milwaukee MILWAUKEE PANTHERS",
+              "abbreviation": "MILW",
+              "shortDisplayName": "Milwaukee"
+            }
+          },
+          {
+            "id": 270,
+            "type": "team",
+            "guid": "ee20654d-ce24-346c-97c7-ee5e5e7eaae7",
+            "description": "University of Wisconsin-Milwaukee",
+            "sportId": 3170,
+            "teamId": 270,
+            "team": {
+              "id": 270,
+              "description": "University of Wisconsin-Milwaukee",
+              "abbreviation": "Milwaukee",
+              "shortDisplayName": "Milwaukee"
+            }
+          },
+          {
+            "id": 134988,
+            "type": "league",
+            "uid": "s:600~l:5499",
+            "guid": "89269693-c595-3182-a8c1-d3d2a183b2bd",
+            "description": "NCAA Women's Soccer",
+            "sportId": 600,
+            "leagueId": 1929,
+            "league": {
+              "id": 5499,
+              "description": "NCAA Women's Soccer",
+              "abbreviation": "CWSOC",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 126329,
+            "type": "topic",
+            "guid": "78632891-79dd-a9ab-c720-008c86f843de",
+            "description": "sec network",
+            "sportId": 0,
+            "topicId": 89
+          },
+          {
+            "id": 81497,
+            "type": "league",
+            "uid": "s:600",
+            "guid": "119cfa41-71d4-39bf-a790-6273a52b0259",
+            "description": "Soccer",
+            "sportId": 600,
+            "leagueId": 600,
+            "league": {
+              "id": 600,
+              "description": "Soccer",
+              "links": {
+                "mobile": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                },
+                "web": {
+                  "leagues": {
+                    "href": "https://www.espn.com/soccer/"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": 426926,
+            "type": "team",
+            "uid": "s:600~t:20492",
+            "guid": "82c1b6e4-41d9-348a-9dd2-99639812ab77",
+            "description": "Tennessee Volunteers",
+            "sportId": 600,
+            "teamId": 20492,
+            "team": {
+              "id": 20492,
+              "description": "Tennessee Volunteers",
+              "abbreviation": "TENN",
+              "shortDisplayName": "Tennessee"
+            }
+          },
+          {
+            "id": 2633,
+            "type": "team",
+            "guid": "ff43c27b-3b2b-3a29-b1b9-4920b47b1c69",
+            "description": "University of Tennessee",
+            "sportId": 3170,
+            "teamId": 2633,
+            "team": {
+              "id": 2633,
+              "description": "University of Tennessee",
+              "abbreviation": "Tennessee",
+              "shortDisplayName": "Tennessee"
+            }
+          },
+          {
+            "type": "event",
+            "uid": "s:600~l:5499~e:401886471",
+            "guid": "a7bf8130-d689-3330-ae03-3bceea13b062",
+            "description": "Milwaukee @ Tennessee",
+            "eventId": 401886471,
+            "event": {
+              "id": 401886471,
+              "sport": "soccer",
+              "league": "usa.ncaa.w.1",
+              "description": "Milwaukee @ Tennessee"
+            }
+          }
+        ],
+        "links": {
+          "api": {
+            "artwork": {
+              "href": "https://artwork.api.espn.com/artwork/collections/media/78959b17-72ef-4e8b-8ad2-63faa4b022ac"
+            },
+            "self": {
+              "href": "https://content.core.api.espn.com/v1/video/clips/49675924"
+            }
+          },
+          "sportscenter": {
+            "href": "sportscenter://x-callback-url/showVideo?videoID=49675924&videoDSI=50ac74ca0793d"
+          },
+          "web": {
+            "href": "https://www.espn.com/video/clip/_/id/49675924/taylor-cheatham-reflects-first-goal-lady-vol-vs-milwaukee",
+            "self": {
+              "href": "https://www.espn.com/video/clip/_/id/49675924/taylor-cheatham-reflects-first-goal-lady-vol-vs-milwaukee",
+              "dsi": {
+                "href": "https://www.espn.com/video/clip?id=50ac74ca0793d"
+              }
+            }
+          }
+        },
+        "premium": false
+      }
+    ]
+  },
+  "header": {
+    "id": "401887604",
+    "uid": "s:600~l:5499~e:401887604",
+    "season": {
+      "year": 2026,
+      "current": true,
+      "type": 14226,
+      "name": "2026 NCAA Division I Women's Soccer, 2026 NCAA Division I Women"
+    },
+    "timeValid": true,
+    "competitions": [
+      {
+        "id": "401887604",
+        "uid": "s:600~l:5499~e:401887604~c:401887604",
+        "date": "2026-08-21T15:00Z",
+        "neutralSite": false,
+        "conferenceCompetition": false,
+        "boxscoreAvailable": true,
+        "commentaryAvailable": false,
+        "liveAvailable": true,
+        "onWatchESPN": false,
+        "recent": true,
+        "wallclockAvailable": false,
+        "boxscoreSource": "full",
+        "playByPlaySource": "full",
+        "competitors": [
+          {
+            "id": "20458",
+            "uid": "s:600~t:20458",
+            "order": 0,
+            "homeAway": "home",
+            "winner": false,
+            "team": {
+              "id": "20458",
+              "guid": "178b205c-fbf9-3e1e-8669-5957b6332fcc",
+              "uid": "s:600~t:20458",
+              "location": "Drexel",
+              "name": "Drexel",
+              "nickname": "Dragons",
+              "abbreviation": "DREX",
+              "displayName": "Drexel Dragons",
+              "shortDisplayName": "Drexel",
+              "color": "07294D",
+              "alternateColor": "FFC600",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2182.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2018-06-05T12:08Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2182.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2018-06-05T12:08Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/178b205c-fbf9-3e1e-8669-5957b6332fcc/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:24Z"
+                }
+              ],
+              "links": [],
+              "form": "DLWLL"
+            },
+            "score": "3",
+            "linescores": [
+              {
+                "displayValue": "3"
+              }
+            ],
+            "record": [
+              {
+                "type": "total",
+                "summary": "0-0-1",
+                "displayValue": "0-0-1"
+              },
+              {
+                "type": "points",
+                "summary": "0",
+                "displayValue": "0"
+              }
+            ],
+            "possession": false
+          },
+          {
+            "id": "132330",
+            "uid": "s:600~t:132330",
+            "order": 1,
+            "homeAway": "away",
+            "winner": false,
+            "team": {
+              "id": "132330",
+              "guid": "41665530-5d7b-350a-b941-eddeec5cc2d6",
+              "uid": "s:600~t:132330",
+              "location": "Holy Family",
+              "name": "Holy Family",
+              "nickname": "HFU",
+              "abbreviation": "HFU",
+              "displayName": "Holy Family",
+              "shortDisplayName": "Holy Family",
+              "color": "000000",
+              "alternateColor": "C60000",
+              "links": []
+            },
+            "score": "0",
+            "linescores": [
+              {
+                "displayValue": "0"
+              }
+            ],
+            "record": [],
+            "possession": false
+          }
+        ],
+        "notes": [],
+        "status": {
+          "displayClock": "32'",
+          "period": 1,
+          "type": {
+            "id": "25",
+            "name": "STATUS_FIRST_HALF",
+            "state": "in",
+            "completed": false,
+            "description": "First Half",
+            "detail": "32'",
+            "shortDetail": "32'",
+            "statusPrimary": "32'"
+          },
+          "displayPeriod": "1st"
+        },
+        "broadcasts": [
+          {
+            "type": {
+              "id": "4",
+              "shortName": "STREAMING"
+            },
+            "market": {},
+            "media": {
+              "shortName": "FloSports"
+            },
+            "lang": "en",
+            "region": "us",
+            "isNational": false
+          }
+        ],
+        "details": [],
+        "groups": {
+          "id": "1",
+          "name": "Southeastern Conference",
+          "abbreviation": "SEC"
+        },
+        "isFinal": false,
+        "isThirdPlace": false,
+        "altGameNote": "NCAAW Soccer",
+        "boxscoreMinutes": false,
+        "shotMapAvailable": false
+      }
+    ],
+    "links": [
+      {
+        "rel": [
+          "player-stats",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/soccer/player-stats/_/gameId/401887604/league/usa.ncaa.w.1",
+        "text": "Player Stats",
+        "shortText": "Player Stats",
+        "isExternal": false,
+        "isPremium": false
+      }
+    ],
+    "league": {
+      "id": "5499",
+      "uid": "s:600~l:5499",
+      "name": "NCAA Women's Soccer",
+      "abbreviation": "CWSOC",
+      "shortName": "NCAAW Soccer",
+      "midsizeName": "USA.NCAA.W.1",
+      "slug": "usa.ncaa.w.1",
+      "isTournament": false,
+      "links": [
+        {
+          "rel": [
+            "index",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/soccer/league/_/name/usa.ncaa.w.1",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "index",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~l:5499",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "schedule",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/soccer/schedule/_/league/usa.ncaa.w.1",
+          "text": "Schedule"
+        },
+        {
+          "rel": [
+            "schedule",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~l:5499&section=scores",
+          "text": "Schedule"
+        },
+        {
+          "rel": [
+            "rankings",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-soccer/rankings",
+          "text": "Rankings"
+        },
+        {
+          "rel": [
+            "scores",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/soccer/scoreboard/_/league/usa.ncaa.w.1",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "scores",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~l:5499&section=scores",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "stats",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/soccer/stats/_/league/usa.ncaa.w.1",
+          "text": "Stats"
+        },
+        {
+          "rel": [
+            "stats",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~l:5499&section=stats",
+          "text": "Stats"
+        },
+        {
+          "rel": [
+            "teams",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/soccer/teams/_/league/usa.ncaa.w.1",
+          "text": "Teams"
+        }
+      ],
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/sports-soccer-solid.png",
+          "rel": [
+            "full",
+            "default"
+          ]
+        },
+        {
+          "href": "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-soccer.png",
+          "rel": [
+            "full",
+            "dark"
+          ]
+        }
+      ]
+    },
+    "linksv4": []
+  },
+  "wallclockAvailable": false,
+  "meta": {
+    "gp_topic": "gp-soccer-usa.ncaa.w.1-401887604",
+    "gameSwitcherEnabled": true,
+    "picker_topic": "picker-soccer-usa.ncaa.w.1",
+    "gameState": "in"
+  },
+  "standings": {
+    "groups": []
+  }
+}
