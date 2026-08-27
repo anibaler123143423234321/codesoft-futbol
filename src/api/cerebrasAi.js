@@ -1,7 +1,6 @@
-// NVIDIA NIM AI Sports Inference Engine (Llama 3.1 70B Instruct on NVIDIA GPU Cloud)
-
+// NVIDIA NIM AI Sports Inference Engine (Hosted on NVIDIA GPU Cloud)
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const NVIDIA_MODEL = 'meta/llama-3.1-70b-instruct';
+const NVIDIA_MODEL = 'deepseek-ai/deepseek-v4-pro-0813';
 
 // Get API Key from localStorage or vite define
 export function getNvidiaApiKey() {
@@ -82,7 +81,9 @@ export async function generateMatchAIPick(match) {
     }
   } catch (e) {}
 
-  const dynamicFallback = calculateDynamicSportsMetrics(match).mainPick;
+  const homeRecent = (match.homeTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.homeTeam?.form || 'Información no disponible';
+  const awayRecent = (match.awayTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.awayTeam?.form || 'Información no disponible';
+  const h2hSummary = (match.h2hHistory || []).slice(-4).map(h => `${h.date}: ${h.homeTeam} ${h.homeScore}-${h.awayScore} ${h.awayTeam}`).join(' | ') || 'Sin enfrentamientos directos recientes registrados';
 
   const prompt = `
 Actúa como un Senior Quantitative Sports Trader y Analista Táctico de Fútbol con Inteligencia Artificial.
@@ -91,8 +92,11 @@ Analiza con MÁXIMA PROFUNDIDAD este partido de fútbol y explica detalladamente
 DATOS DEL ENCUENTRO:
 - Torneo: ${match.leagueName || 'Competición Oficial'}
 - Local: ${match.homeTeam?.name} (Goles: ${match.homeTeam?.score || 0}, Cuota: ${match.homeTeam?.odds || 2.10})
+  * Forma reciente (Últimos partidos): ${homeRecent}
 - Visita: ${match.awayTeam?.name} (Goles: ${match.awayTeam?.score || 0}, Cuota: ${match.awayTeam?.odds || 3.10})
-- Estado: ${match.timeStr || match.status}
+  * Forma reciente (Últimos partidos): ${awayRecent}
+- Historial Directo (H2H): ${h2hSummary}
+- Estado del Partido: ${match.timeStr || match.status}
 - Estadísticas Registradas:
   * Posesión: Local ${match.stats?.attack?.[0]?.home || 50}% - Visita ${match.stats?.attack?.[0]?.away || 50}%
   * Tiros Totales: Local ${match.stats?.attack?.[1]?.home || 6} - Visita ${match.stats?.attack?.[1]?.away || 5}
@@ -100,10 +104,10 @@ DATOS DEL ENCUENTRO:
   * Tarjetas: Local ${match.homeTeam?.yellowCards || 0} amarillas - Visita ${match.awayTeam?.yellowCards || 0} amarillas
 
 INSTRUCCIONES CLAVE DE ANÁLISIS:
-1. Define un pick concreto y de alto valor (Value Bet, ej. Gana Local Hándicap Asiático 0.0, Ambos Anotan + Más de 2.5 Goles, Doble Oportunidad 1X, Over Córners).
+1. Considera la forma reciente de los últimos 5 partidos y el historial H2H para definir un pick concreto y de alto valor (Value Bet, ej. Gana Local Hándicap Asiático 0.0, Ambos Anotan + Más de 2.5 Goles, Doble Oportunidad 1X, Over Córners).
 2. En "motivo_principal": Redacta una explicación contundente que comience con "¿Por qué este pick?: ..." resumiendo la ventaja táctica o matemática directa.
-3. En "analisis_detallado": Desarrolla un análisis táctico profundo (3-4 líneas explicativas) detallando Expected Goals (xG), patrones de posesión, transiciones y valor matemático real frente a la cuota del mercado.
-4. En "claves_metricas": Proporciona 3 o 4 métricas numéricas estimadas de respaldo (ej. ["xG Proyectado: > 2.3", "Tiros al arco estimados: 8.5", "Valor Esperado (+EV): +14.2%"]).
+3. En "analisis_detallado": Desarrolla un análisis táctico profundo (3-4 líneas explicativas) citando la forma reciente, Expected Goals (xG), patrones de posesión, transiciones y valor matemático real frente a la cuota del mercado.
+4. En "claves_metricas": Proporciona 3 o 4 métricas numéricas estimadas de respaldo (ej. ["xG Proyectado: > 2.3", "Racha Reciente: ${match.homeTeam?.form || 'Invicto'}", "Valor Esperado (+EV): +14.2%"]).
 5. En "stake": Define la recomendación de banca (ej. "Stake 2.5 / 10 (Confianza Alta)").
 
 Responde ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
@@ -189,12 +193,27 @@ export async function askTacticalAI(match, userQuestion) {
   const awayTarget = Number(match?.stats?.attack?.[2]?.away || 0);
   const q = (userQuestion || '').toLowerCase();
 
+  const homeOdds = match?.homeTeam?.odds || match?.oddsInfo?.homeOdds || 1.85;
+  const awayOdds = match?.awayTeam?.odds || match?.oddsInfo?.awayOdds || 3.80;
+  const homeRecent = (match.homeTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.homeTeam?.form || '';
+  const awayRecent = (match.awayTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.awayTeam?.form || '';
+
   try {
     const aiRes = await callAiCompletion({
       messages: [
         { 
           role: 'system', 
-          content: `Eres una IA, un analista táctico de fútbol y trader deportivo de élite. Responde a la pregunta del usuario en 2 o 3 oraciones con análisis técnico, claro y fundamentado en el partido actual: ${home} vs ${away} (Marcador: ${homeScore}-${awayScore}, Estado: ${isLive ? `En Vivo Min ${minuteStr}` : 'Previa'}). Si te preguntan por tarjetas, córners, goles o ganador, da una recomendación concreta.` 
+          content: `Eres NVIDIA IA, un analista táctico de fútbol y trader deportivo de élite.
+CONTEXTO DEL PARTIDO:
+- Partido: ${home} (Cuota: @${homeOdds}) vs ${away} (Cuota: @${awayOdds})
+- Marcador: ${homeScore} - ${awayScore}
+- Estado: ${isLive ? `En Vivo Minuto ${minuteStr}` : 'Previa (Aún no empieza)'}
+- Forma Local: ${homeRecent || 'Sin registro reciente'}
+- Forma Visita: ${awayRecent || 'Sin registro reciente'}
+
+INSTRUCCIÓN VITAL:
+Responde a la consulta del usuario en 2 o 3 oraciones de manera directa, profesional y contundente.
+Si el usuario te pregunta "¿Quién gana?", "dame el ganador" o te pide que te decidas por uno, MOJATE Y DEFINE CLARAMENTE A UN GANADOR justificando por qué (localía, cuotas, plantilla o momento táctico). NO des respuestas evasivas ni repitas mensajes genéricos.` 
         },
         { role: 'user', content: userQuestion }
       ],
@@ -208,31 +227,30 @@ export async function askTacticalAI(match, userQuestion) {
     console.warn('AI Chat fallback:', e);
   }
 
-  // 1. Live Match Situational Tactical Responses
+  // 1. Live Match Situational Tactical Responses (Fallback)
   if (isLive) {
     const isLateGame = minuteNum >= 70;
-    const isHalftime = minuteStr.includes('HT') || minuteStr.includes('Descanso');
 
-    if (q.includes('ganar') || q.includes('posibilidades') || q.includes('favorito')) {
+    if (q.includes('ganar') || q.includes('ganador') || q.includes('posibilidades') || q.includes('favorito') || q.includes('quien')) {
       if (homeScore > awayScore) {
         const winProb = isLateGame ? Math.min(96, 78 + (minuteNum - 70) * 1.2) : 68;
         const liveOdd = (1 + (100 - winProb) / 80).toFixed(2);
-        return `Con ${home} ganando ${homeScore}-${awayScore} al minuto ${minuteStr}, su probabilidad de victoria es del ${Math.round(winProb)}% (cuota en vivo aprox. @${liveOdd}). ${away} está obligado a adelantar líneas pero deja espacios para el contragolpe.`;
+        return `El ganador proyectado es ${home}. Con marcador a favor ${homeScore}-${awayScore} al minuto ${minuteStr}, tiene un ${Math.round(winProb)}% de probabilidad de victoria (cuota @${liveOdd}). ${away} deja espacios críticos en defensa al adelantar líneas.`;
       } else if (awayScore > homeScore) {
         const winProb = isLateGame ? Math.min(96, 78 + (minuteNum - 70) * 1.2) : 68;
         const liveOdd = (1 + (100 - winProb) / 80).toFixed(2);
-        return `Con ${away} liderando ${awayScore}-${homeScore} al minuto ${minuteStr}, la visita tiene ${Math.round(winProb)}% de probabilidad de asegurar los 3 puntos (cuota @${liveOdd}). ${home} sufre el desgaste físico.`;
+        return `El ganador proyectado es ${away}. Liderando ${awayScore}-${homeScore} al minuto ${minuteStr}, la visita tiene ${Math.round(winProb)}% de probabilidad de cerrar el triunfo (cuota @${liveOdd}).`;
       } else {
-        const drawProb = isLateGame ? Math.min(85, 60 + (minuteNum - 70)) : 42;
-        return `Empate momentáneo (${homeScore}-${awayScore}) al minuto ${minuteStr}. La probabilidad de sellar tablas se sitúa en ${Math.round(drawProb)}% si ninguno arriesga en la presión alta.`;
+        const favoriteTeam = homeOdds <= awayOdds ? home : away;
+        const prob = homeOdds <= awayOdds ? 54 : 48;
+        return `En este empate momentáneo (${homeScore}-${awayScore}), el principal candidato a romper la igualdad y llevarse la victoria es ${favoriteTeam} (${prob}% de probabilidad) por su mayor volumen de llegada al área rival.`;
       }
     }
 
     if (q.includes('gol') || q.includes('goles') || q.includes('over') || q.includes('under') || q.includes('btts')) {
       const currentGoals = homeScore + awayScore;
       if (isLateGame) {
-        const nextOverLine = currentGoals + 0.5;
-        return `Restando solo ${90 - Math.min(88, minuteNum)} minutos y con ${currentGoals} goles anotados, la opción de Menos de ${currentGoals + 1.5} Goles Totales (@1.28) ofrece la mayor solidez defensiva.`;
+        return `Restando pocos minutos y con ${currentGoals} goles en el marcador, la opción más sólida es Menos de ${currentGoals + 1.5} Goles Totales (@1.28).`;
       }
       return `Al minuto ${minuteStr} con ${currentGoals} goles y ${homeTarget + awayTarget} tiros al arco, la proyección live apunta a Más de ${currentGoals + 1.5} Goles Totales (@1.80).`;
     }
@@ -243,27 +261,27 @@ export async function askTacticalAI(match, userQuestion) {
       } else if (awayScore > homeScore) {
         return `Marcador más probable al pitazo final: ${home} ${homeScore} - ${awayScore} ${away} (o ${homeScore}-${awayScore + 1}).`;
       }
-      return `El modelo proyecta cierre en Empate ${homeScore}-${awayScore} o ${homeScore + 1}-${awayScore} para el que logre romper el cerrojo.`;
+      return `El modelo proyecta cierre en Empate ${homeScore}-${awayScore} o ${homeScore + 1}-${awayScore} a favor de ${home}.`;
     }
   }
 
-  // 2. Pre-match Tactical Responses
-  if (q.includes('ganar') || q.includes('posibilidades') || q.includes('favorito')) {
-    if (homePoss > 55 || homeTarget > awayTarget) {
-      return `${home} parte con ligera ventaja (56% prob) por fortaleza en casa y generación de peligro. Cuota recomendada 1X / Victoria Local.`;
-    }
-    return `Encuentro parejo entre ${home} y ${away}. La doble oportunidad o mercado de hándicap ofrece el mejor ratio riesgo/beneficio.`;
+  // 2. Pre-match Tactical Responses (Fallback)
+  if (q.includes('ganar') || q.includes('ganador') || q.includes('quien') || q.includes('posibilidades') || q.includes('favorito')) {
+    const favoriteTeam = homeOdds <= awayOdds ? home : away;
+    const winProb = homeOdds <= awayOdds ? 64 : 58;
+    return `Para este encuentro, el ganador con mayor probabilidad es ${favoriteTeam} (${winProb}% de probabilidad estimada). Su fortaleza como local, mayor jerarquía de plantilla y consistencia táctica lo posicionan como el claro candidato frente a ${favoriteTeam === home ? away : home}.`;
   }
 
   if (q.includes('córner') || q.includes('corner') || q.includes('esquina')) {
-    return `La proyección para saques de esquina se sitúa en Más de 8.5 Córners totales (@1.78) por el volumen de juego por las bandas.`;
+    return `La proyección para saques de esquina se sitúa en Más de 8.5 Córners totales (@1.78) por el volumen de juego por las bandas de ambos equipos.`;
   }
 
-  if (q.includes('tarjeta') || q.includes('falta')) {
-    return `Partido de alta intensidad física en mediocampo. Se proyectan Más de 3.5 tarjetas totales (@1.85).`;
+  if (q.includes('tarjeta') || q.includes('falta') || q.includes('amarilla')) {
+    return `Se anticipa un partido de alta fricción táctica en el centro del campo. Se proyectan Más de 3.5 tarjetas totales (@1.85).`;
   }
 
-  return `Análisis táctico para ${home} vs ${away} (${minuteStr}): Con marcador actual ${homeScore}-${awayScore}, el modelo cuantitativo prioriza mercados de hándicap y gestión de ritmo de partido.`;
+  const favoriteTeam = homeOdds <= awayOdds ? home : away;
+  return `Análisis táctico para ${home} vs ${away}: ${favoriteTeam} se perfila como el equipo con mayor iniciativa ofensiva y control del juego, mientras que la contra será el recurso principal de ${favoriteTeam === home ? away : home}.`;
 }
 
 /**
@@ -513,11 +531,18 @@ export async function generateFullMatchAIPredictions(match) {
 
   const dynamicFallback = calculateDynamicSportsMetrics(match);
 
+  const homeRecent = (match.homeTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.homeTeam?.form || 'Información no disponible';
+  const awayRecent = (match.awayTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.awayTeam?.form || 'Información no disponible';
+  const h2hSummary = (match.h2hHistory || []).slice(-4).map(h => `${h.date}: ${h.homeTeam} ${h.homeScore}-${h.awayScore} ${h.awayTeam}`).join(' | ') || 'Sin enfrentamientos directos recientes registrados';
+
   const prompt = `
 Actúa como un Senior Quantitative Sports Trader y Analista Táctico de Fútbol con Inteligencia Artificial.
 Analiza este partido de fútbol en profundidad con datos reales del mercado y genera 5 selecciones de apuesta cuantitativas (Value Bets):
 - Torneo: ${match.leagueName || 'Liga Principal'}
 - Equipos: Local: ${home} (Goles: ${homeScore}) vs Visita: ${away} (Goles: ${awayScore})
+  * Forma reciente de Local: ${homeRecent}
+  * Forma reciente de Visita: ${awayRecent}
+- Historial Directo (H2H): ${h2hSummary}
 - Estado del Partido: ${match.status === 'live' ? `EN VIVO Minuto ${match.minute}` : match.timeStr || 'Por iniciar'}
 - Cuotas Reales del Mercado (${provider}): Local ${homeOdds} | Empate ${drawOdds} | Visita ${awayOdds} | Línea: ${overUnder}
 - Estadísticas del Partido:
@@ -527,10 +552,10 @@ Analiza este partido de fútbol en profundidad con datos reales del mercado y ge
   * Tarjetas: Local ${match.homeTeam?.yellowCards || 0} amarillas vs Visita ${match.awayTeam?.yellowCards || 0} amarillas
 
 INSTRUCCIONES CLAVE:
-1. Define selecciones de alto valor basadas en datos reales.
+1. Define selecciones de alto valor basadas en datos reales, forma reciente e historial H2H.
 2. En mainPick, proporciona un desglose profundo con:
-   - "motivo_principal": "¿Por qué este pick?: ..." Resumen del motivo directo.
-   - "analisis_detallado": Análisis táctico de 3-4 líneas basado en xG, dinámica de ataque y valor matemático (+EV).
+   - "motivo_principal": "¿Por qué este pick?: ..." Resumen del motivo directo citando la forma reciente o ventaja táctica.
+   - "analisis_detallado": Análisis táctico de 3-4 líneas basado en xG, dinámica de ataque, rachas y valor matemático (+EV).
    - "claves_metricas": Array con 3 métricas estimadas clave.
 3. Genera cuotas decimales realistas.
 

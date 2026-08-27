@@ -427,6 +427,52 @@ function parseEspnSummary(summary, matchId, league) {
   const homeCards = countCards(homeBox, home?.id, home?.team?.displayName);
   const awayCards = countCards(awayBox, away?.id, away?.team?.displayName);
 
+  // Parse Last 5 Games for both teams from ESPN
+  let recentForm = {
+    home: { form: '', games: [] },
+    away: { form: '', games: [] }
+  };
+
+  if (summary.lastFiveGames && Array.isArray(summary.lastFiveGames)) {
+    summary.lastFiveGames.forEach(group => {
+      const isHomeTeam = String(group.team?.id) === String(home?.id) || group.team?.displayName === home?.team?.displayName;
+      const target = isHomeTeam ? recentForm.home : recentForm.away;
+      const events = (group.events || []).slice(-5);
+      
+      target.games = events.map(e => ({
+        date: e.gameDate ? e.gameDate.split('T')[0] : '',
+        opponent: e.opponent?.displayName || e.opponent?.abbreviation || 'Rival',
+        score: e.score || `${e.homeTeamScore || 0}-${e.awayTeamScore || 0}`,
+        result: e.gameResult || (Number(e.homeTeamScore) > Number(e.awayTeamScore) ? 'W' : Number(e.homeTeamScore) < Number(e.awayTeamScore) ? 'L' : 'D'),
+        competition: e.competitionName || e.leagueName || ''
+      }));
+      target.form = target.games.map(g => g.result).join('-');
+    });
+  }
+
+  // Parse Head-to-Head (H2H) Series History from ESPN
+  let h2hHistory = [];
+  if (summary.seasonseries && Array.isArray(summary.seasonseries)) {
+    summary.seasonseries.forEach(series => {
+      const events = series.events || [];
+      events.forEach(ev => {
+        const compSeries = ev.competitions?.[0] || ev;
+        const h = compSeries?.competitors?.find(c => c.homeAway === 'home');
+        const a = compSeries?.competitors?.find(c => c.homeAway === 'away');
+        if (h && a) {
+          h2hHistory.push({
+            date: ev.date ? ev.date.split('T')[0] : '',
+            homeTeam: h.team?.displayName || 'Local',
+            awayTeam: a.team?.displayName || 'Visita',
+            homeScore: h.score || h.score?.displayValue || '0',
+            awayScore: a.score || a.score?.displayValue || '0',
+            competition: ev.competitionName || compSeries?.type?.text || ''
+          });
+        }
+      });
+    });
+  }
+
   const rawBroadcasts = summary.broadcasts || comp?.broadcasts || [];
   const broadcastsList = rawBroadcasts.map(b => b.names?.[0] || b.media?.shortName || b.station || '').filter(Boolean);
   const tvChannel = broadcastsList.length > 0 ? broadcastsList.join(' / ') : null;
@@ -456,6 +502,8 @@ function parseEspnSummary(summary, matchId, league) {
       odds: realOdds?.homeOdds || null,
       yellowCards: homeCards.yellows,
       redCards: homeCards.reds,
+      form: recentForm.home.form,
+      recentGames: recentForm.home.games,
     },
     awayTeam: {
       id: away?.id,
@@ -466,12 +514,16 @@ function parseEspnSummary(summary, matchId, league) {
       odds: realOdds?.awayOdds || null,
       yellowCards: awayCards.yellows,
       redCards: awayCards.reds,
+      form: recentForm.away.form,
+      recentGames: recentForm.away.games,
     },
     oddsInfo: realOdds,
     stats: parsedStats,
     scorers: scorers,
     commentary: commentaryList,
     rosters: rostersList,
+    recentForm: recentForm,
+    h2hHistory: h2hHistory,
     gameInfo: gameInfo,
     rawKeyEvents: keyEvents
   };
