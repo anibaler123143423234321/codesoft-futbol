@@ -5,13 +5,13 @@ import { useState, useEffect, useRef } from 'react';
  * Ticks continuously during live matches and synchronizes with API updates.
  */
 export function useLiveMatchTimer(match) {
-  const isFinished = match?.status === 'finished';
+  const isFinished = match?.status === 'finished' || match?.rawEspnStatus?.state === 'post' || match?.rawEspnStatus?.completed === true;
   const isHalftime = match?.minute === 'HT' || match?.rawEspnStatus?.name?.includes('HALFTIME') || match?.rawEspnStatus?.detail === 'HT';
-  const hasGoalsOrMinutes = (match?.homeTeam?.score > 0 || match?.awayTeam?.score > 0) || (match?.scorers && match?.scorers.length > 0) || (match?.minute && match?.minute !== 'Hoy' && match?.minute !== 'Por Iniciar' && !match?.minute.includes('AM') && !match?.minute.includes('PM') && !match?.minute.includes(':'));
-  const isLive = (match?.status === 'live' || hasGoalsOrMinutes) && !isFinished;
-  const isScheduled = !isLive && !isFinished;
+  const isLive = !isFinished && (match?.status === 'live' || match?.rawEspnStatus?.state === 'in');
+  const isScheduled = !isFinished && !isLive;
 
   const getInitialSeconds = () => {
+    if (!isLive) return 0;
     if (typeof match?.clockSeconds === 'number' && match.clockSeconds > 0) {
       return match.clockSeconds;
     }

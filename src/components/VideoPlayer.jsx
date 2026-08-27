@@ -94,7 +94,7 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [match, isFinished]);
+  }, [match, isFinished, isScheduled, isLive]);
 
   // Real-time 2.5D Match Tracker Canvas Engine (Sportradar / Betano LMT style)
   useEffect(() => {
@@ -530,8 +530,12 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
 
       // 9. Floating Event Tooltip Badge (Identical to Betano / SofaScore Reference Image)
       const isHomeTeam = currentEvent.team === 'home';
-      const teamDisplayName = isHomeTeam ? (match.homeTeam?.shortName || match.homeTeam?.name || 'Local') : (match.awayTeam?.shortName || match.awayTeam?.name || 'Visita');
-      const actionText = `${currentEvent.title || 'Posesión'} · ${formattedTime}`;
+      const teamDisplayName = isScheduled
+        ? `${match.homeTeam?.shortName || match.homeTeam?.name || 'Local'} vs ${match.awayTeam?.shortName || match.awayTeam?.name || 'Visita'}`
+        : (isHomeTeam ? (match.homeTeam?.shortName || match.homeTeam?.name || 'Local') : (match.awayTeam?.shortName || match.awayTeam?.name || 'Visita'));
+      const actionText = isScheduled
+        ? `⏰ PROGRAMADO · ${formattedTime}`
+        : `${currentEvent.title || 'Posesión'} · ${formattedTime}`;
 
       ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
       const teamTextWidth = ctx.measureText(teamDisplayName).width;
@@ -555,7 +559,7 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
       ctx.fill();
 
       // Border
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.strokeStyle = isScheduled ? 'rgba(250, 204, 21, 0.4)' : 'rgba(255, 255, 255, 0.18)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -576,7 +580,7 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
       ctx.fillText(teamDisplayName, ballPos.x, boxY + 15);
 
       // Event Subtitle Badge
-      ctx.fillStyle = '#86efac';
+      ctx.fillStyle = isScheduled ? '#facc15' : '#86efac';
       ctx.font = '600 10px system-ui, -apple-system, sans-serif';
       ctx.fillText(actionText, ballPos.x, boxY + 30);
 
