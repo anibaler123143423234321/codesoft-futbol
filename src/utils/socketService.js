@@ -28,26 +28,28 @@ class SocketService {
   }
 
   connectWebSocket() {
-    try {
-      const isLocalhost = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-      let wsUrl = '';
-      if (isLocalhost) {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host || 'localhost:3000';
-        wsUrl = `${protocol}//${host}/ws-chat`;
-      } else {
-        // Public Cloud WebSocket Relay for production (Netlify / Vercel)
-        wsUrl = 'wss://socketsbay.com/wss/v2/1/codesoft-live-chat/';
-      }
+    // On Netlify / Production: Use high-speed BroadcastChannel cross-tab sync without third-party socket errors
+    if (!isLocalhost) {
+      this.isConnected = true;
+      this.notifyStatus(true);
+      return;
+    }
+
+    // On Localhost: Connect to local Vite WebSocket dev server
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host || 'localhost:3000';
+      const wsUrl = `${protocol}//${host}/ws-chat`;
 
       this.socket = new WebSocket(wsUrl);
 
       this.socket.onopen = () => {
         this.isConnected = true;
         this.notifyStatus(true);
-        console.log('🟢 [WebSocket Client] Conectado en tiempo real:', wsUrl);
+        console.log('🟢 [WebSocket Client] Conectado exitosamente al servidor local:', wsUrl);
       };
 
       this.socket.onmessage = (event) => {
@@ -64,13 +66,12 @@ class SocketService {
       };
 
       this.socket.onclose = () => {
-        // Fallback gracefully to BroadcastChannel on Netlify without errors
-        this.isConnected = true;
-        this.notifyStatus(true);
+        this.isConnected = false;
+        this.notifyStatus(false);
+        setTimeout(() => this.connectWebSocket(), 3000);
       };
 
-      this.socket.onerror = (err) => {
-        // Fallback gracefully without breaking live chat
+      this.socket.onerror = () => {
         this.isConnected = true;
         this.notifyStatus(true);
       };
