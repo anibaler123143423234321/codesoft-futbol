@@ -284,14 +284,15 @@ function parseEspnSummary(summary, matchId, league) {
 
   // Extract official stats directly from ESPN boxscore if available, or generate proportional match stats
   let parsedStats = null;
+  const getStat = (box, name, def = 0) => {
+    if (!box || !box.statistics) return def;
+    const s = box.statistics.find(st => st.name === name || st.label?.toLowerCase() === name.toLowerCase());
+    return s ? (parseFloat(s.displayValue) || s.displayValue) : def;
+  };
+
   const hasOfficialStats = (homeBox?.statistics && homeBox.statistics.length > 0) || (awayBox?.statistics && awayBox.statistics.length > 0);
 
   if (hasOfficialStats) {
-    const getStat = (box, name, def = 0) => {
-      if (!box || !box.statistics) return def;
-      const s = box.statistics.find(st => st.name === name || st.label?.toLowerCase() === name.toLowerCase());
-      return s ? (parseFloat(s.displayValue) || s.displayValue) : def;
-    };
 
     const hasInGameStats = (isLive || isFinished) && ((homeBox?.statistics || []).some(s => s.name === 'possessionPct' || s.name === 'totalShots') || (awayBox?.statistics || []).some(s => s.name === 'possessionPct' || s.name === 'totalShots'));
 
