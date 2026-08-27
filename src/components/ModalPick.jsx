@@ -96,40 +96,30 @@ export default function ModalPick({ match, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div 
         className="modal-card cerebras-ai-modal" 
-        style={{ 
-          maxWidth: '860px', 
-          width: '94%', 
-          maxHeight: '90vh', 
-          overflowY: 'auto',
-          padding: '24px 28px',
-          background: 'linear-gradient(180deg, #0d121f 0%, #080b12 100%)',
-          border: '1px solid rgba(0, 210, 255, 0.3)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.8), 0 0 35px rgba(0, 210, 255, 0.15)'
-        }} 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header Bar (Betano IA style) */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.04)', padding: '6px 14px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-color)' }}>
+        <div className="modal-top-header">
+          <div className="modal-search-wrapper">
             <Search size={14} style={{ color: 'var(--text-muted)' }} />
             <input 
               type="text" 
               placeholder="Buscar mercado o estadística..." 
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', outline: 'none', width: '180px' }}
+              className="modal-search-input"
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9))', padding: '6px 16px', borderRadius: 'var(--radius-full)', border: '1px solid rgba(118, 185, 0, 0.5)' }}>
+          <div className="modal-nvidia-badge">
             <Sparkles size={15} style={{ color: '#76b900' }} />
-            <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>Betano IA · NVIDIA NIM</span>
-            <span style={{ fontSize: '0.65rem', background: '#76b900', color: '#000', fontWeight: 900, padding: '1px 6px', borderRadius: '4px' }}>70B</span>
+            <span className="badge-text-full">NVIDIA NIM AI · Llama 3.1</span>
+            <span className="badge-text-short">NVIDIA IA</span>
+            <span className="badge-70b-tag">70B</span>
           </div>
 
           <button 
             className="modal-close-btn" 
-            style={{ position: 'static' }}
             onClick={() => {
               sounds.playClick();
               onClose();
@@ -140,17 +130,17 @@ export default function ModalPick({ match, onClose }) {
         </div>
 
         {/* Hero Greeting Section */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <span>Bienvenido a Betano IA</span>
-            <span style={{ fontSize: '0.75rem', color: '#76b900', border: '1px solid rgba(118,185,0,0.5)', padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>NVIDIA NIM</span>
+        <div className="modal-greeting-section">
+          <h2 className="modal-hero-title">
+            <span>Bienvenido a NVIDIA NIM IA</span>
+            <span className="modal-title-tag">Llama 3.1 70B</span>
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', maxWidth: '560px', margin: '0 auto', lineHeight: 1.5 }}>
-            ¡Hola! Soy tu asistente de análisis y apuestas con NVIDIA Llama 3.1 70B. Consulta predicciones probabilísticas, análisis de valor o pregúntame directamente sobre este encuentro.
+          <p className="modal-hero-subtitle">
+            ¡Hola! Soy tu asistente de análisis y pronósticos tácticos con NVIDIA NIM (Llama 3.1 70B). Consulta predicciones probabilísticas, análisis de valor o pregúntame directamente sobre este encuentro.
           </p>
 
           {/* Match Context Badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginTop: '14px', background: 'rgba(0,0,0,0.4)', padding: '6px 16px', borderRadius: 'var(--radius-full)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="modal-match-context-pill">
             <span style={{ fontWeight: 800, color: '#fff', fontSize: '0.85rem' }}>{match.homeTeam?.name}</span>
             <span style={{ color: 'var(--cyan-neon)', fontWeight: 800, fontFamily: 'var(--font-score)' }}>
               {match.status === 'live' ? `${match.homeTeam?.score} - ${match.awayTeam?.score}` : 'VS'}
@@ -170,16 +160,7 @@ export default function ModalPick({ match, onClose }) {
           <>
             {/* Main Value Bet Card */}
             {predictions?.mainPick && (
-              <div 
-                style={{
-                  background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.12), rgba(0, 210, 255, 0.08))',
-                  border: '1px solid rgba(0, 255, 136, 0.4)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '20px 24px',
-                  marginBottom: '20px',
-                  boxShadow: '0 8px 30px rgba(0, 255, 136, 0.12)'
-                }}
-              >
+              <div className="modal-main-pick-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--green-neon)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Target size={14} />
@@ -218,10 +199,10 @@ export default function ModalPick({ match, onClose }) {
             )}
 
             {/* 4 Multi-Market Prediction Boxes (Goles, Córners, Tarjetas, Marcador) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+            <div className="modal-markets-grid">
               {/* Goals Pick */}
               {predictions?.goalsPick && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                <div className="modal-market-card">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--cyan-neon)', textTransform: 'uppercase' }}>⚽ GOLES</span>
                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-neon)', fontFamily: 'var(--font-score)' }}>@{predictions.goalsPick.cuota}</span>
@@ -233,7 +214,7 @@ export default function ModalPick({ match, onClose }) {
 
               {/* Corners Pick */}
               {predictions?.cornersPick && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                <div className="modal-market-card">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--gold-neon)', textTransform: 'uppercase' }}>🚩 CÓRNERS</span>
                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-neon)', fontFamily: 'var(--font-score)' }}>@{predictions.cornersPick.cuota}</span>
@@ -245,7 +226,7 @@ export default function ModalPick({ match, onClose }) {
 
               {/* Cards Pick */}
               {predictions?.cardsPick && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                <div className="modal-market-card">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--red-live)', textTransform: 'uppercase' }}>🟨 TARJETAS</span>
                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-neon)', fontFamily: 'var(--font-score)' }}>@{predictions.cardsPick.cuota}</span>
@@ -257,7 +238,7 @@ export default function ModalPick({ match, onClose }) {
 
               {/* Exact Score Pick */}
               {predictions?.scorePick && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                <div className="modal-market-card">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase' }}>🏆 MARCADOR</span>
                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-neon)', fontFamily: 'var(--font-score)' }}>@{predictions.scorePick.cuota}</span>
@@ -331,7 +312,7 @@ export default function ModalPick({ match, onClose }) {
                 }}
               >
                 <div style={{ fontWeight: 800, fontSize: '0.75rem', color: msg.role === 'user' ? 'var(--gold-neon)' : 'var(--cyan-neon)', minWidth: '70px' }}>
-                  {msg.role === 'user' ? 'Tú:' : 'Betano IA:'}
+                  {msg.role === 'user' ? 'Tú:' : 'NVIDIA IA:'}
                 </div>
                 <div style={{ color: '#fff', fontSize: '0.84rem', lineHeight: 1.5 }}>
                   {msg.text}
@@ -348,7 +329,7 @@ export default function ModalPick({ match, onClose }) {
           </div>
         )}
 
-        {/* Interactive Chat Input Bar (Like Betano IA) */}
+        {/* Interactive Chat Input Bar (NVIDIA IA) */}
         <form 
           onSubmit={(e) => {
             e.preventDefault();
@@ -367,7 +348,7 @@ export default function ModalPick({ match, onClose }) {
         >
           <input 
             type="text" 
-            placeholder="Pregunta lo que quieras sobre el partido a Betano IA..." 
+            placeholder="Pregunta lo que quieras sobre el partido a NVIDIA IA..." 
             value={inputQuestion}
             onChange={(e) => setInputQuestion(e.target.value)}
             disabled={isAiTyping}

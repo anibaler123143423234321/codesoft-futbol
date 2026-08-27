@@ -36,14 +36,14 @@ export default function StatsView() {
   const activeLeagueObj = ESPN_SUPPORTED_LEAGUES.find(l => l.id === selectedLeague) || ESPN_SUPPORTED_LEAGUES[2];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} id="stats-center-view">
+    <div className="stats-view-container" id="stats-center-view">
       {/* Title */}
       <div>
         <div className="section-tag">
           <BarChart3 size={14} />
           <span>TABLA DE POSICIONES OFICIAL ESPN</span>
         </div>
-        <h1 style={{ fontSize: '2.4rem', fontWeight: 900, color: '#fff' }}>
+        <h1 className="stats-header-title">
           Clasificación Oficial: {activeLeagueObj.name}
         </h1>
       </div>
@@ -66,7 +66,7 @@ export default function StatsView() {
       </div>
 
       {/* Standings Table from ESPN */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', overflowX: 'auto' }}>
+      <div className="stats-table-card">
         <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Trophy size={18} style={{ color: 'var(--gold-neon)' }} />
           <span>Tabla General de {activeLeagueObj.name}</span>
@@ -78,49 +78,51 @@ export default function StatsView() {
             <p>Cargando posiciones oficiales de ESPN...</p>
           </div>
         ) : standings.length > 0 ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                <th style={{ padding: '8px 4px' }}>#</th>
-                <th style={{ padding: '8px' }}>Club</th>
-                <th style={{ padding: '8px', textAlign: 'center' }}>PJ</th>
-                <th style={{ padding: '8px', textAlign: 'center' }}>G</th>
-                <th style={{ padding: '8px', textAlign: 'center' }}>E</th>
-                <th style={{ padding: '8px', textAlign: 'center' }}>P</th>
-                <th style={{ padding: '8px', textAlign: 'center' }}>GF</th>
-                <th style={{ padding: '8px', textAlign: 'center' }}>GC</th>
-                <th style={{ padding: '8px', textAlign: 'center' }}>DG</th>
-                <th style={{ padding: '8px', textAlign: 'center', fontWeight: 800, color: '#fff' }}>PTS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((row) => (
-                <tr key={row.pos} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <td style={{ padding: '12px 4px', fontFamily: 'var(--font-score)', fontWeight: 800, color: row.pos <= 4 ? 'var(--cyan-neon)' : 'inherit' }}>
-                    {row.pos}
-                  </td>
-                  <td style={{ padding: '12px 8px', fontWeight: 700, color: '#fff' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <TeamLogo src={row.logo} alt={row.team} size={24} />
-                      <span>{row.team}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>{row.pj}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>{row.g}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>{row.e}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>{row.p}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>{row.gf}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>{row.gc}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center', color: row.dg > 0 ? 'var(--green-neon)' : row.dg < 0 ? 'var(--red-live)' : 'inherit' }}>
-                    {row.dg > 0 ? `+${row.dg}` : row.dg}
-                  </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center', fontFamily: 'var(--font-score)', fontWeight: 800, color: 'var(--gold-neon)', fontSize: '1rem' }}>
-                    {row.pts}
-                  </td>
+          <div className="stats-table-scroll-container">
+            <table className="stats-standings-table">
+              <thead>
+                <tr>
+                  <th className="th-pos">#</th>
+                  <th className="th-club">Club</th>
+                  <th className="th-center">PJ</th>
+                  <th className="th-center col-hide-sm">G</th>
+                  <th className="th-center col-hide-sm">E</th>
+                  <th className="th-center col-hide-sm">P</th>
+                  <th className="th-center col-hide-md">GF</th>
+                  <th className="th-center col-hide-md">GC</th>
+                  <th className="th-center">DG</th>
+                  <th className="th-center th-pts">PTS</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {standings.map((row) => (
+                  <tr key={row.pos}>
+                    <td className={`td-pos ${row.pos <= 4 ? 'top-tier' : ''}`}>
+                      {row.pos}
+                    </td>
+                    <td className="td-club">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <TeamLogo src={row.logo} alt={row.team} size={22} />
+                        <span className="td-club-name">{row.team}</span>
+                      </div>
+                    </td>
+                    <td className="td-center td-muted">{row.pj}</td>
+                    <td className="td-center col-hide-sm">{row.g}</td>
+                    <td className="td-center col-hide-sm">{row.e}</td>
+                    <td className="td-center col-hide-sm">{row.p}</td>
+                    <td className="td-center col-hide-md">{row.gf}</td>
+                    <td className="td-center col-hide-md">{row.gc}</td>
+                    <td className={`td-center ${row.dg > 0 ? 'dg-pos' : row.dg < 0 ? 'dg-neg' : ''}`}>
+                      {row.dg > 0 ? `+${row.dg}` : row.dg}
+                    </td>
+                    <td className="td-center td-pts">
+                      {row.pts}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)' }}>
             <p>No hay datos de clasificación disponibles para esta liga en este momento.</p>

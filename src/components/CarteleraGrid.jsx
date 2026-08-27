@@ -88,9 +88,9 @@ export default function CarteleraGrid({
       </div>
 
       {/* Filter and Search Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+      <div className="cartelera-toolbar">
         {/* Status filter tabs */}
-        <div className="nav-pills" style={{ padding: '3px' }}>
+        <div className="nav-pills cartelera-status-pills">
           {[
             { id: 'all', label: 'Todos' },
             { id: 'live', label: `En Vivo (${liveCount})` },
@@ -100,7 +100,6 @@ export default function CarteleraGrid({
             <button
               key={tab.id}
               className={`nav-pill-btn ${statusFilter === tab.id ? 'active' : ''}`}
-              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
               onClick={() => {
                 sounds.playClick();
                 setStatusFilter(tab.id);
@@ -112,15 +111,14 @@ export default function CarteleraGrid({
         </div>
 
         {/* Search input */}
-        <div style={{ position: 'relative', minWidth: '260px', flex: '1', maxWidth: '380px' }}>
-          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div className="cartelera-search-box">
+          <Search size={16} className="cartelera-search-icon" />
           <input
             type="text"
             placeholder="Buscar equipo o torneo..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="chat-input"
-            style={{ width: '100%', paddingLeft: '38px', borderRadius: 'var(--radius-full)' }}
+            className="chat-input cartelera-search-input"
           />
         </div>
       </div>

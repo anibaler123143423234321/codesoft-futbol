@@ -6,7 +6,7 @@ export default function Footer({ onOpenTelegram }) {
     <footer className="app-footer">
       <div className="footer-content">
         {/* Brand & Rights */}
-        <div>
+        <div className="footer-brand-col">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <div className="logo-icon" style={{ width: '28px', height: '28px' }}>
               <Zap size={16} fill="#05060a" />
@@ -27,11 +27,11 @@ export default function Footer({ onOpenTelegram }) {
           </p>
         </div>
 
-        {/* Betano IA Badge */}
-        <div>
+        {/* NVIDIA NIM IA Badge */}
+        <div className="footer-badge-col">
           <div className="pill-badge-green" style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
-            <Zap size={14} />
-            <span>Motor Predictivo Betano IA Activo</span>
+            <Zap size={14} style={{ color: '#76b900' }} />
+            <span>Motor Predictivo NVIDIA NIM IA (70B) Activo</span>
           </div>
         </div>
       </div>

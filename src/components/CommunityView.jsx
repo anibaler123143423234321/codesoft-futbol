@@ -13,44 +13,32 @@ export default function CommunityView({ onOpenTelegram }) {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }} id="community-hub-view">
+    <div className="community-view-container" id="community-hub-view">
       {/* Header Banner */}
-      <div 
-        style={{
-          background: 'linear-gradient(135deg, #121828 0%, #0d121f 100%)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '36px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '20px'
-        }}
-      >
+      <div className="community-header-banner">
         <div>
           <div className="section-tag">
             <Users size={14} />
             <span>COMUNIDAD OFICIAL CODESOFT</span>
           </div>
-          <h1 style={{ fontSize: '2.4rem', fontWeight: 900, color: '#fff', marginBottom: '8px' }}>
+          <h1 className="community-banner-title">
             Únete a la Mayor Comunidad de Fútbol en Vivo
           </h1>
-          <p style={{ color: 'var(--text-secondary)', maxWidth: '650px', fontSize: '0.95rem' }}>
-            Comparte tus análisis, participa en encuestas durante los partidos, compite en el ranking de tipsters y recibe las alertas de picks de Betano IA antes del pitazo inicial.
+          <p className="community-banner-subtitle">
+            Comparte tus análisis, participa en encuestas durante los partidos, compite en el ranking de tipsters y recibe las alertas de picks de NVIDIA IA antes del pitazo inicial.
           </p>
         </div>
 
-        <div className="pill-badge-green" style={{ padding: '12px 22px', fontSize: '0.95rem' }}>
-          <Sparkles size={18} />
+        <div className="pill-badge-green" style={{ padding: '10px 18px', fontSize: '0.88rem' }}>
+          <Sparkles size={16} />
           <span>Comunidad IA (+15K Usuarios)</span>
         </div>
       </div>
 
       {/* Grid: Chat + Leaderboard */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
+      <div className="community-grid-layout">
         {/* Chat Room */}
-        <div>
+        <div className="community-chat-col">
           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MessageSquare size={18} style={{ color: 'var(--cyan-neon)' }} />
             <span>Chat Global de la Jornada</span>

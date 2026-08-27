@@ -95,22 +95,22 @@ export default function Header({ currentView, setView, liveMatchesCount = 6, onO
         <div className="header-actions">
           {/* Sound Toggle */}
           <button 
-            className="icon-btn" 
+            className="icon-btn header-sound-btn" 
             title={muted ? 'Activar sonido de cancha' : 'Silenciar sonido'}
             onClick={handleSoundToggle}
           >
             {muted ? <VolumeX size={18} /> : <Volume2 size={18} style={{ color: 'var(--cyan-neon)' }} />}
           </button>
 
-          {/* Betano IA CTA */}
+          {/* NVIDIA NIM IA CTA */}
           <button 
-            className="btn-primary" 
-            id="btn-betano-ia"
-            style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+            className="btn-primary header-cta-btn" 
+            id="btn-nvidia-ia"
             onClick={() => setView('picks')}
           >
-            <Sparkles size={14} />
-            <span>Betano IA</span>
+            <Sparkles size={14} style={{ color: '#76b900' }} />
+            <span className="btn-cta-full">NVIDIA IA</span>
+            <span className="btn-cta-short">Picks</span>
           </button>
         </div>
       </div>

@@ -633,14 +633,13 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
   return (
     <div className="player-module" ref={containerRef}>
       {/* Single Compact Top Toolbar: Server Switcher + Momentum */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-        <div className="servers-bar" style={{ margin: 0 }}>
+      <div className="player-top-toolbar">
+        <div className="servers-bar">
           {tvServers.map((s) => (
             <button
               key={s.id}
               id={`server-btn-${s.id}`}
               className={`server-btn ${activeServer === s.id ? 'active' : ''}`}
-              style={{ padding: '4px 10px', fontSize: '0.74rem' }}
               onClick={() => {
                 sounds.playClick();
                 setActiveServer(s.id);
@@ -654,10 +653,10 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
         </div>
 
         {/* Momentum Indicator Bar (Betano Style) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.4)', padding: '4px 10px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-color)' }}>
+        <div className="player-momentum-badge">
           <Flame size={12} style={{ color: 'var(--red-live)' }} />
-          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)' }}>MOMENTUM:</span>
-          <div style={{ display: 'flex', width: '70px', height: '5px', borderRadius: '3px', overflow: 'hidden', gap: '2px' }}>
+          <span className="momentum-lbl">MOMENTUM:</span>
+          <div className="momentum-track">
             <div style={{ width: `${momentum.home}%`, background: 'var(--gold-neon)', transition: 'width 0.5s ease' }} title={`${match.homeTeam?.shortName}: ${momentum.home}%`} />
             <div style={{ width: `${momentum.away}%`, background: 'var(--red-live)', transition: 'width 0.5s ease' }} title={`${match.awayTeam?.shortName}: ${momentum.away}%`} />
           </div>
@@ -697,24 +696,7 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
             </div>
 
             {/* Bottom event commentary */}
-            <div 
-              style={{
-                position: 'absolute',
-                bottom: '10px',
-                left: '10px',
-                right: '10px',
-                background: 'rgba(10, 14, 23, 0.88)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: 'var(--radius-md)',
-                padding: '6px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '0.74rem',
-                border: '1px solid rgba(255,255,255,0.08)',
-                zIndex: 10
-              }}
-            >
+            <div className="video-bottom-commentary">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontWeight: 600 }}>
                 <span className="live-dot" style={{ background: currentEvent.team === 'home' ? 'var(--gold-neon)' : 'var(--red-live)' }} />
                 <span>{currentEvent.desc}</span>
@@ -781,32 +763,31 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
       </div>
 
       {/* Video Control Bar + Pick Button in ONE Row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-        <div className="video-controls-bar" style={{ margin: 0, padding: '4px 10px', flex: 1 }}>
-          <button className="video-ctrl-btn" onClick={toggleFullscreen} style={{ fontSize: '0.72rem' }}>
+      <div className="player-bottom-toolbar">
+        <div className="video-controls-bar">
+          <button className="video-ctrl-btn" onClick={toggleFullscreen}>
             <Maximize size={13} />
             <span>Pantalla completa</span>
           </button>
 
-          <button className="video-ctrl-btn" onClick={handleReload} style={{ fontSize: '0.72rem' }}>
+          <button className="video-ctrl-btn" onClick={handleReload}>
             <RotateCw size={13} className={isReloading ? 'animate-spin' : ''} />
-            <span>Recargar señal</span>
+            <span>Recargar</span>
           </button>
 
-          <button className="video-ctrl-btn" onClick={handleShare} style={{ fontSize: '0.72rem' }}>
+          <button className="video-ctrl-btn" onClick={handleShare}>
             {copied ? <Check size={13} style={{ color: 'var(--green-neon)' }} /> : <Share2 size={13} />}
             <span>{copied ? '¡Copiado!' : 'Compartir'}</span>
           </button>
 
-          <button className="video-ctrl-btn" onClick={handleReport} style={{ fontSize: '0.72rem' }}>
+          <button className="video-ctrl-btn" onClick={handleReport}>
             <AlertTriangle size={13} style={{ color: reported ? 'var(--gold-neon)' : 'inherit' }} />
             <span>Reportar</span>
           </button>
         </div>
 
         <button 
-          className="btn-primary" 
-          style={{ padding: '6px 14px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+          className="btn-primary player-ai-btn" 
           onClick={() => onOpenPickModal(match)}
         >
           <Sparkles size={14} />

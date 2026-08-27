@@ -84,18 +84,10 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
       </div>
 
       {/* Interactive Custom Match Analyzer */}
-      <div 
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '28px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-        }}
-      >
+      <div className="ai-custom-generator-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <Zap size={20} style={{ color: '#76b900' }} />
-          <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>
+          <h2 className="ai-generator-title">
             Generador de Pronósticos Tácticos en Tiempo Real
           </h2>
         </div>
@@ -104,12 +96,11 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
           Selecciona cualquier partido de la cartelera y NVIDIA NIM IA calculará el pick óptimo con base en estadísticas oficiales:
         </p>
 
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+        <div className="ai-generator-form-row">
           <select
             value={selectedMatchId}
             onChange={(e) => setSelectedMatchId(e.target.value)}
-            className="chat-input"
-            style={{ minWidth: '300px', flex: '1', borderRadius: 'var(--radius-md)', background: 'var(--bg-elevated)', cursor: 'pointer' }}
+            className="chat-input ai-generator-select"
           >
             {matches.map(m => (
               <option key={m.id} value={m.id}>
@@ -119,10 +110,9 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
           </select>
 
           <button 
-            className="btn-primary" 
+            className="btn-primary ai-generator-btn" 
             onClick={handleGenerateCustomPick}
             disabled={isLoading}
-            style={{ padding: '10px 24px' }}
           >
             {isLoading ? (
               <>
@@ -235,8 +225,8 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
                     style={{ padding: '6px 14px', fontSize: '0.78rem' }}
                     onClick={() => onOpenPickModal(m)}
                   >
-                    <Sparkles size={12} />
-                    <span>Ver Betano IA</span>
+                    <Sparkles size={12} style={{ color: '#76b900' }} />
+                    <span>Ver NVIDIA IA</span>
                   </button>
                 </div>
               </div>

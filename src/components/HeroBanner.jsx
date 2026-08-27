@@ -121,8 +121,8 @@ export default function HeroBanner({
               id="hero-btn-picks"
               onClick={() => setView('picks')}
             >
-              <Sparkles size={18} />
-              <span>Picks de Betano IA</span>
+              <Sparkles size={18} style={{ color: '#76b900' }} />
+              <span>Picks de NVIDIA IA</span>
             </button>
 
             <button 
@@ -327,15 +327,15 @@ export default function HeroBanner({
           </div>
         </div>
 
-        {/* Betano IA Big Banner Button */}
+        {/* NVIDIA IA Big Banner Button */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
           <button 
             className="btn-primary" 
             style={{ padding: '14px 34px', fontSize: '1rem' }}
             onClick={() => setView('picks')}
           >
-            <Sparkles size={18} />
-            <span>Explorar Todos los Picks de Betano IA</span>
+            <Sparkles size={18} style={{ color: '#76b900' }} />
+            <span>Explorar Todos los Picks de NVIDIA IA</span>
           </button>
         </div>
       </div>
