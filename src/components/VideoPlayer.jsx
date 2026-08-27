@@ -624,7 +624,7 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
   // Video Streaming & Match Tracker Feeds with ScoreBat and ESPN TV channels
   const tvChannelName = match.tvChannel || match.broadcasts?.[0] || 'Señal Internacional';
   const tvServers = [
-    { id: 1, label: '📺 Cancha 2.5D Betano Tracker', mode: 'betano', quality: 'Ultra Real-Time' },
+    { id: 1, label: '📺 Cancha 2.5D Tracker (NVIDIA)', mode: 'betano', quality: 'Ultra Real-Time' },
     { id: 2, label: '⚡ Radar SofaScore (Iframe)', mode: 'sofascore', quality: 'Widget Oficial' },
     { id: 3, label: '🎬 ScoreBat HD (Video Oficial)', mode: 'scorebat', quality: '1080p Stream' },
     { id: 4, label: `📡 TV: ${tvChannelName}`, mode: 'tv', quality: 'En Vivo' },
@@ -713,7 +713,7 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
               <Zap size={28} style={{ color: 'var(--cyan-neon)', margin: '0 auto 10px' }} />
               <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.92rem', marginBottom: '6px' }}>Radar Táctico en Vivo</h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginBottom: '14px', lineHeight: 1.4 }}>
-                SofaScore no transmite sensores en vivo para ligas universitarias menores. Utiliza nuestra <strong>Cancha 2.5D Betano Tracker</strong> para seguir los ataques peligrosos, tiros de esquina y jugadas en tiempo real.
+                SofaScore no transmite sensores en vivo para ligas universitarias menores. Utiliza nuestra <strong>Cancha 2.5D Tracker</strong> para seguir los ataques peligrosos, tiros de esquina y jugadas en tiempo real.
               </p>
               <button 
                 className="btn-primary" 

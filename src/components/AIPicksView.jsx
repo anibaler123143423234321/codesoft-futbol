@@ -132,34 +132,87 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
         {customPick && (
           <div 
             style={{
-              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(0, 210, 255, 0.08))',
-              border: '1px solid var(--green-neon)',
-              borderRadius: 'var(--radius-md)',
-              padding: '20px',
-              animation: 'fadeInMsg 0.3s ease-out'
+              background: 'linear-gradient(135deg, rgba(13, 22, 38, 0.95), rgba(8, 12, 22, 0.95))',
+              border: '1px solid rgba(0, 255, 136, 0.4)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '24px',
+              animation: 'fadeInMsg 0.3s ease-out',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 25px rgba(0, 255, 136, 0.1)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span className="pill-badge-green" style={{ fontSize: '0.85rem' }}>
-                <CheckCircle2 size={15} />
-                {customPick.probabilidad}% Probabilidad Estimada
-              </span>
-              <span style={{ fontFamily: 'var(--font-score)', color: 'var(--gold-neon)', fontWeight: 800, fontSize: '1.1rem' }}>
-                Cuota Sugerida: {customPick.cuota}
-              </span>
+            {/* Top Stat Ribbon */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="pill-badge-green" style={{ fontSize: '0.85rem' }}>
+                  <CheckCircle2 size={15} />
+                  {customPick.probabilidad}% Probabilidad Estimada
+                </span>
+                <span className="pill-badge-blue" style={{ fontSize: '0.82rem' }}>
+                  <TrendingUp size={13} />
+                  {customPick.maraton_streak || '+5 maratón'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                  {customPick.stake || 'Stake 2.5 / 10'}
+                </span>
+                <span style={{ fontFamily: 'var(--font-score)', color: 'var(--gold-neon)', fontWeight: 800, fontSize: '1.25rem', background: 'rgba(255, 184, 0, 0.1)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 184, 0, 0.3)' }}>
+                  Cuota: @{customPick.cuota}
+                </span>
+              </div>
             </div>
 
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
-              🎯 {customPick.pick}
-            </h3>
+            {/* Pick Name Header */}
+            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: 'var(--radius-md)', padding: '14px 18px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--cyan-neon)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                SELECCIÓN DE ALTO VALOR RECOMENDADA
+              </div>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                🎯 {customPick.pick}
+              </h3>
+            </div>
 
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '16px' }}>
-              {customPick.justificacion}
-            </p>
+            {/* 1. Motivo Principal Box ("Mira por este motivo estoy mostrando ese pick") */}
+            <div style={{ background: 'rgba(0, 255, 136, 0.06)', borderLeft: '4px solid var(--green-neon)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', padding: '12px 16px', marginBottom: '14px' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--green-neon)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', textTransform: 'uppercase' }}>
+                <Sparkles size={14} />
+                <span>Fundamento Clave del Pick</span>
+              </div>
+              <p style={{ color: '#fff', fontSize: '0.88rem', lineHeight: '1.5', margin: 0, fontWeight: 600 }}>
+                {customPick.motivo_principal || customPick.justificacion}
+              </p>
+            </div>
 
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {/* 2. Deep Tactical Analysis */}
+            {customPick.analisis_detallado && customPick.analisis_detallado !== customPick.motivo_principal && (
+              <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: '14px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--cyan-neon)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', textTransform: 'uppercase' }}>
+                  <Cpu size={14} />
+                  <span>Análisis Táctico y Cuantitativo (NVIDIA NIM 70B)</span>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.6', margin: 0 }}>
+                  {customPick.analisis_detallado}
+                </p>
+              </div>
+            )}
+
+            {/* 3. Metric Pills */}
+            {customPick.claves_metricas && customPick.claves_metricas.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                {customPick.claves_metricas.map((metric, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 210, 255, 0.08)', border: '1px solid rgba(0, 210, 255, 0.2)', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.76rem', color: '#e5e7eb', fontWeight: 700 }}>
+                    <Activity size={12} style={{ color: 'var(--cyan-neon)' }} />
+                    <span>{metric}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tags */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '12px' }}>
               {customPick.tags?.map((t, idx) => (
-                <span key={idx} className="chat-reaction-chip" style={{ fontSize: '0.75rem', color: 'var(--cyan-neon)' }}>
+                <span key={idx} className="chat-reaction-chip" style={{ fontSize: '0.74rem', color: 'var(--cyan-neon)' }}>
                   #{t}
                 </span>
               ))}

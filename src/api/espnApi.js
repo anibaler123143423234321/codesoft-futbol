@@ -205,7 +205,7 @@ function parseEspnEvents(events, league) {
         logo: home?.team?.logo || home?.team?.logos?.[0]?.href || '',
         score: homeScore,
         winner: home?.winner || false,
-        yellowCards: isLive ? 1 : 0,
+        yellowCards: 0,
         redCards: 0,
       },
       awayTeam: {
@@ -215,7 +215,7 @@ function parseEspnEvents(events, league) {
         logo: away?.team?.logo || away?.team?.logos?.[0]?.href || '',
         score: awayScore,
         winner: away?.winner || false,
-        yellowCards: isLive ? 2 : 0,
+        yellowCards: 0,
         redCards: 0,
       },
       oddsInfo: {
@@ -400,11 +400,18 @@ function parseEspnSummary(summary, matchId, league) {
 
   const { leagueTitle, isWomen, isFriendly, category } = resolveDetailedLeagueInfo(summary.header, comp, home, away, league);
 
-  const countCards = (box, teamId, teamName, isHome) => {
-    let yellows = box ? (findStatInBox(box, 'yellowCards') || 0) : 0;
-    let reds = box ? (findStatInBox(box, 'redCards') || 0) : 0;
+  const countCards = (box, teamId, teamName) => {
+    let yellows = 0;
+    let reds = 0;
 
-    if (keyEvents && keyEvents.length > 0) {
+    // 1. Get official stats from ESPN boxscore
+    if (box && box.statistics) {
+      yellows = getStat(box, 'yellowCards', 0);
+      reds = getStat(box, 'redCards', 0);
+    }
+
+    // 2. If boxscore statistics were not provided or 0, check ESPN keyEvents / plays directly
+    if (yellows === 0 && reds === 0 && keyEvents && keyEvents.length > 0) {
       for (const k of keyEvents) {
         const isTarget = k.team?.id === teamId || k.team?.displayName === teamName;
         if (!isTarget) continue;
@@ -414,19 +421,11 @@ function parseEspnSummary(summary, matchId, league) {
       }
     }
 
-    // For active live matches in second half or past 30 minutes, ensure match discipline indicator
-    if (yellows === 0 && isLive) {
-      const minNum = parseInt(String(minute || '0').replace(/[^0-9]/g, ''), 10) || 0;
-      if (minNum >= 25) {
-        yellows = isHome ? 1 : 2;
-      }
-    }
-
-    return { yellows, reds };
+    return { yellows: Number(yellows) || 0, reds: Number(reds) || 0 };
   };
 
-  const homeCards = countCards(homeBox, home?.id, home?.team?.displayName, true);
-  const awayCards = countCards(awayBox, away?.id, away?.team?.displayName, false);
+  const homeCards = countCards(homeBox, home?.id, home?.team?.displayName);
+  const awayCards = countCards(awayBox, away?.id, away?.team?.displayName);
 
   const rawBroadcasts = summary.broadcasts || comp?.broadcasts || [];
   const broadcastsList = rawBroadcasts.map(b => b.names?.[0] || b.media?.shortName || b.station || '').filter(Boolean);

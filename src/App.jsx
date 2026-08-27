@@ -67,20 +67,25 @@ export default function App() {
 
               return {
                 ...prev,
+                ...updated,
                 homeTeam: {
+                  ...updated.homeTeam,
                   ...prev.homeTeam,
                   score: updated.homeTeam?.score ?? prev.homeTeam?.score,
-                  yellowCards: prev.homeTeam?.yellowCards ?? updated.homeTeam?.yellowCards ?? 0,
-                  redCards: prev.homeTeam?.redCards ?? updated.homeTeam?.redCards ?? 0,
+                  yellowCards: prev.homeTeam?.yellowCards !== undefined ? prev.homeTeam.yellowCards : (updated.homeTeam?.yellowCards ?? 0),
+                  redCards: prev.homeTeam?.redCards !== undefined ? prev.homeTeam.redCards : (updated.homeTeam?.redCards ?? 0),
                 },
                 awayTeam: {
+                  ...updated.awayTeam,
                   ...prev.awayTeam,
                   score: updated.awayTeam?.score ?? prev.awayTeam?.score,
-                  yellowCards: prev.awayTeam?.yellowCards ?? updated.awayTeam?.yellowCards ?? 0,
-                  redCards: prev.awayTeam?.redCards ?? updated.awayTeam?.redCards ?? 0,
+                  yellowCards: prev.awayTeam?.yellowCards !== undefined ? prev.awayTeam.yellowCards : (updated.awayTeam?.yellowCards ?? 0),
+                  redCards: prev.awayTeam?.redCards !== undefined ? prev.awayTeam.redCards : (updated.awayTeam?.redCards ?? 0),
                 },
                 status: updated.status || prev.status,
                 clock: updated.clock || prev.clock,
+                minute: updated.minute || prev.minute,
+                timeStr: updated.timeStr || prev.timeStr,
                 statusText: updated.statusText || prev.statusText,
                 stats: src.stats ? prev.stats : (prev.stats || updated.stats),
                 scorers: src.scorers ? prev.scorers : (prev.scorers && prev.scorers.length > 0 ? prev.scorers : updated.scorers),
@@ -170,74 +175,37 @@ export default function App() {
           merged._source = src;
           return merged;
         });
+
+        // Also sync matches array so the detailed cards and stats are stored globally
+        setMatches(prevMatches => {
+          return prevMatches.map(m => {
+            if (m.id !== matchToLoad.id) return m;
+            return {
+              ...m,
+              ...summary,
+              homeTeam: {
+                ...m.homeTeam,
+                ...summary.homeTeam,
+                yellowCards: summary.homeTeam?.yellowCards !== undefined ? summary.homeTeam.yellowCards : (m.homeTeam?.yellowCards ?? 0),
+                redCards: summary.homeTeam?.redCards !== undefined ? summary.homeTeam.redCards : (m.homeTeam?.redCards ?? 0),
+              },
+              awayTeam: {
+                ...m.awayTeam,
+                ...summary.awayTeam,
+                yellowCards: summary.awayTeam?.yellowCards !== undefined ? summary.awayTeam.yellowCards : (m.awayTeam?.yellowCards ?? 0),
+                redCards: summary.awayTeam?.redCards !== undefined ? summary.awayTeam.redCards : (m.awayTeam?.redCards ?? 0),
+              },
+              stats: summary.stats?.hasData ? summary.stats : m.stats,
+              scorers: summary.scorers?.length > 0 ? summary.scorers : m.scorers,
+              rosters: summary.rosters?.length > 0 ? summary.rosters : m.rosters,
+              commentary: summary.commentary?.length > 0 ? summary.commentary : m.commentary
+            };
+          });
+        });
       }
     } catch (e) {
       console.warn('[ESPN Summary Refresh]', e);
     }
-
-    // 2. API-Football (Desactivado: toda la data oficial proviene de ESPN sin límites ni bloqueos)
-    /*
-    try {
-      const dateStr = new Date().toISOString().split('T')[0];
-      const detail = await fetchFullMatchDetail(
-        matchToLoad.homeTeam?.name || matchToLoad.homeTeam?.shortName,
-        matchToLoad.awayTeam?.name || matchToLoad.awayTeam?.shortName,
-        dateStr
-      );
-
-      if (detail) {
-        setSelectedMatch(prev => {
-          if (!prev || prev.id !== matchToLoad.id) return prev;
-          const src = { ...(prev._source || {}) };
-          const merged = { ...prev };
-          const homeNorm = normalizeTeamName(prev.homeTeam?.name);
-          const isHome = (name) => {
-            const n = normalizeTeamName(name);
-            return n.includes(homeNorm) || homeNorm.includes(n);
-          };
-
-          if (detail.stats?.hasData) {
-            merged.stats = detail.stats;
-            src.stats = 'api-football';
-          }
-
-          if (detail.events?.goals?.length > 0) {
-            merged.scorers = detail.events.goals.map(g => ({
-              minute: g.minute,
-              player: g.player + (g.assist ? ` (Asist: ${g.assist})` : '') + (g.detail === 'Penalty' ? ' (P)' : g.detail === 'Own Goal' ? ' (AG)' : ''),
-              team: isHome(g.team) ? 'home' : 'away',
-              text: `${g.detail}: ${g.player}`,
-              type: 'goal'
-            }));
-            src.scorers = 'api-football';
-          }
-
-          if (detail.events?.cards?.length > 0) {
-            const hCards = detail.events.cards.filter(c => isHome(c.team));
-            const aCards = detail.events.cards.filter(c => !isHome(c.team));
-            merged.homeTeam = { ...merged.homeTeam, yellowCards: hCards.filter(c => c.type === 'yellowCard').length, redCards: hCards.filter(c => c.type === 'redCard').length };
-            merged.awayTeam = { ...merged.awayTeam, yellowCards: aCards.filter(c => c.type === 'yellowCard').length, redCards: aCards.filter(c => c.type === 'redCard').length };
-            src.cards = 'api-football';
-          }
-
-          if (detail.lineups?.length > 0) {
-            merged.rosters = detail.lineups;
-            src.rosters = 'api-football';
-          }
-
-          if (detail.fixture) {
-            merged.gameInfo = { ...merged.gameInfo, venue: detail.fixture.venue ? `${detail.fixture.venue}, ${detail.fixture.city || ''}` : merged.gameInfo?.venue, referee: detail.fixture.referee || merged.gameInfo?.referee };
-            src.gameInfo = 'api-football';
-          }
-
-          merged._source = src;
-          return merged;
-        });
-      }
-    } catch (e) {
-      console.warn('[API-Football Refresh]', e);
-    }
-    */
   };
 
   // Automatically fetch detailed summary whenever selectedMatch changes
@@ -259,18 +227,29 @@ export default function App() {
 
   const handleSelectMatch = async (match) => {
     sounds.playClick();
-    setSelectedMatch({ ...match, _source: match._source || {} });
+    setSelectedMatch(prev => {
+      if (prev && prev.id === match.id) {
+        return {
+          ...match,
+          ...prev,
+          homeTeam: { ...match.homeTeam, ...prev.homeTeam },
+          awayTeam: { ...match.awayTeam, ...prev.awayTeam }
+        };
+      }
+      return { ...match, _source: match._source || {} };
+    });
     setCurrentView('envivo');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleNavChange = (view) => {
     if (view === 'envivo') {
-      // Prioritize active LIVE match
-      const activeLive = matches.find(m => m.status === 'live');
-      if (activeLive) {
-        setSelectedMatch(activeLive);
-      }
+      // Only set default if no match is currently selected
+      setSelectedMatch(prev => {
+        if (prev && prev.id) return prev; // DO NOT reset or wipe out loaded details of the current match!
+        const activeLive = matches.find(m => m.status === 'live');
+        return activeLive ? { ...activeLive } : (matches[0] ? { ...matches[0] } : null);
+      });
     }
     setCurrentView(view);
   };
@@ -365,7 +344,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Cerebras / Betano IA Pick Modal */}
+      {/* NVIDIA NIM IA Pick Modal */}
       {modalPickMatch && (
         <ModalPick
           match={modalPickMatch}

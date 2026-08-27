@@ -161,25 +161,58 @@ export default function ModalPick({ match, onClose }) {
             {/* Main Value Bet Card */}
             {predictions?.mainPick && (
               <div className="modal-main-pick-card">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--green-neon)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Target size={14} />
                     {predictions.mainPick.title}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-score)', color: 'var(--gold-neon)', fontWeight: 800, fontSize: '1.3rem' }}>
-                    Cuota {predictions.mainPick.cuota}
+                  <span style={{ fontFamily: 'var(--font-score)', color: 'var(--gold-neon)', fontWeight: 800, fontSize: '1.35rem', background: 'rgba(255, 184, 0, 0.12)', padding: '2px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 184, 0, 0.3)' }}>
+                    Cuota @{predictions.mainPick.cuota}
                   </span>
                 </div>
 
-                <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#fff', marginBottom: '8px' }}>
-                  {predictions.mainPick.pick}
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', marginBottom: '14px', lineHeight: 1.2 }}>
+                  🎯 {predictions.mainPick.pick}
                 </div>
 
-                <p style={{ color: '#e5e7eb', fontSize: '0.88rem', lineHeight: '1.5', marginBottom: '12px' }}>
-                  {predictions.mainPick.justificacion}
-                </p>
+                {/* 1. Motivo Principal Callout Box */}
+                <div style={{ background: 'rgba(0, 255, 136, 0.08)', borderLeft: '4px solid var(--green-neon)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', padding: '12px 16px', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--green-neon)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', textTransform: 'uppercase' }}>
+                    <Sparkles size={13} />
+                    <span>Fundamento Clave del Pick</span>
+                  </div>
+                  <p style={{ color: '#fff', fontSize: '0.88rem', lineHeight: '1.5', margin: 0, fontWeight: 600 }}>
+                    {predictions.mainPick.motivo_principal || predictions.mainPick.justificacion}
+                  </p>
+                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                {/* 2. Deep Tactical Analysis */}
+                {predictions.mainPick.analisis_detallado && predictions.mainPick.analisis_detallado !== predictions.mainPick.motivo_principal && (
+                  <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: '14px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--cyan-neon)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', textTransform: 'uppercase' }}>
+                      <Cpu size={13} />
+                      <span>Análisis Táctico y Cuantitativo (NVIDIA NIM 70B)</span>
+                    </div>
+                    <p style={{ color: '#e5e7eb', fontSize: '0.84rem', lineHeight: '1.6', margin: 0 }}>
+                      {predictions.mainPick.analisis_detallado}
+                    </p>
+                  </div>
+                )}
+
+                {/* 3. Metric Pills */}
+                {predictions.mainPick.claves_metricas && predictions.mainPick.claves_metricas.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    {predictions.mainPick.claves_metricas.map((metric, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 210, 255, 0.08)', border: '1px solid rgba(0, 210, 255, 0.2)', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', color: '#e5e7eb', fontWeight: 700 }}>
+                        <Activity size={12} style={{ color: 'var(--cyan-neon)' }} />
+                        <span>{metric}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Bottom Badges Ribbon */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '12px' }}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span className="pill-badge-green">
                       <CheckCircle2 size={13} />
@@ -187,12 +220,12 @@ export default function ModalPick({ match, onClose }) {
                     </span>
                     <span className="pill-badge-blue">
                       <TrendingUp size={13} />
-                      {predictions.mainPick.streak || '+4 maratón'}
+                      {predictions.mainPick.streak || '+5 maratón'}
                     </span>
                   </div>
 
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                    {predictions.mainPick.stake}
+                    {predictions.mainPick.stake || 'Stake 2.5 / 10'}
                   </span>
                 </div>
               </div>
