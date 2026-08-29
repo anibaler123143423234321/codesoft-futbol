@@ -1197,6 +1197,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* SofaScore-Style Prediction Poll Widget */
@@ -1207,6 +1211,10 @@ body {
   padding: 14px 16px;
   margin-bottom: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .sofa-poll-header {
@@ -1214,6 +1222,8 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 .sofa-poll-title {
@@ -1233,27 +1243,34 @@ body {
 .sofa-poll-trophy {
   color: #6366f1;
   filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.5));
+  flex-shrink: 0;
 }
 
 .sofa-poll-pills-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .sofa-poll-pill {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #111726;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 9999px;
-  padding: 6px 14px;
+  padding: 6px 10px;
   color: #ffffff;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 40px;
+  min-height: 38px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .sofa-poll-pill:hover {
@@ -1272,6 +1289,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .sofa-draw-x {
@@ -1282,10 +1300,11 @@ body {
 
 .sofa-pill-pct {
   font-family: var(--font-score);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: #ffffff;
-  margin-left: 6px;
+  margin-left: 4px;
+  flex-shrink: 0;
 }
 
 /* Community Live Chat */
@@ -1297,6 +1316,10 @@ body {
   display: flex;
   flex-direction: column;
   height: 400px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .chat-header {
@@ -2122,150 +2145,443 @@ body {
   font-size: 1rem;
 }
 
-/* Modal Pick Enhancements */
+/* ========================================================
+   MODAL PRO: COMPACT & SLEEK SPORTS AI ANALYTICS
+   ======================================================== */
 .cerebras-ai-modal {
-  max-width: 860px;
-  width: 94%;
-  max-height: 90vh;
+  max-width: 680px;
+  width: 92%;
+  max-height: 88vh;
   overflow-y: auto;
-  padding: 24px 28px;
-  background: linear-gradient(180deg, #0d121f 0%, #080b12 100%);
-  border: 1px solid rgba(0, 210, 255, 0.3);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 210, 255, 0.15);
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #0e1424 0%, #080c16 100%);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 30px rgba(0, 210, 255, 0.12);
+  box-sizing: border-box;
 }
-.modal-top-header {
+
+/* Modal Pro Header */
+.modal-pro-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 14px;
   gap: 12px;
-  flex-wrap: wrap;
 }
-.modal-search-wrapper {
+
+.modal-pro-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.modal-pro-engine-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(118, 185, 0, 0.12);
+  border: 1px solid rgba(118, 185, 0, 0.4);
+  color: #a3e635;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  width: fit-content;
+}
+
+.badge-chip-70b {
+  background: #76b900;
+  color: #000;
+  font-weight: 900;
+  font-size: 0.62rem;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.modal-pro-match-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 6px 14px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-color);
-  flex: 1;
-  min-width: 180px;
-  max-width: 280px;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #fff;
+  flex-wrap: wrap;
 }
-.modal-search-input {
+
+.pro-match-teams {
+  color: #f3f4f6;
+}
+
+.pro-match-score {
+  font-family: var(--font-score);
+  font-weight: 800;
+  color: var(--cyan-neon);
+}
+
+.pro-match-score.live {
+  color: var(--red-live);
+}
+
+.pro-match-league {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: var(--cyan-neon);
+}
+
+.modal-pro-loading {
+  text-align: center;
+  padding: 30px 10px;
+}
+
+/* Modal Pro Main Pick Card */
+.modal-pro-pick-card {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 210, 255, 0.06) 100%);
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.pick-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pick-card-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--green-neon);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pick-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pro-cuota-badge {
+  font-family: var(--font-score);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--gold-neon);
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.pro-pick-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
+.pro-pick-reason {
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 3px solid var(--green-neon);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.reason-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--green-neon);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+
+.reason-text {
+  font-size: 0.8rem;
+  color: #e5e7eb;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.pro-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pro-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #d1d5db;
+}
+
+/* Secondary Markets Grid (4 Cards) */
+.modal-markets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.modal-market-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: var(--transition);
+}
+
+.modal-market-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(0, 210, 255, 0.3);
+}
+
+.market-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.market-type {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.market-type.cyan { color: var(--cyan-neon); }
+.market-type.gold { color: var(--gold-neon); }
+.market-type.red { color: var(--red-live); }
+.market-type.purple { color: #a78bfa; }
+
+.market-cuota {
+  font-family: var(--font-score);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--gold-neon);
+}
+
+.market-pick-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.market-prob {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--green-neon);
+}
+
+/* Quick Prompt Chips */
+.modal-prompt-chips-bar {
+  margin-bottom: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.modal-prompt-chips-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.prompt-chips-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.prompt-chip-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.prompt-chip-btn:hover {
+  background: rgba(0, 210, 255, 0.1);
+  border-color: var(--cyan-neon);
+  color: #fff;
+}
+
+/* Chat History */
+.modal-pro-chat-history {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-bottom: 10px;
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pro-chat-msg {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+.pro-chat-msg.user {
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 2px solid var(--gold-neon);
+}
+
+.pro-chat-msg.ai {
+  background: rgba(0, 210, 255, 0.06);
+  border-left: 2px solid var(--cyan-neon);
+}
+
+.msg-role {
+  font-weight: 800;
+  font-size: 0.7rem;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.pro-chat-msg.user .msg-role { color: var(--gold-neon); }
+.pro-chat-msg.ai .msg-role { color: var(--cyan-neon); }
+
+.msg-text {
+  color: #e5e7eb;
+  line-height: 1.4;
+}
+
+.pro-chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cyan-neon);
+  font-size: 0.72rem;
+  padding: 2px 4px;
+}
+
+/* Input Bar */
+.modal-pro-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  margin-bottom: 10px;
+}
+
+.pro-input-field {
+  flex: 1;
   background: transparent;
   border: none;
   color: #fff;
   font-size: 0.8rem;
   outline: none;
-  width: 100%;
+  padding: 4px 0;
+  font-family: var(--font-text);
 }
-.modal-nvidia-badge {
+
+.pro-input-btn {
+  background: var(--cyan-neon);
+  color: #05060a;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
-  padding: 6px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(118, 185, 0, 0.5);
-  font-size: 0.84rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: 0.5px;
-}
-.badge-text-full {
-  display: inline;
-}
-.badge-text-short {
-  display: none;
-}
-.badge-70b-tag {
-  font-size: 0.65rem;
-  background: #76b900;
-  color: #000;
-  font-weight: 900;
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-.modal-close-btn {
-  position: static;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
   flex-shrink: 0;
 }
-.modal-greeting-section {
+
+.pro-input-btn:hover:not(:disabled) {
+  background: #fff;
+  transform: scale(1.05);
+}
+
+.pro-input-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.modal-pro-footer {
   text-align: center;
-  margin-bottom: 24px;
-}
-.modal-hero-title {
-  font-size: 1.6rem;
-  font-weight: 900;
-  color: #fff;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.modal-title-tag {
-  font-size: 0.75rem;
-  color: #76b900;
-  border: 1px solid rgba(118, 185, 0, 0.5);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-}
-.modal-hero-subtitle {
-  color: var(--text-secondary);
-  font-size: 0.88rem;
-  max-width: 560px;
-  margin: 0 auto;
-  line-height: 1.5;
-}
-.modal-match-context-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 6px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.modal-main-pick-card {
-  background: linear-gradient(135deg, rgba(0, 255, 136, 0.12), rgba(0, 210, 255, 0.08));
-  border: 1px solid rgba(0, 255, 136, 0.4);
-  border-radius: var(--radius-lg);
-  padding: 20px 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 30px rgba(0, 255, 136, 0.12);
-}
-.modal-markets-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
-}
-.modal-market-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 14px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
 }
 
 /* ========================================================
    SOFASCORE STYLE MATCH HUB & STATS DASHBOARD
    ======================================================== */
 .sofa-match-hub {
-  margin-top: 16px;
-  display: flex;
   margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* Navigation Tabs */
@@ -2278,6 +2594,9 @@ body {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   overflow-x: auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .sofa-tab-btn {
@@ -2295,6 +2614,7 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .sofa-tab-btn:hover {
@@ -2315,6 +2635,11 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .sofa-card-title {
@@ -2331,6 +2656,10 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 10px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Possession Bar with Badges */
@@ -2339,6 +2668,9 @@ body {
   background: rgba(0, 0, 0, 0.25);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .sofa-poss-header {
@@ -2346,12 +2678,20 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .sofa-poss-label {
   font-size: 0.75rem;
   font-weight: 700;
   color: #e5e7eb;
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sofa-poss-badge {
@@ -2360,6 +2700,7 @@ body {
   font-weight: 800;
   padding: 1px 8px;
   border-radius: 16px;
+  flex-shrink: 0;
 }
 
 .sofa-poss-badge.home {
@@ -2381,6 +2722,7 @@ body {
   display: flex;
   overflow: hidden;
   gap: 2px;
+  width: 100%;
 }
 
 .sofa-poss-bar-fill.home {
@@ -2400,18 +2742,25 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .sofa-stat-item {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .sofa-stat-nums {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  min-width: 0;
 }
 
 .val-home {
@@ -2419,8 +2768,9 @@ body {
   font-size: 0.82rem;
   font-weight: 800;
   color: #fff;
-  min-width: 24px;
+  min-width: 32px;
   text-align: left;
+  flex-shrink: 0;
 }
 
 .val-label {
@@ -2429,6 +2779,11 @@ body {
   color: var(--text-secondary);
   text-align: center;
   flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .val-away {
@@ -2436,8 +2791,9 @@ body {
   font-size: 0.82rem;
   font-weight: 800;
   color: #fff;
-  min-width: 24px;
+  min-width: 32px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .sofa-dual-bar {
@@ -2445,6 +2801,8 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 4px;
   height: 3px;
+  width: 100%;
+  min-width: 0;
 }
 
 .bar-half {
@@ -2453,6 +2811,8 @@ body {
   overflow: hidden;
   height: 100%;
   display: flex;
+  width: 100%;
+  min-width: 0;
 }
 
 .bar-half.home {
@@ -2482,6 +2842,8 @@ body {
   gap: 12px;
   text-align: center;
   padding: 10px 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .h2h-team-col {
@@ -2739,6 +3101,13 @@ body {
   }
   .match-center-layout {
     grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
+  }
+  .sofa-stats-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
   }
   .ai-hero-card {
     grid-template-columns: 1fr;
@@ -2759,16 +3128,22 @@ body {
 @media (max-width: 768px) {
   .main-content {
     padding: 10px 12px 30px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   /* Header & Navigation */
   .header-nav {
     padding: 6px 12px;
     top: 32px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .header-content {
     flex-wrap: wrap;
     gap: 8px;
+    width: 100%;
   }
   .nav-pills {
     order: 3;
@@ -2777,6 +3152,7 @@ body {
     justify-content: flex-start;
     padding: 3px;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
   .nav-pills::-webkit-scrollbar {
     display: none;
@@ -2834,18 +3210,111 @@ body {
     gap: 14px;
   }
 
-  /* SofaScore Hub */
+  /* ===== EN VIVO — Match Center Mobile Fixes (768px) ===== */
+  .match-center-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .match-center-layout {
+    grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
+  }
+  .main-match-col {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Scoreboard header */
+  .match-center-header {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .mc-team-side {
+    gap: 8px;
+    min-width: 0;
+  }
+  .mc-team-side .team-crest,
+  .mc-team-side img {
+    width: 36px;
+    height: 36px;
+  }
+  .mc-team-name {
+    font-size: 0.95rem;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Top bar */
+  .mc-top-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+  .mc-top-status-pills {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+  .mc-switch-match-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Server bar: horizontal scroll */
+  .servers-bar {
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    width: 100%;
+    min-width: 0;
+  }
+  .servers-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .server-btn {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    padding: 4px 10px;
+  }
+
+  /* Video player */
+  .video-player-container {
+    aspect-ratio: 16 / 9;
+    max-height: none;
+    width: 100%;
+  }
+
+  /* SofaScore Stats Hub */
   .sofa-stats-grid {
     grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
   }
   .sofa-rosters-grid {
     grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
   }
   .sofa-nav-tabs {
     scrollbar-width: none;
+    overflow-x: auto;
+    width: 100%;
   }
   .sofa-nav-tabs::-webkit-scrollbar {
     display: none;
+  }
+  .sofa-tab-btn {
+    flex-shrink: 0;
   }
 
   /* Scorer Timeline */
@@ -2854,6 +3323,8 @@ body {
     align-items: stretch;
     gap: 8px;
     padding: 10px 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .scorers-team-side.home,
   .scorers-team-side.away {
@@ -2861,6 +3332,14 @@ body {
   }
   .scorers-center-pill {
     align-self: center;
+  }
+
+  /* Side panel */
+  .side-panel {
+    gap: 14px;
+    margin-top: 8px;
+    width: 100%;
+    min-width: 0;
   }
 
   /* Community Hub */
@@ -2895,73 +3374,409 @@ body {
 
 /* --- 4. Mobile Devices Large & Standard (max-width: 600px) --- */
 @media (max-width: 600px) {
-  /* Match Center Header */
-  .match-center-header {
-    padding: 12px 10px;
-    gap: 6px;
+  .main-content {
+    padding: 8px 8px 24px;
+    width: 100%;
+    box-sizing: border-box;
   }
+
+  /* ===== EN VIVO — Match Center Full Mobile (600px) ===== */
   .mc-top-bar {
+    flex-direction: column;
+    align-items: stretch;
     gap: 6px;
+    width: 100%;
+  }
+  .mc-back-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.74rem;
+    padding: 6px 10px;
+  }
+  .mc-top-status-pills {
+    justify-content: center;
+    width: 100%;
+  }
+  .mc-switch-match-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.7rem;
+    padding: 5px 10px;
+  }
+
+  /* Scoreboard header */
+  .match-center-header {
+    padding: 10px 8px;
+    gap: 4px;
+    border-radius: var(--radius-sm);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .mc-team-side {
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
   }
   .mc-team-name {
-    font-size: 0.92rem;
-    max-width: 110px;
+    font-size: 0.85rem;
+    max-width: 85px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    line-height: 1.2;
+  }
+  .mc-team-side .team-crest,
+  .mc-team-side img {
+    width: 32px;
+    height: 32px;
   }
   .mc-score-center-box {
-    padding: 0 8px;
+    padding: 0 6px;
+    flex-shrink: 0;
   }
   .mc-scoreboard {
-    font-size: 1.55rem;
+    font-size: 1.5rem;
   }
   .mc-score-vs {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
+  }
+  .mc-live-indicator {
+    font-size: 0.7rem;
+  }
+  .mc-clock-time {
+    font-size: 0.76rem;
+  }
+  .mc-cards-indicator {
+    font-size: 0.65rem;
+    gap: 4px;
+  }
+  .card-pill-yellow,
+  .card-pill-red {
+    font-size: 0.62rem;
+    padding: 1px 4px;
   }
 
-  /* Video Player Controls & Server Switcher */
+  /* Server switcher */
   .player-top-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
+    width: 100%;
   }
   .servers-bar {
     width: 100%;
     scrollbar-width: none;
+    gap: 6px;
   }
   .servers-bar::-webkit-scrollbar {
     display: none;
   }
+  .server-btn {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    padding: 4px 8px;
+    gap: 4px;
+  }
   .player-momentum-badge {
     width: 100%;
     justify-content: space-between;
+    padding: 3px 8px;
+    box-sizing: border-box;
   }
+  .momentum-lbl {
+    font-size: 0.64rem;
+  }
+
+  /* Video player */
+  .video-player-container {
+    aspect-ratio: 16 / 9;
+    max-height: none;
+    border-radius: var(--radius-sm);
+    width: 100%;
+  }
+  .video-overlay-score {
+    top: 6px;
+    left: 6px;
+    padding: 3px 8px;
+    font-size: 0.68rem;
+    gap: 5px;
+    border-radius: 4px;
+  }
+  .video-overlay-live {
+    top: 6px;
+    right: 6px;
+    font-size: 0.62rem;
+    padding: 2px 6px;
+  }
+  .video-bottom-commentary {
+    font-size: 0.65rem;
+    padding: 4px 8px;
+    bottom: 6px;
+    left: 6px;
+    right: 6px;
+    border-radius: 4px;
+  }
+
+  /* Bottom toolbar */
   .player-bottom-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
+    width: 100%;
   }
   .player-bottom-toolbar .video-controls-bar {
     width: 100%;
     justify-content: space-around;
+    padding: 5px 8px;
+    margin-bottom: 0;
+    box-sizing: border-box;
+  }
+  .video-ctrl-btn {
+    font-size: 0.72rem;
+    gap: 3px;
   }
   .player-ai-btn {
     width: 100%;
     justify-content: center;
+    padding: 8px 14px;
+    font-size: 0.78rem;
   }
-  .video-bottom-commentary {
+
+  /* Scorers timeline */
+  .match-scorers-timeline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 0.74rem;
+    width: 100%;
+  }
+  .scorer-item {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+
+  /* SofaScore Navigation Tabs */
+  .sofa-nav-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px;
+    gap: 2px;
+    width: 100%;
+  }
+  .sofa-nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .sofa-tab-btn {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+    gap: 3px;
+  }
+  .sofa-tab-btn svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* Sofa Cards & Stats */
+  .sofa-card {
+    padding: 8px 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sofa-card-title {
+    font-size: 0.78rem;
+    margin-bottom: 6px;
+  }
+  .sofa-stat-item {
+    gap: 2px;
+    width: 100%;
+  }
+  .val-home, .val-away {
+    font-size: 0.78rem;
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+  .val-label {
     font-size: 0.68rem;
-    padding: 4px 10px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 4px;
+  }
+  .sofa-possession-box {
+    padding: 6px 8px;
+    width: 100%;
+  }
+  .sofa-poss-label {
+    font-size: 0.7rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sofa-poss-badge {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    flex-shrink: 0;
+  }
+
+  /* Incidents */
+  .sofa-incident-item {
+    padding: 8px 10px;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sofa-incident-min {
+    font-size: 0.8rem;
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+  .sofa-incident-player {
+    font-size: 0.82rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sofa-incident-team {
+    font-size: 0.68rem;
+  }
+
+  /* Rosters */
+  .sofa-player-row {
+    font-size: 0.78rem;
+    padding: 3px 0;
+    width: 100%;
+  }
+  .sofa-player-num {
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  /* H2H */
+  .h2h-summary-bar {
+    gap: 8px;
+    padding: 8px 0;
+    width: 100%;
+  }
+  .h2h-wins-num {
+    font-size: 1.4rem;
+  }
+  .h2h-match-row {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .h2h-match-teams {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  /* Info boxes */
+  .sofa-info-box {
+    padding: 10px 12px;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .info-lbl {
+    font-size: 0.68rem;
+  }
+  .info-val {
+    font-size: 0.8rem;
+  }
+
+  /* Side panel */
+  .side-panel {
+    gap: 12px;
+    margin-top: 12px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Prediction Poll */
+  .sofa-prediction-widget {
+    padding: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sofa-poll-title {
+    font-size: 0.88rem;
+  }
+  .sofa-poll-pills-row {
+    gap: 6px;
+    width: 100%;
+  }
+  .sofa-poll-pill {
+    padding: 4px 8px;
+    min-height: 36px;
+    font-size: 0.82rem;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .sofa-poll-pct {
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+
+  /* Chat Container */
+  .chat-container {
+    height: 360px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .chat-header {
+    padding: 8px 10px;
+  }
+  .chat-title {
+    font-size: 0.78rem;
+  }
+  .chat-input-bar {
+    padding: 8px 10px;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .chat-input {
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    min-width: 0;
+  }
+  .chat-btn-send {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+  .chat-reactions-row {
+    padding: 6px 10px;
+    overflow-x: auto;
+    width: 100%;
+  }
+  .chat-msg-item {
+    font-size: 0.74rem;
+    gap: 6px;
+    width: 100%;
+  }
+  .chat-user-avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 0.62rem;
+    flex-shrink: 0;
   }
 
   /* AI Generator Card */
   .ai-custom-generator-card {
-    padding: 18px 14px;
+    padding: 16px 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .ai-generator-form-row {
     flex-direction: column;
     gap: 10px;
+    width: 100%;
   }
   .ai-generator-select {
     min-width: 100%;
@@ -2974,75 +3789,67 @@ body {
   .ai-stats-pill-grid {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+    width: 100%;
   }
   .ai-stat-pill {
-    padding: 12px 8px;
+    padding: 10px 6px;
   }
   .ai-stat-pill-val {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
 
-  /* Modal Pick (NVIDIA IA) */
+  /* Modal Pro Mobile (600px) */
   .cerebras-ai-modal {
-    width: 96%;
-    padding: 18px 14px;
-    max-height: 92vh;
-    border-radius: var(--radius-lg);
+    width: 95%;
+    padding: 14px 12px;
+    max-height: 90vh;
+    border-radius: var(--radius-md);
+    box-sizing: border-box;
   }
-  .modal-top-header {
+  .modal-pro-header {
+    padding-bottom: 8px;
+    margin-bottom: 10px;
     gap: 8px;
   }
-  .modal-search-wrapper {
-    order: 3;
-    width: 100%;
-    max-width: 100%;
-    min-width: 100%;
+  .modal-pro-match-info {
+    font-size: 0.78rem;
   }
-  .modal-nvidia-badge {
-    order: 1;
+  .modal-pro-pick-card {
+    padding: 12px 10px;
+    margin-bottom: 10px;
+  }
+  .pro-pick-name {
+    font-size: 0.96rem;
+    margin-bottom: 8px;
+  }
+  .pro-cuota-badge {
+    font-size: 0.86rem;
+    padding: 1px 6px;
+  }
+  .reason-text {
     font-size: 0.76rem;
-    padding: 4px 10px;
-  }
-  .modal-close-btn {
-    order: 2;
-  }
-  .modal-hero-title {
-    font-size: 1.25rem;
-  }
-  .modal-hero-subtitle {
-    font-size: 0.8rem;
   }
   .modal-markets-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
+    margin-bottom: 10px;
   }
   .modal-market-card {
-    padding: 10px;
+    padding: 6px 8px;
   }
-  .modal-main-pick-card {
-    padding: 14px;
-  }
-
-  /* Prediction Poll */
-  .sofa-poll-pills-row {
-    gap: 6px;
-  }
-  .sofa-poll-pill {
-    padding: 4px 8px;
-    min-height: 36px;
-  }
-  .sofa-poll-pct {
-    font-size: 0.78rem;
-  }
-
-  /* Chat Container */
-  .chat-container {
-    height: 380px;
+  .market-pick-text {
+    font-size: 0.76rem;
   }
 }
 
 /* --- 5. Mobile Small / Compact Screens (max-width: 480px) --- */
 @media (max-width: 480px) {
+  .main-content {
+    padding: 6px 6px 20px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   /* Header Logo & Compact Action */
   .logo-title {
     font-size: 1.15rem;
@@ -3068,58 +3875,225 @@ body {
     height: 32px;
   }
 
+  /* Hide ticker on very small screens for more space */
+  .ticker-container {
+    height: 26px;
+    width: 100%;
+  }
+  .ticker-item {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+  .header-nav {
+    top: 26px;
+    padding: 5px 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Nav pills */
+  .nav-pill-btn {
+    padding: 6px 10px;
+    font-size: 0.76rem;
+    gap: 5px;
+  }
+
   /* Match Cards */
   .matches-grid {
     grid-template-columns: 1fr;
+    width: 100%;
   }
   .match-card {
-    padding: 14px 12px;
+    padding: 12px 10px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .match-team-block {
-    width: 78px;
+    width: 72px;
   }
   .match-team-crest {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
   }
   .match-team-title {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
   }
   .match-score-text {
-    font-size: 1.45rem;
+    font-size: 1.4rem;
+  }
+
+  /* ===== EN VIVO — Compact Mobile (480px) ===== */
+  .match-center-header {
+    padding: 8px 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .mc-team-name {
+    font-size: 0.78rem;
+    max-width: 70px;
+  }
+  .mc-team-side .team-crest,
+  .mc-team-side img {
+    width: 28px;
+    height: 28px;
+  }
+  .mc-scoreboard {
+    font-size: 1.35rem;
+  }
+  .mc-score-center-box {
+    padding: 0 4px;
+  }
+  .mc-live-indicator {
+    font-size: 0.65rem;
+    gap: 3px;
+  }
+  .mc-clock-time {
+    font-size: 0.72rem;
+  }
+
+  /* Server buttons */
+  .server-btn {
+    font-size: 0.64rem;
+    padding: 3px 6px;
+    gap: 3px;
+  }
+  .server-btn .live-dot {
+    width: 4px !important;
+    height: 4px !important;
+  }
+
+  /* Video player */
+  .video-player-container {
+    border-radius: 6px;
+    width: 100%;
+  }
+  .video-overlay-score {
+    font-size: 0.62rem;
+    padding: 2px 6px;
+    gap: 4px;
+  }
+  .video-bottom-commentary {
+    font-size: 0.6rem;
+    padding: 3px 6px;
+  }
+
+  /* Control buttons */
+  .video-ctrl-btn {
+    font-size: 0.68rem;
+  }
+  .player-ai-btn {
+    font-size: 0.74rem;
+    padding: 7px 12px;
+  }
+
+  /* SofaScore tabs */
+  .sofa-tab-btn {
+    padding: 3px 6px;
+    font-size: 0.68rem;
+    gap: 2px;
+  }
+  .sofa-tab-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Stats compaction */
+  .val-home, .val-away {
+    font-size: 0.75rem;
+    min-width: 24px;
+    flex-shrink: 0;
+  }
+  .val-label {
+    font-size: 0.65rem;
+    min-width: 0;
+    padding: 0 2px;
+  }
+
+  /* Scorer timeline */
+  .match-scorers-timeline {
+    padding: 6px 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .scorer-item {
+    font-size: 0.66rem;
+    padding: 1px 5px;
+  }
+  .scorer-minute {
+    font-size: 0.66rem;
+  }
+
+  /* Prediction poll */
+  .sofa-prediction-widget {
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sofa-poll-title {
+    font-size: 0.84rem;
+  }
+  .sofa-poll-pill {
+    min-height: 34px;
+    padding: 3px 6px;
+    font-size: 0.78rem;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* Chat */
+  .chat-container {
+    height: 320px;
+    width: 100%;
+  }
+  .chat-msg-item {
+    font-size: 0.72rem;
   }
 
   /* Spotlight Hero Card */
   .spotlight-body {
-    padding: 14px 12px;
+    padding: 12px 10px;
   }
   .spotlight-teams {
-    gap: 6px;
+    gap: 4px;
+  }
+  .spotlight-team {
+    width: 90px;
   }
   .spotlight-team .team-name {
-    font-size: 0.8rem;
+    font-size: 0.76rem;
+  }
+  .team-crest {
+    width: 48px;
+    height: 48px;
   }
   .spotlight-score {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
+    gap: 8px;
   }
   .odds-bar {
-    gap: 6px;
-    margin-bottom: 14px;
+    gap: 4px;
+    margin-bottom: 12px;
+    width: 100%;
   }
   .odd-box {
-    padding: 6px 4px;
+    padding: 5px 3px;
   }
   .odd-label {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
   }
   .odd-val {
-    font-size: 0.88rem;
+    font-size: 0.84rem;
   }
   .spotlight-ai-banner {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
-    padding: 10px 12px;
+    padding: 8px 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .spotlight-ai-pick-text {
+    font-size: 0.78rem;
   }
 
   /* Stats Table Column Hiding */
@@ -3127,70 +4101,257 @@ body {
     display: none;
   }
   .stats-standings-table {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     min-width: 100%;
   }
   .stats-standings-table th,
   .stats-standings-table td {
-    padding: 8px 4px;
+    padding: 7px 4px;
   }
 
   /* H2H Bar */
   .h2h-summary-bar {
     gap: 6px;
+    width: 100%;
   }
   .h2h-wins-num {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
   .h2h-match-row {
-    padding: 8px 10px;
-    font-size: 0.76rem;
+    padding: 6px 8px;
+    font-size: 0.74rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
-  /* Modal Markets Single Col */
+  /* Modal Markets Grid (2 cols on mobile) */
   .modal-markets-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
   }
 
-  /* Chat Container */
-  .chat-container {
-    height: 350px;
-  }
-
-  /* App container safe padding */
+  /* App container safe padding for notch phones */
   .app-container {
     padding-bottom: env(safe-area-inset-bottom, 12px);
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }
 
 /* --- 6. Ultra-Compact Mobile (max-width: 360px) --- */
 @media (max-width: 360px) {
+  .main-content {
+    padding: 4px 4px 16px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   .logo-title {
     font-size: 1rem;
   }
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Header nav */
+  .header-nav {
+    padding: 4px 6px;
+    width: 100%;
+  }
+  .nav-pill-btn {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    gap: 4px;
+  }
+  .nav-pill-btn svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* Match cards */
   .match-team-block {
-    width: 66px;
+    width: 60px;
+  }
+  .match-team-crest {
+    width: 30px;
+    height: 30px;
   }
   .match-team-title {
-    font-size: 0.7rem;
-  }
-  .mc-scoreboard {
-    font-size: 1.3rem;
-  }
-  .mc-team-name {
-    font-size: 0.8rem;
-    max-width: 80px;
-  }
-  .sofa-tab-btn {
-    padding: 3px 6px;
     font-size: 0.68rem;
   }
+  .match-score-text {
+    font-size: 1.25rem;
+  }
+
+  /* ===== EN VIVO — Ultra Compact (360px) ===== */
+  .mc-team-name {
+    font-size: 0.7rem;
+    max-width: 58px;
+  }
+  .mc-team-side .team-crest,
+  .mc-team-side img {
+    width: 24px;
+    height: 24px;
+  }
+  .mc-scoreboard {
+    font-size: 1.2rem;
+  }
+  .mc-live-indicator {
+    font-size: 0.58rem;
+  }
+  .mc-clock-time {
+    font-size: 0.65rem;
+  }
+  .mc-score-center-box {
+    padding: 0 2px;
+  }
+  .mc-back-btn {
+    font-size: 0.68rem;
+    padding: 4px 6px;
+  }
+
+  /* Server buttons ultra compact */
+  .server-btn {
+    font-size: 0.58rem;
+    padding: 2px 5px;
+  }
+
+  /* Video overlays */
+  .video-overlay-score {
+    font-size: 0.56rem;
+    padding: 2px 4px;
+    top: 4px;
+    left: 4px;
+  }
+  .video-bottom-commentary {
+    font-size: 0.54rem;
+    padding: 2px 4px;
+    bottom: 4px;
+    left: 4px;
+    right: 4px;
+  }
+
+  /* SofaScore tabs ultra compact */
+  .sofa-tab-btn {
+    padding: 3px 4px;
+    font-size: 0.62rem;
+  }
+  .sofa-tab-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Stats ultra compact */
   .val-home, .val-away {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    min-width: 20px;
+    flex-shrink: 0;
   }
   .val-label {
-    font-size: 0.66rem;
+    font-size: 0.6rem;
+  }
+  .sofa-card {
+    padding: 6px 6px;
+    width: 100%;
+  }
+
+  /* Incidents compact */
+  .sofa-incident-item {
+    padding: 5px 6px;
+    gap: 6px;
+    width: 100%;
+  }
+  .sofa-incident-min {
+    font-size: 0.72rem;
+    min-width: 24px;
+  }
+  .sofa-incident-player {
+    font-size: 0.74rem;
+  }
+
+  /* Chat ultra compact */
+  .chat-container {
+    height: 290px;
+    width: 100%;
+  }
+  .chat-input {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+  }
+  .chat-btn-send {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Poll compact */
+  .sofa-poll-pill {
+    min-height: 30px;
+    padding: 2px 4px;
+    font-size: 0.72rem;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .sofa-poll-pct {
+    font-size: 0.72rem;
+  }
+  .sofa-poll-title {
+    font-size: 0.78rem;
+  }
+
+  /* Spotlight */
+  .spotlight-team {
+    width: 75px;
+  }
+  .spotlight-team .team-name {
+    font-size: 0.7rem;
+  }
+  .team-crest {
+    width: 40px;
+    height: 40px;
+  }
+  .spotlight-score {
+    font-size: 1.25rem;
   }
 }
 
+/* --- 7. Landscape Mobile Fix --- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .video-player-container {
+    aspect-ratio: unset;
+    max-height: 55vh;
+    min-height: 180px;
+  }
+  .chat-container {
+    height: 250px;
+  }
+  .header-nav {
+    top: 26px;
+  }
+}
+
+/* --- iOS Safe Area & Notch Support --- */
+@supports (padding: max(0px)) {
+  .app-container {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .header-nav {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+}
+
+/* Spin animation for reload button */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
 

@@ -683,7 +683,7 @@ export default function VideoPlayer({ match, onOpenPickModal }) {
               ref={canvasRef} 
               width={640} 
               height={300} 
-              style={{ width: '100%', height: '100%', display: 'block' }}
+              style={{ width: '100%', height: '100%', display: 'block', maxWidth: '100%', boxSizing: 'border-box' }}
             />
 
             {/* Clean Scoreboard Overlay (TV Style) */}
