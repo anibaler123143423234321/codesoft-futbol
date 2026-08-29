@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, 
   TrendingUp, 
   CheckCircle2, 
   Cpu, 
-  Send, 
   Zap, 
-  Flame, 
   Activity, 
   RotateCw,
-  HelpCircle
+  Search,
+  ChevronDown,
+  X,
+  Check
 } from 'lucide-react';
 import { generateMatchAIPick } from '../api/cerebrasAi';
 import { sounds } from '../utils/soundEffects';
@@ -19,7 +20,40 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
   const [customPick, setCustomPick] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Searchable Match Selector State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
   const currentSelectedMatch = matches.find(m => m.id === selectedMatchId) || matches[0];
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter matches based on search term
+  const filteredMatches = matches.filter(m => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const home = (m.homeTeam?.name || m.homeTeam?.shortName || '').toLowerCase();
+    const away = (m.awayTeam?.name || m.awayTeam?.shortName || '').toLowerCase();
+    const league = (m.leagueName || '').toLowerCase();
+    return home.includes(query) || away.includes(query) || league.includes(query);
+  });
+
+  const handleSelectMatch = (match) => {
+    sounds.playClick();
+    setSelectedMatchId(match.id);
+    setIsDropdownOpen(false);
+    setSearchQuery('');
+  };
 
   const handleGenerateCustomPick = async () => {
     if (!currentSelectedMatch) return;
@@ -93,21 +127,114 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
         </div>
 
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
-          Selecciona cualquier partido de la cartelera y NVIDIA NIM IA calculará el pick óptimo con base en estadísticas oficiales:
+          Escribe o busca cualquier partido de la cartelera para que NVIDIA NIM IA calcule el pick óptimo en milisegundos:
         </p>
 
+        {/* Searchable Match Selector Row */}
         <div className="ai-generator-form-row">
-          <select
-            value={selectedMatchId}
-            onChange={(e) => setSelectedMatchId(e.target.value)}
-            className="chat-input ai-generator-select"
-          >
-            {matches.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.leagueName}: {m.homeTeam?.name} vs {m.awayTeam?.name} ({m.homeTeam?.score}-{m.awayTeam?.score})
-              </option>
-            ))}
-          </select>
+          <div className="searchable-match-picker" ref={dropdownRef}>
+            {/* Input Trigger Bar */}
+            <div 
+              className={`match-picker-trigger ${isDropdownOpen ? 'active' : ''}`}
+              onClick={() => setIsDropdownOpen(prev => !prev)}
+            >
+              <Search size={16} style={{ color: 'var(--cyan-neon)', flexShrink: 0 }} />
+              
+              <input
+                type="text"
+                className="match-picker-search-input"
+                placeholder={currentSelectedMatch ? `${currentSelectedMatch.homeTeam?.name} vs ${currentSelectedMatch.awayTeam?.name} (${currentSelectedMatch.leagueName})` : "Buscar equipo o liga..."}
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsDropdownOpen(true);
+                }}
+                onFocus={() => setIsDropdownOpen(true)}
+              />
+
+              {searchQuery ? (
+                <button 
+                  type="button" 
+                  className="picker-clear-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearchQuery('');
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              ) : (
+                <ChevronDown 
+                  size={16} 
+                  style={{ 
+                    color: 'var(--text-muted)', 
+                    transform: isDropdownOpen ? 'rotate(180deg)' : 'none', 
+                    transition: 'transform 0.2s ease',
+                    flexShrink: 0
+                  }} 
+                />
+              )}
+            </div>
+
+            {/* Dropdown Results Menu */}
+            {isDropdownOpen && (
+              <div className="match-picker-dropdown">
+                <div className="picker-dropdown-header">
+                  <span>Partidos Disponibles ({filteredMatches.length})</span>
+                  {searchQuery && (
+                    <span style={{ color: 'var(--cyan-neon)', fontSize: '0.72rem' }}>
+                      Filtrado por: "{searchQuery}"
+                    </span>
+                  )}
+                </div>
+
+                <div className="picker-dropdown-list">
+                  {filteredMatches.length > 0 ? (
+                    filteredMatches.map(m => {
+                      const isSelected = m.id === selectedMatchId;
+                      const isLive = m.status === 'live';
+                      return (
+                        <div
+                          key={m.id}
+                          className={`picker-match-item ${isSelected ? 'selected' : ''}`}
+                          onClick={() => handleSelectMatch(m)}
+                        >
+                          <div className="picker-item-left">
+                            <div className="picker-item-teams">
+                              <span className="picker-team-name">{m.homeTeam?.name}</span>
+                              <span className="picker-score-tag">
+                                {isLive ? (
+                                  <span style={{ color: 'var(--red-live)', fontWeight: 800 }}>
+                                    🔴 {m.homeTeam?.score ?? 0} - {m.awayTeam?.score ?? 0}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)' }}>VS</span>
+                                )}
+                              </span>
+                              <span className="picker-team-name">{m.awayTeam?.name}</span>
+                            </div>
+                            <div className="picker-item-meta">
+                              <span>{m.leagueName || 'Competición'}</span>
+                              {m.status === 'finished' && <span>· FT</span>}
+                            </div>
+                          </div>
+
+                          {isSelected && (
+                            <Check size={16} style={{ color: 'var(--green-neon)', flexShrink: 0 }} />
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="picker-no-results">
+                      <p>No se encontraron partidos para "{searchQuery}"</p>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Intenta con otro equipo o nombre de liga</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <button 
             className="btn-primary ai-generator-btn" 

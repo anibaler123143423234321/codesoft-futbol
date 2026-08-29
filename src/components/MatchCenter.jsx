@@ -166,11 +166,19 @@ export default function MatchCenter({
             commentary={match.commentary || []}
             gameInfo={match.gameInfo || {}}
             linescores={match.linescores || {}}
+            h2h={match.h2hHistory || []}
+            recentForm={match.recentForm || {
+              home: { form: match.homeTeam?.form, games: match.homeTeam?.recentGames },
+              away: { form: match.awayTeam?.form, games: match.awayTeam?.recentGames }
+            }}
             homeName={match.homeTeam?.shortName || match.homeTeam?.name}
             awayName={match.awayTeam?.shortName || match.awayTeam?.name}
+            homeLogo={match.homeTeam?.logo}
+            awayLogo={match.awayTeam?.logo}
             homeScore={match.homeTeam?.score || 0}
             awayScore={match.awayTeam?.score || 0}
             matchStatus={match.status}
+            leagueName={match.leagueName}
           />
         </div>
 
