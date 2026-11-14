@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Flag, Clock, Radio, Tv, Sparkles, ChevronRight, Calendar } from 'lucide-react';
-import VideoPlayer from './VideoPlayer';
+import TacticalWorkspace from './TacticalWorkspace';
 import LiveStatsBars from './LiveStatsBars';
 import MatchEventsTimeline from './MatchEventsTimeline';
 import PredictionPoll from './PredictionPoll';
@@ -148,12 +148,14 @@ export default function MatchCenter({
         </div>
       </div>
 
-      {/* Two Column Layout: Left (Player & Stats) / Right (Poll & Chat) */}
+      {/* Panel táctico: video + cancha 2D + jugadas + línea de tiempo */}
+      <TacticalWorkspace match={match} onOpenPickModal={onOpenPickModal} />
+
+      {/* Two Column Layout: Left (Stats) / Right (Poll & Chat) */}
       <div className="match-center-layout">
         {/* Left Column */}
         <div className="main-match-col">
           {/* Video Player & Server Selector */}
-          <VideoPlayer match={match} onOpenPickModal={onOpenPickModal} />
 
           {/* Goal Scorers Timeline from real ESPN keyEvents */}
           <MatchEventsTimeline match={match} />

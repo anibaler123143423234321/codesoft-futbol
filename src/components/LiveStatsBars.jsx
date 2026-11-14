@@ -333,7 +333,7 @@ export default function LiveStatsBars({
               )}
             </div>
 
-            <div style={{ background: 'rgba(0, 210, 255, 0.05)', border: '1px solid rgba(0, 210, 255, 0.15)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ background: 'rgba(255, 106, 0, 0.05)', border: '1px solid rgba(255, 106, 0, 0.15)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Info size={16} style={{ color: 'var(--cyan-neon)', flexShrink: 0 }} />
               <span>
                 {isScheduled

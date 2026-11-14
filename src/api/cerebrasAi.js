@@ -1,67 +1,81 @@
-// NVIDIA NIM AI Sports Inference Engine (Hosted on NVIDIA GPU Cloud)
-const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const NVIDIA_MODEL = 'deepseek-ai/deepseek-v4-pro-0813';
+// Motor de análisis con IA (NVIDIA NIM).
+// La API de NVIDIA no acepta llamadas directas desde el navegador (CORS) y la clave no debe
+// viajar en el bundle: todas las peticiones pasan por el proxy /api/nvidia, que agrega la clave
+// en el servidor (Vite en desarrollo, función de Netlify en producción).
+const AI_ENDPOINT = '/api/nvidia/v1/chat/completions';
+// Modelos en orden de preferencia: el primero es rápido (~7 s); los demás son respaldo
+// por si NVIDIA retira o satura alguno. NVIDIA_MODEL en .env fuerza uno al principio.
+const AI_MODELS = [
+  ...(typeof __NVIDIA_MODEL__ !== 'undefined' && __NVIDIA_MODEL__ ? [__NVIDIA_MODEL__] : []),
+  'google/gemma-4-31b-it',
+  'nvidia/nemotron-3.5-bolt-e4b',
+  'mistralai/mistral-large-4-1t-a52b',
+];
+// Los modelos que razonan antes de responder son lentos y gastan tokens de salida en ese razonamiento
+const isReasoningModel = (m) => /mistral-large-4|nemotron-3-ultra/.test(m);
 
-// Get API Key from localStorage or vite define
-export function getNvidiaApiKey() {
-  if (typeof window !== 'undefined') {
-    const custom = localStorage.getItem('codesoft_nvidia_key');
-    if (custom && custom.trim().length > 5) return custom.trim();
-  }
-  return typeof __NVIDIA_API_KEY__ !== 'undefined' && __NVIDIA_API_KEY__ ? __NVIDIA_API_KEY__ : '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';
-}
-
-// Backward compatibility helper
-export function getCerebrasApiKey() {
-  return getNvidiaApiKey();
-}
-
+// Compatibilidad con código anterior: la clave ya no vive en el navegador
+export function getNvidiaApiKey() { return null; }
+export function getCerebrasApiKey() { return null; }
 export function resetCerebrasQuotaStatus() {}
 
+// Máximo 2 peticiones simultáneas para no saturar la cuota
+let activeCalls = 0;
+const waiters = [];
+async function withSlot(fn) {
+  if (activeCalls >= 2) await new Promise(resolve => waiters.push(resolve));
+  activeCalls++;
+  try { return await fn(); } finally {
+    activeCalls--;
+    waiters.shift()?.();
+  }
+}
+
+// Extrae el primer objeto JSON de una respuesta que puede traer texto o ``` alrededor
+function extractJson(text) {
+  const clean = String(text || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+  const a = clean.indexOf('{');
+  const b = clean.lastIndexOf('}');
+  return a >= 0 && b > a ? clean.slice(a, b + 1) : clean;
+}
+
 /**
- * Universal Chat Completion Caller: Directly to NVIDIA NIM API
+ * Llamada de chat. Prueba los modelos en orden y devuelve { content, provider } o null.
  */
-async function callAiCompletion({ messages, responseFormatJson = false, maxTokens = 500 }) {
-  const nvidiaKey = getNvidiaApiKey();
+async function callAiCompletion({ messages, maxTokens = 500 }) {
+  return withSlot(async () => {
+    for (const model of AI_MODELS) {
+      const reasoning = isReasoningModel(model);
+      try {
+        const res = await fetch(AI_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.2,
+            max_tokens: maxTokens + (reasoning ? 1200 : 0),
+            ...(reasoning ? { reasoning_effort: 'low' } : {})
+          }),
+          signal: AbortSignal.timeout(reasoning ? 150000 : 30000)
+        });
 
-  if (!nvidiaKey) {
-    console.warn('[NVIDIA NIM] No hay API key configurada.');
-    return null;
-  }
-
-  try {
-    console.log('%c[NVIDIA NIM AI 🧠 Inferencia con Llama 3.1 70B]', 'color: #76b900; font-weight: bold;', { model: NVIDIA_MODEL });
-    const res = await fetch(NVIDIA_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${nvidiaKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: NVIDIA_MODEL,
-        messages: messages,
-        temperature: 0.2,
-        max_tokens: maxTokens,
-        ...(responseFormatJson ? { response_format: { type: 'json_object' } } : {})
-      })
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        console.log('%c[NVIDIA NIM AI ⚡ Respuesta 200 OK]', 'color: #76b900; font-weight: bold;');
-        return { content, provider: 'NVIDIA NIM (Llama 3.1 70B)' };
+        if (res.ok) {
+          const data = await res.json();
+          const content = data.choices?.[0]?.message?.content;
+          if (content) return { content, provider: model };
+          console.warn(`[IA] ${model}: respuesta sin contenido`);
+        } else {
+          console.warn(`[IA] ${model}: error HTTP ${res.status}`, (await res.text()).slice(0, 200));
+          // Sin clave o sin proxy no tiene sentido probar otro modelo
+          if (res.status === 401 || res.status === 403 || res.status === 500) return null;
+        }
+      } catch (e) {
+        console.warn(`[IA] ${model}: sin respuesta (${e.message})`);
       }
-    } else {
-      const errText = await res.text();
-      console.warn(`%c[NVIDIA NIM AI ❌ Error HTTP ${res.status}]`, 'color: #ff3366; font-weight: bold;', errText);
     }
-  } catch (e) {
-    console.warn('[NVIDIA NIM Exception]', e.message);
-  }
-
-  return null;
+    return null;
+  });
 }
 
 /**
@@ -131,15 +145,14 @@ Responde ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
   try {
     const aiRes = await callAiCompletion({
       messages: [
-        { role: 'system', content: 'Eres el motor de inferencia táctica y análisis cuantitativo de fútbol en NVIDIA NIM (Llama 3.1 70B). Responde siempre con análisis rigurosos, motivos claros y JSON estricto.' },
+        { role: 'system', content: 'Eres el motor de inferencia táctica y análisis cuantitativo de fútbol. Responde siempre con análisis rigurosos, motivos claros y JSON estricto.' },
         { role: 'user', content: prompt }
       ],
-      responseFormatJson: true,
       maxTokens: 600
     });
 
     if (aiRes && aiRes.content) {
-      const cleanJsonStr = aiRes.content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const cleanJsonStr = extractJson(aiRes.content);
       const aiData = JSON.parse(cleanJsonStr);
       
       const enrichedData = {
@@ -176,7 +189,8 @@ function parseMinuteNumber(minuteStr) {
 /**
  * Chat with tactical AI sports expert - Dynamic tactical sports analyst
  */
-export async function askTacticalAI(match, userQuestion) {
+export async function askTacticalAI(match, userQuestion, meta) {
+  if (meta) meta.source = 'local';
   const home = match?.homeTeam?.name || match?.homeTeam?.shortName || 'Local';
   const away = match?.awayTeam?.name || match?.awayTeam?.shortName || 'Visita';
   const homeScore = Number(match?.homeTeam?.score || 0);
@@ -221,6 +235,7 @@ Si el usuario te pregunta "¿Quién gana?", "dame el ganador" o te pide que te d
     });
 
     if (aiRes && aiRes.content && aiRes.content.trim().length > 0) {
+      if (meta) meta.source = 'ai';
       return aiRes.content.trim();
     }
   } catch (e) {
@@ -504,13 +519,13 @@ function calculateDynamicSportsMetrics(match) {
  */
 export async function generateFullMatchAIPredictions(match) {
   const isLive = match.status === 'live';
-  const cacheKey = `ai_multi_picks_${match.id}_${match.homeTeam?.score || 0}_${match.awayTeam?.score || 0}_${isLive ? match.minute : 'pre'}`;
+  const cacheKey = `ai_multi_picks_v3_${match.id}_${match.homeTeam?.score || 0}_${match.awayTeam?.score || 0}_${isLive ? 'live' : 'pre'}`;
   
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      const ttl = isLive ? 30 * 1000 : 10 * 60 * 1000; // 30s for live, 10m for pre-match
+      const ttl = isLive ? 5 * 60 * 1000 : 30 * 60 * 1000; // 5 min en vivo, 30 min en previa
       if (Date.now() - parsed.timestamp < ttl) {
         return parsed.data;
       }
@@ -551,99 +566,63 @@ Analiza este partido de fútbol en profundidad con datos reales del mercado y ge
   * Tiros al Arco: Local ${match.stats?.attack?.[2]?.home || 2} vs Visita ${match.stats?.attack?.[2]?.away || 2}
   * Tarjetas: Local ${match.homeTeam?.yellowCards || 0} amarillas vs Visita ${match.awayTeam?.yellowCards || 0} amarillas
 
-INSTRUCCIONES CLAVE:
-1. Define selecciones de alto valor basadas en datos reales, forma reciente e historial H2H.
-2. En mainPick, proporciona un desglose profundo con:
-   - "motivo_principal": "¿Por qué este pick?: ..." Resumen del motivo directo citando la forma reciente o ventaja táctica.
-   - "analisis_detallado": Análisis táctico de 3-4 líneas basado en xG, dinámica de ataque, rachas y valor matemático (+EV).
-   - "claves_metricas": Array con 3 métricas estimadas clave.
-3. Genera cuotas decimales realistas.
-
-Responde ÚNICAMENTE un objeto JSON válido con esta estructura:
+INSTRUCCIONES:
+- Selecciones coherentes con el marcador y el minuto actuales, basadas en los datos de arriba.
+- Cuotas decimales realistas; "probabilidad" es un entero de 0 a 100.
+- Responde ÚNICAMENTE con este JSON, en español y sin texto adicional:
 {
   "mainPick": {
-    "title": "SELECCIÓN PRINCIPAL (VALUE BET)",
-    "pick": "Nombre exacto de la apuesta recomendada",
-    "cuota": 2.15,
-    "probabilidad": 84,
-    "streak": "+5 maratón",
-    "motivo_principal": "¿Por qué este pick?: Explicación clara y directa del motivo táctico principal.",
-    "analisis_detallado": "Análisis táctico profundo: Generación de peligro ofensivo, debilidades defensivas rivales y valor matemático positivo (+EV).",
-    "claves_metricas": [
-      "xG Proyectado: > 2.25",
-      "Tiros al arco promedio: 8.2",
-      "Valor Esperado (+EV): +13.8%"
-    ],
-    "justificacion": "Análisis estadístico técnico y conciso de respaldo.",
-    "stake": "Stake 2.5 / 10 (Confianza Alta)"
+    "pick": "apuesta recomendada",
+    "cuota": 0,
+    "probabilidad": 0,
+    "motivo_principal": "motivo táctico en máximo 40 palabras",
+    "claves_metricas": ["métrica 1", "métrica 2", "métrica 3"],
+    "stake": "Stake X / 10"
   },
-  "goalsPick": {
-    "title": "MERCADO DE GOLES",
-    "pick": "Más de 2.0 Goles / Ambos Anotan",
-    "cuota": 1.85,
-    "probabilidad": 81,
-    "tag": "Goles"
-  },
-  "cornersPick": {
-    "title": "CÓRNERS & BALÓN PARADO",
-    "pick": "Más de 8.5 Córners Totales",
-    "cuota": 1.78,
-    "probabilidad": 79,
-    "tag": "Córners"
-  },
-  "cardsPick": {
-    "title": "TARJETAS & DISCIPLINA",
-    "pick": "Más de 3.5 Tarjetas Totales",
-    "cuota": 1.90,
-    "probabilidad": 85,
-    "tag": "Fricción"
-  },
-  "scorePick": {
-    "title": "MARCADOR MÁS PROBABLE",
-    "pick": "${home} 2 - 1 ${away}",
-    "cuota": 3.40,
-    "probabilidad": 66,
-    "tag": "1X2"
-  }
+  "goalsPick": { "pick": "mercado de goles", "cuota": 0, "probabilidad": 0 },
+  "cornersPick": { "pick": "mercado de córners", "cuota": 0, "probabilidad": 0 },
+  "cardsPick": { "pick": "mercado de tarjetas", "cuota": 0, "probabilidad": 0 },
+  "scorePick": { "pick": "${home} X - Y ${away}", "cuota": 0, "probabilidad": 0 }
 }
 `;
 
   try {
     const aiRes = await callAiCompletion({
       messages: [
-        { role: 'system', content: 'Eres el motor de inferencia cuantitativa de fútbol en NVIDIA NIM (Llama 3.1 70B). Responde siempre con cuotas decimales realistas calculadas dinámicamente y JSON estricto.' },
+        { role: 'system', content: 'Eres el motor de inferencia cuantitativa de fútbol. Responde siempre con cuotas decimales realistas calculadas dinámicamente y JSON estricto.' },
         { role: 'user', content: prompt }
       ],
-      responseFormatJson: true,
-      maxTokens: 750
+      maxTokens: 700
     });
 
     if (aiRes && aiRes.content) {
-      const cleanJsonStr = aiRes.content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const cleanJsonStr = extractJson(aiRes.content);
       const aiData = JSON.parse(cleanJsonStr);
 
-      const normalizePick = (p, fallbackP) => {
-        if (!p) return fallbackP;
-        let prob = Number(p.probabilidad ?? p.probability ?? 75);
-        if (prob > 0 && prob <= 1) prob = Math.round(prob * 100);
+      // Solo lo que dijo la IA: no se mezcla con textos de la estimación local
+      const normalizePick = (p) => {
+        if (!p || !p.pick) return null;
+        let prob = Number(p.probabilidad ?? p.probability ?? 0);
+        if (prob > 0 && prob <= 1) prob *= 100;
         return {
-          ...fallbackP,
-          ...p,
+          pick: String(p.pick),
+          cuota: p.cuota,
           probabilidad: Math.round(prob),
-          motivo_principal: p.motivo_principal || fallbackP?.motivo_principal,
-          analisis_detallado: p.analisis_detallado || p.justificacion || fallbackP?.analisis_detallado,
-          justificacion: p.analisis_detallado || p.justificacion || fallbackP?.justificacion,
-          claves_metricas: p.claves_metricas && p.claves_metricas.length > 0 ? p.claves_metricas : fallbackP?.claves_metricas,
-          stake: p.stake || fallbackP?.stake
+          motivo_principal: p.motivo_principal || p.justificacion || '',
+          claves_metricas: Array.isArray(p.claves_metricas) ? p.claves_metricas.filter(Boolean) : [],
+          stake: p.stake || ''
         };
       };
+      if (!aiData.mainPick?.pick) throw new Error('La IA no devolvió una selección principal');
 
       const normalizedData = {
-        mainPick: normalizePick(aiData.mainPick, dynamicFallback.mainPick),
-        goalsPick: normalizePick(aiData.goalsPick, dynamicFallback.goalsPick),
-        cornersPick: normalizePick(aiData.cornersPick, dynamicFallback.cornersPick),
-        cardsPick: normalizePick(aiData.cardsPick, dynamicFallback.cardsPick),
-        scorePick: normalizePick(aiData.scorePick, dynamicFallback.scorePick),
+        mainPick: normalizePick(aiData.mainPick),
+        goalsPick: normalizePick(aiData.goalsPick),
+        cornersPick: normalizePick(aiData.cornersPick),
+        cardsPick: normalizePick(aiData.cardsPick),
+        scorePick: normalizePick(aiData.scorePick),
+        source: 'ai',
+        model: aiRes.provider,
       };
 
       try {
@@ -652,8 +631,13 @@ Responde ÚNICAMENTE un objeto JSON válido con esta estructura:
       return normalizedData;
     }
   } catch (err) {
-    console.warn('[NVIDIA NIM Full Match Predictions Fallback]', err.message);
+    console.warn('[IA] Predicciones no disponibles:', err.message);
   }
 
-  return dynamicFallback;
+  return { ...dynamicFallback, source: 'local' };
+}
+
+/** Estimación inmediata calculada en el navegador con las estadísticas del partido (sin IA). */
+export function getLocalMatchPredictions(match) {
+  return { ...calculateDynamicSportsMetrics(match), source: 'local' };
 }

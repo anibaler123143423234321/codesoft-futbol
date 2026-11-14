@@ -53,7 +53,7 @@ export default function HeroBanner({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Draw grid lines
-      ctx.strokeStyle = 'rgba(0, 210, 255, 0.06)';
+      ctx.strokeStyle = 'rgba(255, 106, 0, 0.06)';
       ctx.lineWidth = 1;
       const step = 25;
       for (let x = 0; x < canvas.width; x += step) {
@@ -78,7 +78,7 @@ export default function HeroBanner({
         if (p.y < 0) p.y = canvas.height;
         if (p.y > canvas.height) p.y = 0;
 
-        ctx.fillStyle = `rgba(0, 210, 255, ${p.alpha})`;
+        ctx.fillStyle = `rgba(255, 106, 0, ${p.alpha})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();

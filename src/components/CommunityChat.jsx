@@ -83,7 +83,7 @@ export default function CommunityChat({ matchTitle = 'Partido' }) {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       user: userName,
       badge: 'FAN',
-      avatarBg: '#00d2ff',
+      avatarBg: '#ff6a00',
       text: inputVal.trim(),
       time: timeNow
     };
@@ -102,7 +102,7 @@ export default function CommunityChat({ matchTitle = 'Partido' }) {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       user: userName,
       badge: 'FAN',
-      avatarBg: '#00d2ff',
+      avatarBg: '#ff6a00',
       gifUrl: gifUrl,
       time: timeNow
     };
@@ -142,11 +142,11 @@ export default function CommunityChat({ matchTitle = 'Partido' }) {
               alignItems: 'center', 
               gap: '4px', 
               fontSize: '0.65rem', 
-              background: 'rgba(0, 255, 136, 0.12)', 
+              background: 'rgba(25, 201, 100, 0.12)', 
               color: 'var(--green-neon)', 
               padding: '2px 7px', 
               borderRadius: 'var(--radius-full)', 
-              border: '1px solid rgba(0, 255, 136, 0.3)',
+              border: '1px solid rgba(25, 201, 100, 0.3)',
               fontWeight: 700 
             }}
             title="Conexión WebSocket en tiempo real activa"
@@ -242,7 +242,7 @@ export default function CommunityChat({ matchTitle = 'Partido' }) {
         ) : (
           messages.map((msg) => (
             <div key={msg.id} className="chat-msg-item">
-              <div className="chat-user-avatar" style={{ background: msg.avatarBg || '#00d2ff', color: '#000' }}>
+              <div className="chat-user-avatar" style={{ background: msg.avatarBg || '#ff6a00', color: '#000' }}>
                 {msg.user.charAt(0).toUpperCase()}
               </div>
 

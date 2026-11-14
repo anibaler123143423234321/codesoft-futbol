@@ -1,67 +1,85 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Sparkles, 
-  X, 
-  Send, 
-  CheckCircle2, 
-  TrendingUp, 
-  Cpu, 
-  Target, 
-  Activity, 
-  RotateCw,
-  HelpCircle
-} from 'lucide-react';
-import { generateFullMatchAIPredictions, askTacticalAI } from '../api/cerebrasAi';
+import { Sparkles, X, Send, Target, TrendingUp, RotateCw, AlertTriangle, Check } from 'lucide-react';
+import { generateFullMatchAIPredictions, getLocalMatchPredictions, askTacticalAI } from '../api/cerebrasAi';
 import { sounds } from '../utils/soundEffects';
+import TeamLogo from './TeamLogo';
+import '../ai-modal.css';
+
+const PROMPT_IDEAS = ['¿Quién ganará?', 'Mercados de goles', 'Pronóstico de córners', 'Tarjetas y faltas', 'Marcador exacto'];
+
+const MARKETS = [
+  { key: 'goalsPick', label: 'Goles' },
+  { key: 'cornersPick', label: 'Córners' },
+  { key: 'cardsPick', label: 'Tarjetas' },
+  { key: 'scorePick', label: 'Marcador' },
+];
+
+const fmtOdds = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n.toFixed(2) : '—';
+};
+const clampPct = (v) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
 
 export default function ModalPick({ match, onClose }) {
-  if (!match) return null;
-
   const [predictions, setPredictions] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Interactive Chat State
+  // 'pending' → la IA está trabajando · 'ai' → respondió · 'failed' → no respondió · 'local' → estimación pedida por el usuario
+  const [aiState, setAiState] = useState('pending');
+  const [attempt, setAttempt] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+
   const [chatMessages, setChatMessages] = useState([]);
   const [inputQuestion, setInputQuestion] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const chatEndRef = useRef(null);
+  const closeRef = useRef(null);
 
   const home = match.homeTeam?.shortName || match.homeTeam?.name || 'Local';
   const away = match.awayTeam?.shortName || match.awayTeam?.name || 'Visita';
+  const isLive = match.status === 'live';
+  const isFinished = match.status === 'finished';
 
-  // Quick Prompt Ideas
-  const promptIdeas = [
-    '¿Quién ganará?',
-    'Mercados de goles',
-    'Pronóstico de córners',
-    'Tarjetas y faltas',
-    'Marcador exacto'
-  ];
-
-  // Fetch full predictions on mount
+  // Hasta que la IA responde solo se muestra la pantalla de carga
   useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
+    let alive = true;
+    setPredictions(null);
+    setAiState('pending');
+    setElapsed(0);
 
     generateFullMatchAIPredictions(match)
       .then(data => {
-        if (isMounted) {
+        if (!alive) return;
+        if (data?.source === 'ai') {
           setPredictions(data);
-          setLoading(false);
+          setAiState('ai');
+          sounds.playGoalChime();
+        } else {
+          setAiState('failed');
         }
       })
-      .catch(err => {
-        console.warn('Error loading predictions:', err);
-        if (isMounted) {
-          setLoading(false);
-        }
-      });
+      .catch(() => { if (alive) setAiState('failed'); });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [match.id, match.homeTeam?.score, match.awayTeam?.score]);
+    return () => { alive = false; };
+  }, [match.id, attempt]);
+
+  useEffect(() => {
+    if (aiState !== 'pending') return;
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [aiState, attempt]);
+
+  // Escape cierra; el foco entra al modal al abrir
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e) => { if (e.key === 'Escape') onCloseRef.current(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [chatMessages, isAiTyping]);
 
   const handleAskQuestion = async (questionText) => {
     const q = (questionText || inputQuestion).trim();
@@ -69,246 +87,206 @@ export default function ModalPick({ match, onClose }) {
 
     sounds.playClick();
     setInputQuestion('');
-    setShowChat(true);
-
-    const userMsg = { id: Date.now(), role: 'user', text: q };
-    setChatMessages(prev => [...prev, userMsg]);
+    setChatMessages(prev => [...prev, { id: Date.now(), role: 'user', text: q }]);
     setIsAiTyping(true);
 
+    const meta = {};
     try {
-      const aiReply = await askTacticalAI(match, q);
-      setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: aiReply }]);
-      sounds.playGoalChime();
-    } catch (err) {
-      setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Análisis: Ventaja táctica para el equipo con mayor volumen de tiros y control de campo.' }]);
+      const reply = await askTacticalAI(match, q, meta);
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: reply, source: meta.source }]);
+    } catch {
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'No se pudo obtener una respuesta. Probá de nuevo en unos segundos.', source: 'error' }]);
     } finally {
       setIsAiTyping(false);
     }
   };
 
+  const main = predictions?.mainPick;
+  const mainPct = clampPct(main?.probabilidad);
+  const reason = main?.motivo_principal || main?.justificacion;
+  const detail = main?.analisis_detallado && main.analisis_detallado !== reason ? main.analisis_detallado : null;
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div 
-        className="modal-card cerebras-ai-modal" 
+    <div className="aim-backdrop" onClick={onClose}>
+      <div
+        className="aim"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Análisis con IA: ${home} vs ${away}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Compact Pro Header */}
-        <div className="modal-pro-header">
-          <div className="modal-pro-title-group">
-            <div className="modal-pro-engine-badge">
-              <Sparkles size={13} style={{ color: '#76b900' }} />
-              <span>NVIDIA NIM AI</span>
-              <span className="badge-chip-70b">70B</span>
+        {/* Cabecera */}
+        <header className="aim-head">
+          <div className="aim-head-top">
+            <span className="aim-brand"><Sparkles size={13} /> Análisis con IA</span>
+            <span className="aim-league">{match.leagueName || 'Fútbol internacional'}</span>
+            <button
+              ref={closeRef}
+              className="aim-close"
+              onClick={() => { sounds.playClick(); onClose(); }}
+              aria-label="Cerrar"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="aim-match">
+            <div className="aim-team">
+              <TeamLogo src={match.homeTeam?.logo} alt={home} size={34} isHome />
+              <span>{home}</span>
             </div>
-            <div className="modal-pro-match-info">
-              <span className="pro-match-teams">{home} vs {away}</span>
-              {match.status === 'live' ? (
-                <span className="pro-match-score live">
-                  🔴 {match.homeTeam?.score ?? 0} - {match.awayTeam?.score ?? 0}
-                </span>
-              ) : (
-                <span className="pro-match-score">VS</span>
-              )}
-              <span className="pro-match-league">· {match.leagueName || 'Internacional'}</span>
+            <div className="aim-score">
+              {isLive || isFinished
+                ? <b>{match.homeTeam?.score ?? 0}<i>-</i>{match.awayTeam?.score ?? 0}</b>
+                : <b className="vs">VS</b>}
+              <small className={isLive ? 'live' : ''}>
+                {isLive ? `EN VIVO · ${match.minute || ''}` : isFinished ? 'FINALIZADO' : (match.timeStr || 'Por iniciar')}
+              </small>
+            </div>
+            <div className="aim-team away">
+              <span>{away}</span>
+              <TeamLogo src={match.awayTeam?.logo} alt={away} size={34} isHome={false} />
             </div>
           </div>
+        </header>
 
-          <button 
-            className="modal-close-btn" 
-            onClick={() => {
-              sounds.playClick();
-              onClose();
-            }}
-            title="Cerrar modal"
-          >
-            <X size={16} />
-          </button>
-        </div>
+        <div className="aim-body">
+          {aiState === 'pending' && (
+            <div className="aim-loading" role="status" aria-live="polite">
+              <div className="aim-loader"><i /><i /><i /></div>
+              <b>Analizando el partido…</b>
+              <span>La IA está leyendo marcador, estadísticas y cuotas · {elapsed}s</span>
+            </div>
+          )}
 
-        {/* Loading State */}
-        {loading ? (
-          <div className="modal-pro-loading">
-            <RotateCw className="animate-spin" size={28} style={{ color: 'var(--cyan-neon)', margin: '0 auto 8px' }} />
-            <p style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 600 }}>Calculando probabilidades tácticas con Llama 3.1 70B...</p>
-          </div>
-        ) : (
-          <>
-            {/* Main Value Pick Card */}
-            {predictions?.mainPick && (
-              <div className="modal-pro-pick-card">
-                <div className="pick-card-top-row">
-                  <span className="pick-card-tag">
-                    <Target size={13} />
-                    <span>{predictions.mainPick.title || 'SELECCIÓN DE VALOR'}</span>
-                  </span>
-                  <div className="pick-card-badges">
-                    <span className="pill-badge-green" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
-                      <CheckCircle2 size={11} />
-                      {predictions.mainPick.probabilidad}% Confianza
-                    </span>
-                    <span className="pro-cuota-badge">
-                      @{predictions.mainPick.cuota}
-                    </span>
-                  </div>
-                </div>
+          {aiState === 'failed' && (
+            <div className="aim-loading failed" role="alert">
+              <AlertTriangle size={26} />
+              <b>La IA no respondió</b>
+              <span>No se pudo generar el análisis. Podés reintentar o ver una estimación estadística calculada con los datos del partido.</span>
+              <div className="aim-loading-actions">
+                <button className="primary" onClick={() => { sounds.playClick(); setAttempt(a => a + 1); }}>Reintentar</button>
+                <button onClick={() => { sounds.playClick(); setPredictions(getLocalMatchPredictions(match)); setAiState('local'); }}>Ver estimación estadística</button>
+              </div>
+            </div>
+          )}
 
-                <div className="pro-pick-name">
-                  {predictions.mainPick.pick}
-                </div>
+          {aiState === 'ai' && (
+            <div className="aim-status ok" role="status">
+              <Check size={14} />
+              <span><b>Análisis generado por IA</b> con los datos reales del partido.</span>
+            </div>
+          )}
+          {aiState === 'local' && (
+            <div className="aim-status warn" role="status">
+              <AlertTriangle size={14} />
+              <span><b>Estimación estadística, no es de la IA.</b> Calculada con los datos del partido.</span>
+              <button onClick={() => { sounds.playClick(); setAttempt(a => a + 1); }}>Reintentar IA</button>
+            </div>
+          )}
 
-                {/* Tactical Justification */}
-                <div className="pro-pick-reason">
-                  <div className="reason-header">
-                    <Cpu size={12} style={{ color: 'var(--green-neon)' }} />
-                    <span>Fundamento Táctico IA</span>
-                  </div>
-                  <p className="reason-text">
-                    {predictions.mainPick.motivo_principal || predictions.mainPick.justificacion}
-                  </p>
-                </div>
-
-                {/* Key Metrics Chips */}
-                {predictions.mainPick.claves_metricas && predictions.mainPick.claves_metricas.length > 0 && (
-                  <div className="pro-metrics-row">
-                    {predictions.mainPick.claves_metricas.map((metric, idx) => (
-                      <div key={idx} className="pro-metric-chip">
-                        <Activity size={11} style={{ color: 'var(--cyan-neon)' }} />
-                        <span>{metric}</span>
-                      </div>
-                    ))}
-                    {predictions.mainPick.stake && (
-                      <div className="pro-metric-chip" style={{ color: 'var(--gold-neon)', borderColor: 'rgba(245, 158, 11, 0.3)' }}>
-                        <TrendingUp size={11} />
-                        <span>{predictions.mainPick.stake}</span>
+          {predictions && (
+            <>
+              {/* Selección principal */}
+              {main && (
+                <section className="aim-main">
+                  <div className="aim-main-info">
+                    <span className="aim-eyebrow"><Target size={12} /> Selección principal</span>
+                    <h3>{main.pick}</h3>
+                    {reason && <p>{reason}</p>}
+                    {detail && <p className="aim-detail">{detail}</p>}
+                    {(main.claves_metricas?.length > 0 || main.stake) && (
+                      <div className="aim-chips">
+                        {(main.claves_metricas || []).map((m, i) => <span key={i}>{m}</span>)}
+                        {main.stake && <span className="stake"><TrendingUp size={11} /> {main.stake}</span>}
                       </div>
                     )}
                   </div>
+                  <div className="aim-main-side">
+                    <div className="aim-odds">
+                      <small>Cuota</small>
+                      <b>{fmtOdds(main.cuota)}</b>
+                    </div>
+                    <div className="aim-conf">
+                      <div className="aim-conf-row"><small>Confianza</small><b>{mainPct}%</b></div>
+                      <div className="aim-bar"><i style={{ width: `${mainPct}%` }} /></div>
+                    </div>
+                  </div>
+                </section>
+              )}
+    
+              {/* Mercados secundarios */}
+              <section className="aim-markets">
+                {MARKETS.map(({ key, label }) => {
+                  const p = predictions?.[key];
+                  if (!p) return null;
+                  const pct = clampPct(p.probabilidad);
+                  return (
+                    <div key={key} className="aim-market">
+                      <div className="aim-market-top">
+                        <small>{label}</small>
+                        <b>{fmtOdds(p.cuota)}</b>
+                      </div>
+                      <div className="aim-market-pick">{p.pick}</div>
+                      <div className="aim-market-prob">
+                        <div className="aim-bar"><i style={{ width: `${pct}%` }} /></div>
+                        <span>{pct}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
+            </>
+          )}
+
+          {/* Conversación */}
+          {aiState !== 'pending' && (
+          <section className="aim-chat">
+            <span className="aim-eyebrow">Preguntale a la IA</span>
+            <div className="aim-prompts">
+              {PROMPT_IDEAS.map(idea => (
+                <button key={idea} onClick={() => handleAskQuestion(idea)} disabled={isAiTyping}>{idea}</button>
+              ))}
+            </div>
+            {(chatMessages.length > 0 || isAiTyping) && (
+              <div className="aim-msgs">
+                {chatMessages.map(msg => (
+                  <div key={msg.id} className={`aim-msg ${msg.role}`}>
+                    {msg.role === 'ai' && (
+                      <small>{msg.source === 'ai' ? 'IA' : msg.source === 'error' ? 'Error' : 'Estimación estadística'}</small>
+                    )}
+                    <p>{msg.text}</p>
+                  </div>
+                ))}
+                {isAiTyping && (
+                  <div className="aim-msg ai typing"><RotateCw size={12} className="aim-spin" /> Analizando… unos segundos</div>
                 )}
+                <div ref={chatEndRef} />
               </div>
             )}
-
-            {/* 4 Secondary Market Micro-Cards */}
-            <div className="modal-markets-grid">
-              {predictions?.goalsPick && (
-                <div className="modal-market-card">
-                  <div className="market-card-header">
-                    <span className="market-type cyan">⚽ GOLES</span>
-                    <span className="market-cuota">@{predictions.goalsPick.cuota}</span>
-                  </div>
-                  <div className="market-pick-text">{predictions.goalsPick.pick}</div>
-                  <span className="market-prob">✓ {predictions.goalsPick.probabilidad}% Prob.</span>
-                </div>
-              )}
-
-              {predictions?.cornersPick && (
-                <div className="modal-market-card">
-                  <div className="market-card-header">
-                    <span className="market-type gold">🚩 CÓRNERS</span>
-                    <span className="market-cuota">@{predictions.cornersPick.cuota}</span>
-                  </div>
-                  <div className="market-pick-text">{predictions.cornersPick.pick}</div>
-                  <span className="market-prob">✓ {predictions.cornersPick.probabilidad}% Prob.</span>
-                </div>
-              )}
-
-              {predictions?.cardsPick && (
-                <div className="modal-market-card">
-                  <div className="market-card-header">
-                    <span className="market-type red">🟨 TARJETAS</span>
-                    <span className="market-cuota">@{predictions.cardsPick.cuota}</span>
-                  </div>
-                  <div className="market-pick-text">{predictions.cardsPick.pick}</div>
-                  <span className="market-prob">✓ {predictions.cardsPick.probabilidad}% Prob.</span>
-                </div>
-              )}
-
-              {predictions?.scorePick && (
-                <div className="modal-market-card">
-                  <div className="market-card-header">
-                    <span className="market-type purple">🏆 MARCADOR</span>
-                    <span className="market-cuota">@{predictions.scorePick.cuota}</span>
-                  </div>
-                  <div className="market-pick-text">{predictions.scorePick.pick}</div>
-                  <span className="market-prob">✓ {predictions.scorePick.probabilidad}% Prob.</span>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Quick Question Chips (Horizontal Scroll) */}
-        <div className="modal-prompt-chips-bar">
-          <div className="prompt-chips-track">
-            {promptIdeas.map((idea, idx) => (
-              <button
-                key={idx}
-                className="prompt-chip-btn"
-                onClick={() => handleAskQuestion(idea)}
-                disabled={isAiTyping}
-              >
-                <span>{idea}</span>
-              </button>
-            ))}
-          </div>
+          </section>
+          )}
         </div>
 
-        {/* Chat History if active */}
-        {showChat && chatMessages.length > 0 && (
-          <div className="modal-pro-chat-history">
-            {chatMessages.map((msg) => (
-              <div 
-                key={msg.id} 
-                className={`pro-chat-msg ${msg.role === 'user' ? 'user' : 'ai'}`}
-              >
-                <div className="msg-role">
-                  {msg.role === 'user' ? 'Tú' : 'NVIDIA IA'}
-                </div>
-                <div className="msg-text">
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {isAiTyping && (
-              <div className="pro-chat-typing">
-                <RotateCw className="animate-spin" size={12} />
-                <span>Analizando...</span>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-        )}
-
-        {/* Ask AI Input Bar */}
-        <form 
-          className="modal-pro-input-bar"
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAskQuestion();
-          }}
+        {/* Barra de pregunta */}
+        {aiState !== 'pending' && (
+        <form
+          className="aim-composer"
+          onSubmit={(e) => { e.preventDefault(); handleAskQuestion(); }}
         >
-          <input 
-            type="text" 
-            placeholder="Pregúntale a NVIDIA IA sobre este partido..." 
+          <input
+            type="text"
+            placeholder="Escribí tu pregunta sobre este partido…"
+            aria-label="Pregunta para la IA"
             value={inputQuestion}
             onChange={(e) => setInputQuestion(e.target.value)}
             disabled={isAiTyping}
-            className="pro-input-field"
           />
-
-          <button 
-            type="submit" 
-            disabled={isAiTyping || !inputQuestion.trim()}
-            className="pro-input-btn"
-            title="Enviar pregunta"
-          >
-            <Send size={13} />
+          <button type="submit" disabled={isAiTyping || !inputQuestion.trim()} aria-label="Enviar pregunta">
+            <Send size={15} />
           </button>
         </form>
-
-        {/* Compact Footer */}
-        <div className="modal-pro-footer">
-          <span>Pronósticos probabilísticos de IA deportiva. Juega con responsabilidad.</span>
-        </div>
+        )}
+        <p className="aim-foot">Pronósticos probabilísticos, no garantías. Jugá con responsabilidad.</p>
       </div>
     </div>
   );

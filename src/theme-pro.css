@@ -1,0 +1,69 @@
+/* ============================================================
+   TEMA PRO — look de sportsbook: plano, denso, carbón + naranja.
+   Se carga después de index.css y aplana el estilo neón anterior.
+   ============================================================ */
+:root {
+  --accent: #ff6a00;
+  --accent-hover: #ff7f24;
+  --accent-soft: rgba(255, 106, 0, 0.12);
+}
+
+body {
+  background-image: none;
+  background-color: var(--bg-main);
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { text-shadow: none !important; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #2f353e; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #454c57; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* --- Ticker y cabecera --- */
+.ticker-container { background: var(--bg-darker); height: 30px; }
+.ticker-item { background: none; border: none; border-radius: 0; padding: 0 4px; font-size: 0.74rem; }
+.ticker-item:hover { background: none; transform: none; color: #fff; }
+.ticker-item .score-badge { color: #fff; }
+
+.header-nav { background: var(--bg-card); backdrop-filter: none; padding: 0 20px; top: 30px; }
+.header-content { min-height: 54px; }
+.logo-icon { background: var(--accent); box-shadow: none; border-radius: 6px; }
+.logo-icon svg { color: #fff; fill: #fff; }
+.logo-title { background: none; -webkit-text-fill-color: #fff; color: #fff; font-family: var(--font-main); font-weight: 900; letter-spacing: -0.01em; font-size: 1.15rem; }
+.logo-title span { -webkit-text-fill-color: var(--accent); }
+.logo-subtitle { letter-spacing: 0.08em; }
+
+.nav-pills { background: none; border: none; padding: 0; gap: 2px; align-self: stretch; }
+.nav-pill-btn { border-radius: 0; padding: 0 16px; height: 54px; font-size: 0.84rem; border: none; border-bottom: 3px solid transparent; }
+.nav-pill-btn:hover { background: none; color: #fff; }
+.nav-pill-btn.active { background: none; border: none; border-bottom: 3px solid var(--accent); box-shadow: none; color: #fff; }
+
+/* --- Botones --- */
+.btn-primary { background: var(--accent); color: #fff; box-shadow: none; border-radius: 6px; font-weight: 700; padding: 11px 20px; font-size: 0.88rem; }
+.btn-primary:hover { background: var(--accent-hover); transform: none; box-shadow: none; }
+.btn-secondary { background: var(--bg-elevated); border-color: transparent; border-radius: 6px; padding: 11px 20px; font-size: 0.88rem; }
+.btn-secondary:hover { background: #2f353e; border-color: transparent; }
+.icon-btn { border-radius: 6px; background: var(--bg-elevated); border-color: transparent; }
+.header-cta-btn { padding: 8px 14px; font-size: 0.8rem; }
+
+/* --- Tarjetas y superficies: sin brillos --- */
+.match-card, .match-center-header, .mc-top-bar, .side-panel > *, .spotlight-card {
+  box-shadow: none;
+}
+.match-card { border-radius: 8px; }
+.match-card:hover { transform: none; box-shadow: none; border-color: rgba(255, 255, 255, 0.16); }
+.match-card.is-live { border-color: rgba(240, 50, 60, 0.45); }
+
+/* --- Centro de partido --- */
+.match-center-header { padding: 14px 20px; border-radius: 8px; background: linear-gradient(180deg, #1d2127 0%, var(--bg-card) 100%); }
+.mc-scoreboard { font-size: 2.3rem; letter-spacing: 0.02em; }
+.mc-team-name { font-weight: 800; letter-spacing: -0.01em; }
+.mc-clock-time { color: var(--accent); font-weight: 700; }
+.match-league-label { letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.7rem; }
+.sofa-tab-btn { border-radius: 0; }
+.sofa-tab-btn.active { box-shadow: none; }
+
+.live-dot { box-shadow: none; }
+.animate-spin { color: var(--accent); }

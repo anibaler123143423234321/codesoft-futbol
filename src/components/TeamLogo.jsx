@@ -21,8 +21,8 @@ export default function TeamLogo({
   };
 
   const initials = getInitials(alt);
-  const primaryColor = isHome ? '#00d2ff' : '#ff3366';
-  const secondaryColor = isHome ? '#0077b6' : '#990033';
+  const primaryColor = isHome ? '#ff6a00' : '#f0323c';
+  const secondaryColor = isHome ? '#e85d00' : '#990033';
 
   if (!src || hasError) {
     return (
@@ -40,7 +40,7 @@ export default function TeamLogo({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: `0 0 12px ${isHome ? 'rgba(0, 210, 255, 0.25)' : 'rgba(255, 51, 102, 0.25)'}`,
+          boxShadow: `0 0 12px ${isHome ? 'rgba(255, 106, 0, 0.25)' : 'rgba(240, 50, 60, 0.25)'}`,
           userSelect: 'none',
           ...style
         }}

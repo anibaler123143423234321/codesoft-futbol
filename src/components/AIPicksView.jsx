@@ -260,11 +260,11 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
           <div 
             style={{
               background: 'linear-gradient(135deg, rgba(13, 22, 38, 0.95), rgba(8, 12, 22, 0.95))',
-              border: '1px solid rgba(0, 255, 136, 0.4)',
+              border: '1px solid rgba(25, 201, 100, 0.4)',
               borderRadius: 'var(--radius-lg)',
               padding: '24px',
               animation: 'fadeInMsg 0.3s ease-out',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 25px rgba(0, 255, 136, 0.1)'
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 25px rgba(25, 201, 100, 0.1)'
             }}
           >
             {/* Top Stat Ribbon */}
@@ -301,7 +301,7 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
             </div>
 
             {/* 1. Motivo Principal Box ("Mira por este motivo estoy mostrando ese pick") */}
-            <div style={{ background: 'rgba(0, 255, 136, 0.06)', borderLeft: '4px solid var(--green-neon)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', padding: '12px 16px', marginBottom: '14px' }}>
+            <div style={{ background: 'rgba(25, 201, 100, 0.06)', borderLeft: '4px solid var(--green-neon)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', padding: '12px 16px', marginBottom: '14px' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--green-neon)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', textTransform: 'uppercase' }}>
                 <Sparkles size={14} />
                 <span>Fundamento Clave del Pick</span>
@@ -328,7 +328,7 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegra
             {customPick.claves_metricas && customPick.claves_metricas.length > 0 && (
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
                 {customPick.claves_metricas.map((metric, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 210, 255, 0.08)', border: '1px solid rgba(0, 210, 255, 0.2)', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.76rem', color: '#e5e7eb', fontWeight: 700 }}>
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 106, 0, 0.08)', border: '1px solid rgba(255, 106, 0, 0.2)', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.76rem', color: '#e5e7eb', fontWeight: 700 }}>
                     <Activity size={12} style={{ color: 'var(--cyan-neon)' }} />
                     <span>{metric}</span>
                   </div>

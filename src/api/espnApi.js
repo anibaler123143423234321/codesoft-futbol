@@ -352,6 +352,60 @@ function parseEspnSummary(summary, matchId, league) {
     text: c.text || c.play?.text || ''
   }));
 
+  // Jugadas reales con coordenadas de cancha (Opta 0-100) para el panel táctico
+  const classifyPlay = (t = '') => {
+    const x = t.toLowerCase();
+    if (x.includes('goal') || x.includes('penalty - scored')) return 'goal';
+    if (x.includes('shot') || x.includes('woodwork') || x.includes('save') || x.includes('penalty')) return 'shot';
+    if (x.includes('corner')) return 'corner';
+    if (x.includes('card')) return 'card';
+    if (x.includes('foul') || x.includes('handball')) return 'foul';
+    if (x.includes('offside')) return 'offside';
+    if (x.includes('substitution')) return 'sub';
+    return 'other';
+  };
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const plays = (summary.commentary || [])
+    .filter(c => c.play?.type?.text)
+    .map((c, i) => {
+      const p = c.play;
+      const isHomeTeam = p.team?.id ? p.team.id === home?.id : p.team?.displayName === home?.team?.displayName;
+      const hasTeam = !!(p.team?.id || p.team?.displayName);
+      return {
+        id: p.id || `play-${i}`,
+        seconds: Number(p.clock?.value ?? c.time?.value ?? 0),
+        minute: p.clock?.displayValue || c.time?.displayValue || '',
+        period: p.period?.number || 1,
+        typeText: p.type.text,
+        category: classifyPlay(p.type.text),
+        team: hasTeam ? (isHomeTeam ? 'home' : 'away') : null,
+        player: p.participants?.[0]?.athlete?.displayName || '',
+        player2: p.participants?.[1]?.athlete?.displayName || '',
+        text: c.text || p.text || '',
+        x: num(p.fieldPositionX),
+        y: num(p.fieldPositionY),
+        x2: num(p.fieldPosition2X),
+        y2: num(p.fieldPosition2Y),
+      };
+    })
+    .filter((p, i, arr) => arr.findIndex(o => o.id === p.id) === i)
+    .sort((a, b) => a.seconds - b.seconds);
+
+  // Clips oficiales de ESPN (mp4 directo) asociados al partido
+  const videos = (summary.videos || [])
+    .map(v => ({
+      id: v.id,
+      title: v.headline || v.description || 'Video ESPN',
+      duration: v.duration || 0,
+      thumbnail: v.thumbnail || '',
+      src: v.links?.source?.HD?.href || v.links?.source?.href || v.links?.mobile?.source?.href || '',
+      hls: v.links?.source?.HLS?.HD?.href || v.links?.source?.HLS?.href || '',
+    }))
+    .filter(v => v.src);
+
+  const broadcasts = (summary.broadcasts || []).map(b => b.media?.shortName || b.station || b.name).filter(Boolean);
+  const espnLink = (summary.header?.links || []).find(l => (l.rel || []).includes('summary'))?.href || `https://www.espn.com/soccer/match/_/gameId/${matchId}`;
+
   // Parse real rosters from ESPN
   const rostersList = (summary.rosters || []).map(r => ({
     teamName: r.team?.displayName,
@@ -526,7 +580,11 @@ function parseEspnSummary(summary, matchId, league) {
     recentForm: recentForm,
     h2hHistory: h2hHistory,
     gameInfo: gameInfo,
-    rawKeyEvents: keyEvents
+    rawKeyEvents: keyEvents,
+    plays,
+    videos,
+    tvBroadcasts: broadcasts,
+    espnLink
   };
 }
 
@@ -611,4 +669,37 @@ function findStatInBox(box, name) {
   if (!box || !box.statistics) return 0;
   const s = box.statistics.find(st => st.name === name || st.label?.toLowerCase() === name.toLowerCase());
   return s ? parseInt(s.displayValue, 10) || 0 : 0;
+}
+
+/**
+ * Últimos videos oficiales de fútbol de ESPN (resúmenes y clips).
+ * El feed de noticias no trae el mp4, pero comparte ruta con la miniatura en el CDN de ESPN.
+ */
+export async function fetchEspnLatestVideos(limit = 8) {
+  try {
+    const response = await fetch(`${getBaseUrl()}/site/v2/sports/soccer/all/news?limit=50`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!response.ok) throw new Error(`ESPN News status: ${response.status}`);
+    const data = await response.json();
+    return (data.articles || [])
+      .filter(a => a.type === 'Media')
+      .map(a => {
+        const thumb = a.images?.[0]?.url || '';
+        const isCdnThumb = thumb.includes('/espn/media/common/') && /\.jpe?g$/i.test(thumb);
+        return {
+          id: a.id,
+          title: a.headline || 'Video ESPN',
+          duration: 0,
+          thumbnail: thumb,
+          src: isCdnThumb ? thumb.replace('/espn/media/common/', '/espn/media/16x9/').replace(/\.jpe?g$/i, '.mp4') : '',
+          webLink: a.links?.web?.href || '',
+        };
+      })
+      .filter(v => v.src)
+      .slice(0, limit);
+  } catch (error) {
+    console.error('Error fetching ESPN videos:', error);
+    return [];
+  }
 }

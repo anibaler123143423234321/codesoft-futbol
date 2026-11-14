@@ -45,7 +45,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), chatWebSocketPlugin()],
     define: {
-      '__NVIDIA_API_KEY__': JSON.stringify(nvidiaKey),
+      '__NVIDIA_MODEL__': JSON.stringify(env.NVIDIA_MODEL || ''),
       '__API_FOOTBALL_KEY__': JSON.stringify(apiFootballKey),
     },
     server: {
@@ -60,6 +60,15 @@ export default defineConfig(({ mode }) => {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             'Accept': 'application/json',
           },
+        },
+        // La clave de NVIDIA se agrega aquí, en el servidor: nunca llega al navegador
+        '/api/nvidia': {
+          target: 'https://integrate.api.nvidia.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/nvidia/, ''),
+          headers: { Authorization: `Bearer ${nvidiaKey}` },
+          proxyTimeout: 190000,
+          timeout: 190000,
         },
         '/api/football': {
           target: 'https://v3.football.api-sports.io',
