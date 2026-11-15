@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Sparkles, Radio, Crosshair } from 'lucide-react';
+import { ExternalLink, Sparkles, Radio, Crosshair, Tv, Maximize2, Minimize2, Pin, Activity } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 import { useLiveMatchTimer } from '../hooks/useLiveMatchTimer';
 import { fetchEspnLatestVideos } from '../api/espnApi';
@@ -64,7 +64,14 @@ function fmtDuration(s) {
 }
 
 export default function TacticalWorkspace({ match, onOpenPickModal }) {
-  const { formattedTime, seconds, isLive, isFinished, isScheduled } = useLiveMatchTimer(match);
+  const { formattedTime, seconds, isLive, isFinished, isScheduled, isHalftime } = useLiveMatchTimer(match);
+
+  const isHalf = isHalftime || 
+    formattedTime === 'HT' || 
+    match?.minute === 'HT' || 
+    match?.status === 'halftime' || 
+    match?.rawEspnStatus?.detail === 'HT' || 
+    match?.rawEspnStatus?.name?.includes('HALFTIME');
 
   const plays = match.plays || [];
   const matchVideos = match.videos || [];
@@ -82,6 +89,18 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
 
   const homeName = match.homeTeam?.shortName || match.homeTeam?.name || 'Local';
   const awayName = match.awayTeam?.shortName || match.awayTeam?.name || 'Visitante';
+
+  const [signalMode, setSignalMode] = useState('livestream');
+  const [signalTrigger, setSignalTrigger] = useState(0);
+
+  const handleWatchLive = () => {
+    sounds.playClick();
+    setSignalMode('livestream');
+    setSignalTrigger(prev => prev + 1);
+  };
+
+  const [pitchMode, setPitchMode] = useState('betano'); // 'betano' o 'dots'
+  const [isPitchExpanded, setIsPitchExpanded] = useState(false);
 
   const [selectedId, setSelectedId] = useState(null);
   const [follow, setFollow] = useState(true);
@@ -117,6 +136,134 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
   }, [follow, isLive, visiblePlays]);
 
   const selected = visiblePlays.find(p => p.id === selectedId) || null;
+
+  // Datos dinámicos para el Radar Táctico estilo Betano
+  const activePlay = selected || (visiblePlays.length > 0 ? visiblePlays[visiblePlays.length - 1] : null);
+
+  const betanoEventData = useMemo(() => {
+    // 1. Estado de Descanso / Entretiempo (cuando no se está inspeccionando una jugada pasada específica)
+    if (isHalf && !selected) {
+      return {
+        actionTitle: 'DESCANSO',
+        isHalftime: true,
+        isDangerous: false,
+        team: 'center',
+        teamName: 'Entretiempo',
+        player: 'Fin del 1.er Tiempo',
+        minute: `HT · Marcador: ${match.homeTeam?.score ?? 0} - ${match.awayTeam?.score ?? 0}`,
+        text: 'Pausa de descanso',
+        ball: { x: 52.5, y: 34 },
+        target: { x: 52.5, y: 34 },
+      };
+    }
+
+    // 2. Estado de Partido Finalizado
+    if (isFinished && !selected) {
+      return {
+        actionTitle: 'FINALIZADO',
+        isFinished: true,
+        isDangerous: false,
+        team: 'center',
+        teamName: 'Partido Finalizado',
+        player: `Resultado Final: ${match.homeTeam?.score ?? 0} - ${match.awayTeam?.score ?? 0}`,
+        minute: 'FT · Tiempo Completo',
+        text: 'Fin del partido',
+        ball: { x: 52.5, y: 34 },
+        target: { x: 52.5, y: 34 },
+      };
+    }
+
+    // 3. Estado de Partido Por Iniciar
+    if (isScheduled && !selected) {
+      return {
+        actionTitle: 'POR INICIAR',
+        isScheduled: true,
+        isDangerous: false,
+        team: 'center',
+        teamName: 'Próximo Encuentro',
+        player: `${homeName} vs ${awayName}`,
+        minute: formattedTime,
+        text: 'El partido todavía no empieza',
+        ball: { x: 52.5, y: 34 },
+        target: { x: 52.5, y: 34 },
+      };
+    }
+
+    if (!activePlay) {
+      return {
+        actionTitle: isLive ? 'Ataque' : 'Posesión',
+        isDangerous: false,
+        team: 'home',
+        teamName: homeName,
+        player: homeName,
+        minute: formattedTime,
+        ball: { x: 52.5, y: 34 },
+        target: { x: 75, y: 34 },
+      };
+    }
+
+    const team = activePlay.team || 'home';
+    const teamName = team === 'away' ? awayName : homeName;
+    const player = activePlay.player || teamName;
+    const cat = activePlay.category || 'other';
+    const typeText = (activePlay.typeText || '').toLowerCase();
+
+    let actionTitle = 'Ataque';
+    let isDangerous = false;
+
+    if (cat === 'goal') {
+      actionTitle = '¡GOL!';
+      isDangerous = true;
+    } else if (cat === 'shot') {
+      if (typeText.includes('target') || typeText.includes('arco')) {
+        actionTitle = 'Tiro al Arco';
+      } else if (typeText.includes('blocked') || typeText.includes('bloqueado')) {
+        actionTitle = 'Tiro Bloqueado';
+      } else {
+        actionTitle = 'Tiro';
+      }
+      isDangerous = true;
+    } else if (cat === 'corner') {
+      actionTitle = 'Córner';
+      isDangerous = true;
+    } else if (cat === 'foul') {
+      actionTitle = 'Tiro Libre';
+    } else if (cat === 'offside') {
+      actionTitle = 'Fuera de Juego';
+    } else if (cat === 'card') {
+      actionTitle = 'Tarjeta';
+    } else {
+      const xCoord = activePlay.x != null ? activePlay.x : 50;
+      if (xCoord > 65) {
+        actionTitle = 'Ataque Peligroso';
+        isDangerous = true;
+      } else {
+        actionTitle = 'Ataque';
+      }
+    }
+
+    const basePos = toPitch(team, activePlay.x ?? 50, activePlay.y ?? 50) || {
+      x: team === 'away' ? 32 : 73,
+      y: 34,
+    };
+
+    const endPos = (activePlay.x2 != null && activePlay.y2 != null)
+      ? toPitch(team, activePlay.x2, activePlay.y2)
+      : { x: team === 'away' ? 0 : 105, y: 34 };
+
+    return {
+      actionTitle,
+      isDangerous,
+      team,
+      teamName,
+      player,
+      minute: activePlay.minute || formattedTime,
+      text: activePlay.text || '',
+      ball: basePos,
+      target: endPos,
+    };
+  }, [activePlay, homeName, awayName, isLive, isHalf, isFinished, isScheduled, selected, match, formattedTime]);
+
 
   const playersByTeam = useMemo(() => {
     const acc = { home: new Map(), away: new Map() };
@@ -185,13 +332,20 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
           <span>datos reales ESPN · {plays.length} eventos</span>
         </div>
         <div className="tw-actions">
+          <button
+            className={`tw-pill tw-pill-live ${signalMode === 'livestream' ? 'on' : ''}`}
+            onClick={handleWatchLive}
+            title="Buscar y ver transmisión en vivo de este partido"
+          >
+            <Tv size={13} /> Ver en vivo
+          </button>
           {isLive && (
             <button
               className={`tw-pill ${follow ? 'on' : ''}`}
               onClick={() => { sounds.playClick(); setFollow(true); }}
-              title="Seguir la última jugada"
+              title="Seguir la última jugada táctica"
             >
-              <Radio size={13} /> En vivo
+              <Radio size={13} /> Jugadas
             </button>
           )}
           {match.espnLink && (
@@ -205,10 +359,14 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
         </div>
       </div>
 
-      <div className="tw-grid">
+      <div className={`tw-grid ${isPitchExpanded ? 'tw-pitch-expanded' : ''}`}>
         {/* Video / señal */}
         <div className="tw-panel tw-video">
           <SignalPlayer
+            match={match}
+            externalMode={signalMode}
+            onModeChange={setSignalMode}
+            searchTrigger={signalTrigger}
             clips={videos}
             clipsAreMatch={hasMatchVideos}
             onClipError={(id) => setBrokenIds(prev => new Set(prev).add(id))}
@@ -228,6 +386,47 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
 
         {/* Cancha 2D + jugadores */}
         <div className="tw-panel tw-pitchcol">
+          {/* Barra de control superior de la cancha estilo Betano */}
+          <div className="betano-controls-bar">
+            <div className="betano-mode-tabs">
+              <button
+                type="button"
+                className={`betano-tab ${pitchMode === 'betano' ? 'active' : ''}`}
+                onClick={() => { sounds.playClick(); setPitchMode('betano'); }}
+              >
+                <Activity size={12} /> Cancha Betano
+              </button>
+              <button
+                type="button"
+                className={`betano-tab ${pitchMode === 'dots' ? 'active' : ''}`}
+                onClick={() => { sounds.playClick(); setPitchMode('dots'); }}
+              >
+                <Crosshair size={12} /> Jugadas ({visiblePlays.length})
+              </button>
+            </div>
+
+            <div className="betano-status-actions">
+              <button
+                type="button"
+                className={`betano-btn-expand ${isPitchExpanded ? 'active' : ''}`}
+                onClick={() => { sounds.playClick(); setIsPitchExpanded(prev => !prev); }}
+                title={isPitchExpanded ? "Vista normal" : "Expandir cancha"}
+              >
+                {isPitchExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                <span>{isPitchExpanded ? 'Reducir' : 'Expandir'}</span>
+              </button>
+              <button
+                type="button"
+                className={`betano-btn-pin ${follow ? 'active' : ''}`}
+                onClick={() => { sounds.playClick(); setFollow(prev => !prev); }}
+                title="Fijar evento o seguir en vivo automáticamente"
+              >
+                <Pin size={12} />
+                <span>{follow ? 'En vivo' : 'Fijado'}</span>
+              </button>
+            </div>
+          </div>
+
           <div className="tw-pitch">
             <svg viewBox={`-3 -3 ${PITCH_W + 6} ${PITCH_H + 6}`} preserveAspectRatio="xMidYMid meet">
               <rect x="-3" y="-3" width={PITCH_W + 6} height={PITCH_H + 6} fill="#0d6b3a" />
@@ -253,7 +452,82 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
                 <circle cx={PITCH_W - 11} cy={PITCH_H / 2} r="0.5" />
               </g>
 
-              {visiblePlays.map(p => {
+              {/* MODO RADAR BETANO (Zona de Ataque + Vector del Balón o Descanso) */}
+              {pitchMode === 'betano' && (
+                <g className="betano-layer">
+                  {(betanoEventData.isHalftime || betanoEventData.team === 'center') ? (
+                    <g className="betano-center-halftime-layer">
+                      <circle
+                        cx="52.5"
+                        cy="34"
+                        r="9.15"
+                        className="betano-center-circle-glow"
+                      />
+                      <circle
+                        cx="52.5"
+                        cy="34"
+                        r="14"
+                        className="betano-center-circle-pulse"
+                      />
+                    </g>
+                  ) : (
+                    <>
+                      {/* Zona de Ataque sombreada (Chevron estilo Betano) */}
+                      {betanoEventData.team === 'home' ? (
+                        <polygon
+                          className={`betano-attack-zone ${betanoEventData.isDangerous ? 'dangerous' : ''}`}
+                          points="56,0 78,0 105,34 78,68 56,68 83,34"
+                        />
+                      ) : (
+                        <polygon
+                          className={`betano-attack-zone ${betanoEventData.isDangerous ? 'dangerous' : ''}`}
+                          points="49,0 27,0 0,34 27,68 49,68 22,34"
+                        />
+                      )}
+
+                      {/* Vector y trayectoria hacia el arco rival */}
+                      <line
+                        x1={betanoEventData.ball.x}
+                        y1={betanoEventData.ball.y}
+                        x2={betanoEventData.target.x}
+                        y2={betanoEventData.target.y}
+                        className="betano-vector-line"
+                      />
+                    </>
+                  )}
+
+                  {/* Ondas de radar expansivas del balón */}
+                  <circle
+                    cx={betanoEventData.ball.x}
+                    cy={betanoEventData.ball.y}
+                    r="3.8"
+                    className="betano-ball-pulse-1"
+                  />
+                  <circle
+                    cx={betanoEventData.ball.x}
+                    cy={betanoEventData.ball.y}
+                    r="6.8"
+                    className="betano-ball-pulse-2"
+                  />
+
+                  {/* Balón táctico */}
+                  <circle
+                    cx={betanoEventData.ball.x}
+                    cy={betanoEventData.ball.y}
+                    r="2.2"
+                    className="betano-ball"
+                  />
+                  <circle
+                    cx={betanoEventData.ball.x}
+                    cy={betanoEventData.ball.y}
+                    r="0.8"
+                    fill="#0f172a"
+                  />
+                </g>
+              )}
+
+              {/* MODO MAPA DE JUGADAS (Todos los eventos) */}
+              {pitchMode === 'dots' && visiblePlays.map(p => {
                 const pos = toPitch(p.team, p.x, p.y);
                 if (!pos || p.id === selectedId) return null;
                 return (
@@ -274,7 +548,7 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
                 );
               })}
 
-              {selected && selPos && (
+              {pitchMode === 'dots' && selected && selPos && (
                 <g>
                   {selPos2 && (
                     <>
@@ -295,12 +569,29 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
               )}
             </svg>
 
+            {/* OVERLAY CENTRAL ESTILO BETANO */}
+            {pitchMode === 'betano' && (
+              <div className="betano-center-box">
+                <div className={`betano-action-label ${betanoEventData.isDangerous ? 'danger' : ''} ${betanoEventData.isHalftime ? 'halftime' : ''}`}>
+                  {betanoEventData.isHalftime ? '☕ DESCANSO' : betanoEventData.actionTitle}
+                </div>
+                <div className="betano-player-name">
+                  {betanoEventData.player}
+                </div>
+                {betanoEventData.minute && (
+                  <div className="betano-minute-tag">
+                    {betanoEventData.minute}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="tw-pitch-legend">
               <span><i style={{ background: HOME_COLOR }} />{homeName} →</span>
               <span>← {awayName}<i style={{ background: AWAY_COLOR }} /></span>
             </div>
 
-            {selected && (
+            {pitchMode === 'dots' && selected && (
               <div className={`tw-action ${selected.team === 'away' ? 'away' : 'home'}`}>
                 <b>{TYPE_ES[selected.typeText] || selected.typeText}</b>
                 <span>{selected.team === 'away' ? awayName : homeName}{selected.player ? ` · ${selected.player}` : ''}</span>

@@ -180,3 +180,508 @@
 .tw-action span { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
 .tw-action time { font-family: var(--font-score); font-weight: 700; color: var(--accent, #ff6a00); }
 .tw-action small { color: var(--text-muted); font-size: 0.66rem; }
+
+/* ============================================================
+   ESTILOS DE TRANSMISIÓN EN VIVO (RAPIDAPI LIVESTREAM)
+   ============================================================ */
+.tw-pill-live {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #ff5555 !important;
+  border: 1px solid rgba(239, 68, 68, 0.45) !important;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.tw-pill-live:hover, .tw-pill-live.on {
+  background: #ef4444 !important;
+  color: #fff !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.55);
+}
+
+.sp-source-live {
+  color: #ff5555 !important;
+}
+
+.sp-source-live.active {
+  color: #fff !important;
+  border-bottom-color: #ef4444 !important;
+}
+
+.sp-stream-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-card);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sp-stream-search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-stream-search-form input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px 0 30px;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.76rem;
+}
+
+.sp-search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.sp-player-toggle {
+  display: flex;
+  align-items: center;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px;
+  flex: none;
+}
+
+.sp-toggle-btn {
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font: 700 0.68rem var(--font-main);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sp-toggle-btn.active {
+  background: var(--accent, #ff6a00);
+  color: #fff;
+}
+
+.sp-live-feed-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  padding: 6px 10px;
+  overflow-x: auto;
+  flex: none;
+}
+
+.sp-live-feed-title {
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sp-live-feed-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.sp-live-game-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.sp-live-game-chip:hover {
+  background: #2a313d;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sp-live-game-chip.active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+}
+
+.sp-live-game-chip .chip-league {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.sp-live-game-chip .chip-teams {
+  font-size: 0.72rem;
+  color: #fff;
+}
+
+.sp-live-game-chip .chip-teams b {
+  color: var(--accent, #ff6a00);
+  margin: 0 3px;
+}
+
+.sp-live-game-chip .chip-badge {
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #22c55e;
+  letter-spacing: 0.05em;
+}
+
+.sp-tag-live {
+  background: rgba(15, 17, 20, 0.92) !important;
+  border-left: 2px solid #22c55e !important;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   CANCHA TÁCTICA RADAR ESTILO BETANO
+   ============================================================ */
+.tw-pitch-expanded {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) 280px !important;
+}
+
+.betano-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  padding: 6px 10px;
+  flex: none;
+}
+
+.betano-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.betano-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font: 700 0.7rem var(--font-main);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.betano-tab:hover {
+  color: #fff;
+  background: var(--bg-elevated);
+}
+
+.betano-tab.active {
+  background: var(--accent-soft, rgba(255, 106, 0, 0.12));
+  border-color: var(--accent, #ff6a00);
+  color: #fff;
+}
+
+.betano-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.betano-btn-expand, .betano-btn-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font: 600 0.68rem var(--font-main);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.betano-btn-expand:hover, .betano-btn-pin:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.betano-btn-pin.active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ff5555;
+}
+
+/* Zona de Ataque sombreada estilo Betano */
+.betano-attack-zone {
+  fill: #093b1d;
+  opacity: 0.72;
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 0.45;
+  filter: drop-shadow(0 0 8px rgba(13, 148, 136, 0.35));
+  animation: betanoSweep 2.2s ease-in-out infinite alternate;
+}
+
+.betano-attack-zone.dangerous {
+  fill: rgba(185, 28, 28, 0.55);
+  stroke: rgba(239, 68, 68, 0.85);
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.6));
+  animation: betanoDangerSweep 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes betanoSweep {
+  0% { opacity: 0.55; }
+  100% { opacity: 0.85; }
+}
+
+@keyframes betanoDangerSweep {
+  0% { opacity: 0.6; }
+  100% { opacity: 0.95; }
+}
+
+/* Vector y Balón */
+.betano-vector-line {
+  stroke: #ffffff;
+  stroke-width: 0.75;
+  stroke-dasharray: 2.2 1.4;
+  animation: betanoDash 1.2s linear infinite;
+}
+
+@keyframes betanoDash {
+  to { stroke-dashoffset: -7.2; }
+}
+
+.betano-ball {
+  fill: #ffffff;
+  stroke: #0f172a;
+  stroke-width: 0.5;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
+}
+
+.betano-ball-pulse-1, .betano-ball-pulse-2 {
+  fill: none;
+  stroke: #ffffff;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.betano-ball-pulse-1 {
+  stroke-width: 0.35;
+  animation: betanoPulse 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.betano-ball-pulse-2 {
+  stroke-width: 0.25;
+  animation: betanoPulse 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite 0.7s;
+}
+
+@keyframes betanoPulse {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* Caja Central de Texto Flotante (Exacta a Betano) */
+.betano-center-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  background: rgba(11, 15, 23, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.65);
+  min-width: 170px;
+  max-width: 85%;
+  z-index: 10;
+  animation: betanoAppear 0.25s ease-out;
+}
+
+@keyframes betanoAppear {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.betano-action-label {
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.betano-action-label.danger {
+  color: #ff5555;
+  text-shadow: 0 0 14px rgba(255, 85, 85, 0.6);
+}
+
+.betano-player-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.betano-minute-tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent, #ff6a00);
+  font-family: var(--font-score);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+.betano-action-label.halftime {
+  color: #facc15;
+  text-shadow: 0 0 16px rgba(250, 204, 21, 0.65);
+}
+
+.betano-center-circle-glow {
+  fill: rgba(250, 204, 21, 0.12);
+  stroke: rgba(250, 204, 21, 0.6);
+  stroke-width: 0.5;
+  animation: betanoGlow 2s ease-in-out infinite alternate;
+}
+
+.betano-center-circle-pulse {
+  fill: none;
+  stroke: rgba(250, 204, 21, 0.35);
+  stroke-width: 0.35;
+  animation: betanoPulse 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+@keyframes betanoGlow {
+  0% { fill: rgba(250, 204, 21, 0.08); }
+  100% { fill: rgba(250, 204, 21, 0.22); }
+}
+
+/* ============================================================
+   BANNER DE CONTROL DE CUOTA Y SUSCRIPCIÓN RAPIDAPI
+   ============================================================ */
+.sp-quota-banner {
+  max-width: 440px;
+  background: rgba(18, 22, 31, 0.95);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 8px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+  animation: betanoAppear 0.25s ease-out;
+}
+
+.sp-quota-icon {
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.sp-quota-banner h4 {
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.sp-quota-banner p {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.sp-quota-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.sp-btn-upgrade {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: var(--accent, #ff6a00);
+  color: #fff;
+  font: 700 0.8rem var(--font-main);
+  padding: 9px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.sp-btn-upgrade:hover {
+  background: var(--accent-hover, #ff7f24);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(255, 106, 0, 0.4);
+}
+
+.sp-btn-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font: 600 0.76rem var(--font-main);
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sp-btn-fallback:hover {
+  color: #fff;
+  background: #2a313d;
+}
+
+.sp-quota-note {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+
+
+

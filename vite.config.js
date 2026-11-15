@@ -41,17 +41,29 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const nvidiaKey = env.NVIDIA_API_KEY || env.VITE_NVIDIA_API_KEY || '';
   const apiFootballKey = env.API_FOOTBALL_KEY || env.VITE_API_FOOTBALL_KEY || '0d1b547abd001b381a4e9ae88ce5ef18';
+  const rapidApiKey = env.RAPIDAPI_KEY || env.VITE_RAPIDAPI_KEY || '145cb9d94dmshae1f304d7a5dc56p1bb2b8jsn47474853c5af';
 
   return {
     plugins: [react(), chatWebSocketPlugin()],
     define: {
       '__NVIDIA_MODEL__': JSON.stringify(env.NVIDIA_MODEL || ''),
       '__API_FOOTBALL_KEY__': JSON.stringify(apiFootballKey),
+      '__RAPIDAPI_KEY__': JSON.stringify(rapidApiKey),
     },
     server: {
       port: 3000,
       open: false,
       proxy: {
+        '/api/rapidapi-stream': {
+          target: 'https://football-live-stream-api.p.rapidapi.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/rapidapi-stream/, ''),
+          headers: {
+            'X-RapidAPI-Key': rapidApiKey,
+            'X-RapidAPI-Host': 'football-live-stream-api.p.rapidapi.com',
+            'Accept': 'application/json',
+          },
+        },
         '/api/espn': {
           target: 'https://site.api.espn.com',
           changeOrigin: true,

@@ -1,7 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
-import { Film, Link2, Camera, MonitorUp, FileVideo, Tv, Circle, Square, X } from 'lucide-react';
+import { 
+  Film, Link2, Camera, MonitorUp, FileVideo, Tv, 
+  Circle, Square, X, Search, RefreshCw, Play, 
+  CheckCircle2, AlertCircle, ExternalLink, AlertTriangle 
+} from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
+import { 
+  findStreamForMatch, 
+  fetchAllLiveStreamMatches, 
+  fetchMatchStreamLink, 
+  extractM3u8Url 
+} from '../api/footballStreamApi';
 
 const STORAGE_KEY = 'codesoft.signalUrl';
 
@@ -44,6 +54,7 @@ function fmtDuration(s) {
 }
 
 const MODES = [
+  { key: 'livestream', label: 'Ver en vivo', icon: Tv },
   { key: 'clips', label: 'Clips ESPN', icon: Film },
   { key: 'url', label: 'URL', icon: Link2 },
   { key: 'camera', label: 'Cámara', icon: Camera },
@@ -51,8 +62,18 @@ const MODES = [
   { key: 'file', label: 'Archivo', icon: FileVideo },
 ];
 
-export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClipError, scoreOverlay, emptyText }) {
-  const [mode, setMode] = useState(() => (readSavedUrl() ? 'url' : 'clips'));
+export default function SignalPlayer({ 
+  match,
+  externalMode,
+  onModeChange,
+  searchTrigger,
+  clips = [], 
+  clipsAreMatch = false, 
+  onClipError, 
+  scoreOverlay, 
+  emptyText 
+}) {
+  const [mode, setMode] = useState(() => externalMode || 'livestream');
   const [urlInput, setUrlInput] = useState(readSavedUrl);
   const [activeUrl, setActiveUrl] = useState(readSavedUrl);
   const [clipIdx, setClipIdx] = useState(0);
@@ -64,12 +85,137 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
   const [error, setError] = useState('');
   const [recording, setRecording] = useState(false);
 
+  // Estados para la transmisión en vivo (RapidAPI)
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveStreamData, setLiveStreamData] = useState(null);
+  const [matchedGame, setMatchedGame] = useState(null);
+  const [allLiveGames, setAllLiveGames] = useState([]);
+  const [playerType, setPlayerType] = useState('hls'); // 'hls' o 'iframe'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quotaError, setQuotaError] = useState(null);
+
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const recorderRef = useRef(null);
+  const searchedMatchIdRef = useRef(null);
+
+  // Sincronizar si el padre fuerza un cambio de modo
+  useEffect(() => {
+    if (externalMode && externalMode !== mode) {
+      setMode(externalMode);
+    }
+  }, [externalMode]);
 
   const parsed = mode === 'url' ? parseSignalUrl(activeUrl) : null;
   const clip = clips[Math.min(clipIdx, Math.max(0, clips.length - 1))] || null;
+
+  const homeName = match?.homeTeam?.name || match?.homeTeam?.shortName || '';
+  const awayName = match?.awayTeam?.name || match?.awayTeam?.shortName || '';
+
+  // Buscar transmisión automáticamente para el partido actual
+  const executeSearch = useCallback(async (customQuery = null) => {
+    setLiveLoading(true);
+    setError('');
+    setQuotaError(null);
+    try {
+      if (customQuery) {
+        // Búsqueda manual por texto
+        const res = await fetchAllLiveStreamMatches();
+        if (res.error) {
+          setQuotaError(res.error);
+          return;
+        }
+        const all = res.data || [];
+        setAllLiveGames(all);
+        const q = customQuery.toLowerCase();
+        const found = all.find(m => 
+          m.home_name?.toLowerCase().includes(q) || 
+          m.away_name?.toLowerCase().includes(q) ||
+          m.league?.toLowerCase().includes(q)
+        );
+        if (found) {
+          try {
+            const streamInfo = await fetchMatchStreamLink(found.id);
+            setMatchedGame(found);
+            setLiveStreamData(streamInfo);
+          } catch (linkErr) {
+            if (linkErr.type === 'QUOTA_EXCEEDED' || linkErr.type === 'NOT_SUBSCRIBED') {
+              setQuotaError(linkErr);
+            } else {
+              setError(linkErr.message || 'Error al obtener la señal.');
+            }
+          }
+        } else {
+          setLiveStreamData(null);
+          setMatchedGame(null);
+          setError(`No encontramos partidos con "${customQuery}". Podés elegir uno de la lista inferior.`);
+        }
+      } else {
+        // Búsqueda inteligente por los equipos del partido actual
+        const res = await findStreamForMatch(homeName, awayName);
+        if (res.error) {
+          setQuotaError(res.error);
+          return;
+        }
+        setAllLiveGames(res.allMatches || []);
+        if (res.found && res.stream) {
+          setMatchedGame(res.matchedMatch);
+          setLiveStreamData(res.stream);
+        } else {
+          setLiveStreamData(null);
+          setMatchedGame(null);
+        }
+      }
+    } catch (err) {
+      if (err.type === 'QUOTA_EXCEEDED' || err.type === 'NOT_SUBSCRIBED') {
+        setQuotaError(err);
+      } else {
+        console.error('Error al buscar streaming:', err);
+        setError('Ocurrió un error al contactar el servicio de transmisión.');
+      }
+    } finally {
+      setLiveLoading(false);
+    }
+  }, [homeName, awayName]);
+
+  // Ejecutar búsqueda cuando se entra a modo livestream o cambia el partido
+  useEffect(() => {
+    if (mode === 'livestream') {
+      if (match?.id !== searchedMatchIdRef.current || !liveStreamData) {
+        searchedMatchIdRef.current = match?.id;
+        executeSearch();
+      }
+    }
+  }, [mode, match?.id, executeSearch]);
+
+  // Si el padre incrementa searchTrigger, forzar re-búsqueda
+  useEffect(() => {
+    if (searchTrigger > 0) {
+      setMode('livestream');
+      executeSearch();
+    }
+  }, [searchTrigger, executeSearch]);
+
+  // Seleccionar directamente un partido de la lista de RapidAPI
+  const selectLiveGame = async (game) => {
+    sounds.playClick();
+    setLiveLoading(true);
+    setError('');
+    setQuotaError(null);
+    try {
+      const streamInfo = await fetchMatchStreamLink(game.id);
+      setMatchedGame(game);
+      setLiveStreamData(streamInfo);
+    } catch (err) {
+      if (err.type === 'QUOTA_EXCEEDED' || err.type === 'NOT_SUBSCRIBED') {
+        setQuotaError(err);
+      } else {
+        setError('No se pudo cargar la transmisión de este partido.');
+      }
+    } finally {
+      setLiveLoading(false);
+    }
+  };
 
   const stopStream = () => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
@@ -79,7 +225,7 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
     });
   };
 
-  // Liberar cámara / captura al desmontar
+  // Liberar recursos al desmontar
   useEffect(() => () => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
   }, []);
@@ -91,33 +237,60 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
     const el = videoRef.current;
     if (!el) return;
     let hls;
+
     if (mode === 'camera' || mode === 'screen') {
       el.srcObject = stream || null;
       if (stream) el.play().catch(() => {});
       return () => { el.srcObject = null; };
     }
+
     el.srcObject = null;
+
+    // Reproducción HLS para modo URL
     if (mode === 'url' && parsed?.kind === 'hls') {
       if (Hls.isSupported()) {
         hls = new Hls({ lowLatencyMode: true });
         hls.on(Hls.Events.ERROR, (_e, data) => {
-          if (data.fatal) setError('No se pudo cargar la señal HLS. Revisá que el enlace .m3u8 esté activo y permita reproducirse desde esta página (CORS).');
+          if (data.fatal) setError('No se pudo cargar la señal HLS. Revisá el enlace .m3u8.');
         });
         hls.loadSource(parsed.src);
         hls.attachMedia(el);
       } else {
-        el.src = parsed.src; // Safari reproduce HLS de forma nativa
+        el.src = parsed.src;
       }
       el.play().catch(() => {});
     }
+
+    // Reproducción HLS para modo LIVESTREAM
+    if (mode === 'livestream' && playerType === 'hls' && liveStreamData?.m3u8Url) {
+      if (Hls.isSupported()) {
+        hls = new Hls({ 
+          lowLatencyMode: true,
+          backBufferLength: 90
+        });
+        hls.on(Hls.Events.ERROR, (_e, data) => {
+          if (data.fatal) {
+            console.warn('HLS directo falló, alternando a visor web...', data);
+            setPlayerType('iframe');
+          }
+        });
+        hls.loadSource(liveStreamData.m3u8Url);
+        hls.attachMedia(el);
+      } else {
+        el.src = liveStreamData.m3u8Url;
+      }
+      el.play().catch(() => {});
+    }
+
     return () => { hls?.destroy(); };
-  }, [mode, stream, parsed?.kind, parsed?.src]);
+  }, [mode, stream, parsed?.kind, parsed?.src, playerType, liveStreamData?.m3u8Url]);
 
   const switchMode = (next) => {
     sounds.playClick();
     setError('');
     if (next !== mode) stopStream();
     setMode(next);
+    onModeChange?.(next);
     if (next === 'file' && !fileSrc) fileInputRef.current?.click();
   };
 
@@ -173,7 +346,6 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
     setMode('file');
   };
 
-  // Grabar la señal de cámara / pantalla a un archivo .webm local
   const toggleRecording = () => {
     sounds.playClick();
     if (recording) {
@@ -203,6 +375,7 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
   const showVideoEl =
     (isStreamMode && stream) ||
     (mode === 'url' && parsed && parsed.kind !== 'iframe') ||
+    (mode === 'livestream' && playerType === 'hls' && liveStreamData?.m3u8Url) ||
     (mode === 'file' && fileSrc) ||
     (mode === 'clips' && clip);
 
@@ -212,10 +385,13 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
         : mode === 'url' && parsed?.kind === 'video' ? parsed.src
           : undefined;
 
-  const liveBadge = (mode === 'url' && parsed) || (isStreamMode && stream);
+  const liveBadge = (mode === 'url' && parsed) || 
+                    (isStreamMode && stream) || 
+                    (mode === 'livestream' && liveStreamData);
 
   return (
     <div className="sp">
+      {/* Pestañas de origen de señal */}
       <div className="sp-sources" role="tablist" aria-label="Fuente de video">
         <span className="sp-sources-label">Señal</span>
         {MODES.map(({ key, label, icon: Icon }) => (
@@ -223,7 +399,7 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
             key={key}
             role="tab"
             aria-selected={mode === key}
-            className={`sp-source ${mode === key ? 'active' : ''}`}
+            className={`sp-source ${mode === key ? 'active' : ''} ${key === 'livestream' ? 'sp-source-live' : ''}`}
             onClick={() => switchMode(key)}
           >
             <Icon size={13} /> {label}
@@ -237,6 +413,51 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
         )}
       </div>
 
+      {/* Barra de control para TRANSMISIÓN EN VIVO */}
+      {mode === 'livestream' && (
+        <div className="sp-urlbar sp-stream-bar">
+          <form 
+            className="sp-stream-search-form" 
+            onSubmit={(e) => { e.preventDefault(); executeSearch(searchQuery.trim() || null); }}
+          >
+            <Search size={14} className="sp-search-icon" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={homeName ? `Buscar transmisión (${homeName} vs ${awayName})` : "Buscar partido o liga..."}
+              aria-label="Buscar partido en vivo"
+              spellCheck={false}
+            />
+            <button type="submit" className="sp-go" disabled={liveLoading}>
+              {liveLoading ? <RefreshCw size={13} className="spin" /> : 'Buscar'}
+            </button>
+          </form>
+
+          {liveStreamData && (
+            <div className="sp-player-toggle">
+              <button 
+                type="button"
+                className={`sp-toggle-btn ${playerType === 'hls' ? 'active' : ''}`}
+                onClick={() => setPlayerType('hls')}
+                title="Reproductor directo de alta fidelidad HLS"
+              >
+                HLS Directo
+              </button>
+              <button 
+                type="button"
+                className={`sp-toggle-btn ${playerType === 'iframe' ? 'active' : ''}`}
+                onClick={() => setPlayerType('iframe')}
+                title="Visor web integrado"
+              >
+                Visor Web
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Barra de control para URL personalizada */}
       {mode === 'url' && (
         <form className="sp-urlbar" onSubmit={loadUrl}>
           <input
@@ -261,6 +482,7 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
         </form>
       )}
 
+      {/* Selector de cámara si hay múltiples */}
       {mode === 'camera' && devices.length > 1 && (
         <div className="sp-urlbar">
           <select value={deviceId} onChange={(e) => { setDeviceId(e.target.value); startCamera(e.target.value); }} aria-label="Dispositivo de video">
@@ -269,20 +491,25 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
         </div>
       )}
 
+      {/* Escenario de video principal */}
       <div className="sp-stage">
-        {mode === 'url' && parsed?.kind === 'iframe' && (
+        {/* Iframe para URL o Livestream visor web */}
+        {((mode === 'url' && parsed?.kind === 'iframe') || 
+          (mode === 'livestream' && playerType === 'iframe' && liveStreamData?.iframeUrl)) && (
           <iframe
-            key={parsed.src}
-            src={parsed.src}
+            key={mode === 'livestream' ? liveStreamData.iframeUrl : parsed.src}
+            src={mode === 'livestream' ? liveStreamData.iframeUrl : parsed.src}
             title="Señal en vivo"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
             allowFullScreen
+            referrerPolicy="no-referrer"
           />
         )}
 
+        {/* Video HTML5 / HLS */}
         {showVideoEl && (
           <video
-            key={mode === 'clips' ? `clip-${clip?.id}` : mode}
+            key={mode === 'clips' ? `clip-${clip?.id}` : `${mode}-${playerType}`}
             ref={videoRef}
             src={directSrc}
             poster={mode === 'clips' ? clip?.thumbnail : undefined}
@@ -291,14 +518,86 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
             autoPlay={mode !== 'clips'}
             muted={isStreamMode}
             preload="metadata"
+            referrerPolicy="no-referrer"
             onError={() => {
               if (mode === 'clips') onClipError?.(clip?.id);
-              else if (directSrc) setError('No se pudo reproducir este video. Probá con un enlace .m3u8 / .mp4 directo, YouTube o Twitch.');
+              else if (mode === 'livestream') setPlayerType('iframe');
+              else if (directSrc) setError('No se pudo reproducir este video. Probá con un enlace directo o el visor web.');
             }}
           />
         )}
 
-        {!showVideoEl && !(mode === 'url' && parsed?.kind === 'iframe') && (
+        {/* Estado de carga de transmisión */}
+        {mode === 'livestream' && liveLoading && (
+          <div className="sp-empty">
+            <RefreshCw size={34} className="spin text-accent" />
+            <h4>Conectando con la señal en vivo...</h4>
+            <p>Buscando canales de transmisión oficiales para <b>{homeName} vs {awayName}</b></p>
+          </div>
+        )}
+
+        {/* ALERTA DE CUOTA O SUSCRIPCIÓN EN LIVESTREAM */}
+        {mode === 'livestream' && quotaError && !liveLoading && (
+          <div className="sp-quota-banner">
+            <div className="sp-quota-icon">
+              <AlertTriangle size={36} color="#f59e0b" />
+            </div>
+            <h4>
+              {quotaError.type === 'QUOTA_EXCEEDED' 
+                ? 'Límite de peticiones alcanzado (50 / día)' 
+                : 'Suscripción requerida en RapidAPI'}
+            </h4>
+            <p>{quotaError.message}</p>
+            <div className="sp-quota-actions">
+              <a
+                href="https://rapidapi.com/Thawtarlamin/api/football-live-stream-api/pricing"
+                target="_blank"
+                rel="noreferrer"
+                className="sp-btn-upgrade"
+              >
+                <ExternalLink size={13} /> Activar o Mejorar Plan (RapidAPI)
+              </a>
+              <button
+                type="button"
+                className="sp-btn-fallback"
+                onClick={() => switchMode('url')}
+              >
+                <Link2 size={13} /> Conectar señal propia por URL (.m3u8)
+              </button>
+            </div>
+            <span className="sp-quota-note">
+              Tu web está protegida: las peticiones automáticas se han pausado para evitar errores.
+            </span>
+          </div>
+        )}
+
+        {/* Estado vacío cuando no hay video en Livestream */}
+        {mode === 'livestream' && !liveLoading && !liveStreamData && !quotaError && (
+          <div className="sp-empty">
+            <Tv size={34} />
+            <h4>Sin transmisión directa activa</h4>
+            <p>
+              {homeName 
+                ? `No encontramos señal abierta de transmisión en este momento para ${homeName} vs ${awayName}.` 
+                : 'Seleccioná un partido para ver su señal en vivo.'}
+            </p>
+            {allLiveGames.length > 0 && (
+              <p style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Podés hacer clic en cualquiera de los partidos en vivo disponibles abajo para ver su transmisión:
+              </p>
+            )}
+            <button 
+              className="sp-cta" 
+              onClick={() => executeSearch()} 
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <RefreshCw size={14} /> Reintentar búsqueda
+            </button>
+          </div>
+        )}
+
+        {/* Estados vacíos de otros modos */}
+        {!showVideoEl && !liveLoading && !(mode === 'url' && parsed?.kind === 'iframe') && mode !== 'livestream' && (
           <div className="sp-empty">
             <Tv size={30} />
             {mode === 'clips' && (<><h4>Sin video disponible</h4><p>{emptyText}</p></>)}
@@ -332,17 +631,52 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
           </div>
         )}
 
+        {/* Overlays de estado sobre el video */}
         <div className="sp-overlay">
           {liveBadge && <span className="sp-live"><i />EN VIVO</span>}
+          
+          {mode === 'livestream' && matchedGame && (
+            <span className="sp-tag sp-tag-live">
+              <CheckCircle2 size={12} color="#22c55e" />
+              <b>{matchedGame.league}</b> · {matchedGame.home_name} {matchedGame.score} {matchedGame.away_name}
+            </span>
+          )}
+
           {mode === 'clips' && clip && !clipsAreMatch
             ? <span className="sp-tag">ESPN · últimos videos, no es este partido</span>
-            : scoreOverlay}
+            : (mode !== 'livestream' ? scoreOverlay : null)}
+            
           {mode === 'file' && fileName && <span className="sp-tag">{fileName}</span>}
         </div>
 
         {error && <div className="sp-error" role="alert">{error}</div>}
       </div>
 
+      {/* Carrusel de partidos EN VIVO transmitiéndose ahora */}
+      {mode === 'livestream' && allLiveGames.length > 0 && (
+        <div className="sp-live-feed-bar">
+          <span className="sp-live-feed-title">Partidos en streaming:</span>
+          <div className="sp-live-feed-list">
+            {allLiveGames.map((g) => {
+              const isSelected = matchedGame?.id === g.id;
+              return (
+                <button
+                  key={g.id}
+                  className={`sp-live-game-chip ${isSelected ? 'active' : ''}`}
+                  onClick={() => selectLiveGame(g)}
+                  title={`Ver ${g.home_name} vs ${g.away_name} (${g.league})`}
+                >
+                  <span className="chip-league">{g.league}</span>
+                  <span className="chip-teams">{g.home_name} <b>{g.score}</b> {g.away_name}</span>
+                  {isSelected && <span className="chip-badge">VIENDO</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Barra de clips de ESPN */}
       {mode === 'clips' && clips.length > 0 && (
         <div className="sp-clips">
           {clips.map((v, i) => (
@@ -360,6 +694,7 @@ export default function SignalPlayer({ clips = [], clipsAreMatch = false, onClip
         </div>
       )}
 
+      {/* Barra de archivo local */}
       {mode === 'file' && fileSrc && (
         <div className="sp-filebar">
           <span>{fileName}</span>
