@@ -57,7 +57,8 @@ async function callAiCompletion({ messages, maxTokens = 500 }) {
             max_tokens: maxTokens + (reasoning ? 1200 : 0),
             ...(reasoning ? { reasoning_effort: 'low' } : {})
           }),
-          signal: AbortSignal.timeout(reasoning ? 150000 : 30000)
+          // Los modelos rápidos responden en ~7 s: si tardan más de 15 s se pasa al siguiente
+          signal: AbortSignal.timeout(reasoning ? 150000 : 15000)
         });
 
         if (res.ok) {
@@ -78,11 +79,33 @@ async function callAiCompletion({ messages, maxTokens = 500 }) {
   });
 }
 
+// Describe cuotas y estadísticas reales del partido para el prompt.
+// Si faltan se dice explícitamente: nunca se le pasan valores inventados a la IA.
+function describeOdds(match) {
+  const o = match?.oddsInfo;
+  if (!o?.hasMoneyline) return 'Cuotas: no publicadas para este partido';
+  return `Cuotas ${o.provider}: Local ${o.homeOdds} | Empate ${o.drawOdds} | Visita ${o.awayOdds}${o.overUnder ? ` | Línea de goles ${o.overUnder}` : ''}`;
+}
+
+function describeStats(match) {
+  const a = match?.stats?.attack;
+  const cards = `Tarjetas amarillas: Local ${match?.homeTeam?.yellowCards || 0} - Visita ${match?.awayTeam?.yellowCards || 0}`;
+  if (!match?.stats?.hasData || !a) return `Estadísticas: todavía no hay datos del partido. ${cards}`;
+  return [
+    `Posesión: Local ${a[0]?.home}% - Visita ${a[0]?.away}%`,
+    `Tiros totales: Local ${a[1]?.home} - Visita ${a[1]?.away}`,
+    `Tiros al arco: Local ${a[2]?.home} - Visita ${a[2]?.away}`,
+    cards,
+  ].join('\n  * ');
+}
+
 /**
  * Generate deep sports AI Pick & prediction for a soccer match
  */
 export async function generateMatchAIPick(match) {
-  const cacheKey = `ai_pick_v2_${match.id}_${match.homeTeam?.score}_${match.awayTeam?.score}`;
+  // Estimación local (sin IA): rellena campos faltantes y sirve de respaldo si la IA no responde
+  const dynamicFallback = calculateDynamicSportsMetrics(match).mainPick;
+  const cacheKey = `ai_pick_v3_${match.id}_${match.homeTeam?.score}_${match.awayTeam?.score}`;
   
   // Check local cache (15-minute TTL)
   try {
@@ -93,7 +116,7 @@ export async function generateMatchAIPick(match) {
         return parsed.data;
       }
     }
-  } catch (e) {}
+  } catch { /* almacenamiento no disponible o caché corrupta: se ignora */ }
 
   const homeRecent = (match.homeTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.homeTeam?.form || 'Información no disponible';
   const awayRecent = (match.awayTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.awayTeam?.form || 'Información no disponible';
@@ -105,17 +128,15 @@ Analiza con MÁXIMA PROFUNDIDAD este partido de fútbol y explica detalladamente
 
 DATOS DEL ENCUENTRO:
 - Torneo: ${match.leagueName || 'Competición Oficial'}
-- Local: ${match.homeTeam?.name} (Goles: ${match.homeTeam?.score || 0}, Cuota: ${match.homeTeam?.odds || 2.10})
+- Local: ${match.homeTeam?.name} (Goles: ${match.homeTeam?.score || 0})
   * Forma reciente (Últimos partidos): ${homeRecent}
-- Visita: ${match.awayTeam?.name} (Goles: ${match.awayTeam?.score || 0}, Cuota: ${match.awayTeam?.odds || 3.10})
+- Visita: ${match.awayTeam?.name} (Goles: ${match.awayTeam?.score || 0})
   * Forma reciente (Últimos partidos): ${awayRecent}
 - Historial Directo (H2H): ${h2hSummary}
 - Estado del Partido: ${match.timeStr || match.status}
-- Estadísticas Registradas:
-  * Posesión: Local ${match.stats?.attack?.[0]?.home || 50}% - Visita ${match.stats?.attack?.[0]?.away || 50}%
-  * Tiros Totales: Local ${match.stats?.attack?.[1]?.home || 6} - Visita ${match.stats?.attack?.[1]?.away || 5}
-  * Tiros al Arco: Local ${match.stats?.attack?.[2]?.home || 3} - Visita ${match.stats?.attack?.[2]?.away || 2}
-  * Tarjetas: Local ${match.homeTeam?.yellowCards || 0} amarillas - Visita ${match.awayTeam?.yellowCards || 0} amarillas
+- ${describeOdds(match)}
+- Estadísticas registradas:
+  * ${describeStats(match)}
 
 INSTRUCCIONES CLAVE DE ANÁLISIS:
 1. Considera la forma reciente de los últimos 5 partidos y el historial H2H para definir un pick concreto y de alto valor (Value Bet, ej. Gana Local Hándicap Asiático 0.0, Ambos Anotan + Más de 2.5 Goles, Doble Oportunidad 1X, Over Córners).
@@ -129,7 +150,6 @@ Responde ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
   "pick": "Nombre del Pick Recomendado",
   "cuota": 1.90,
   "probabilidad": 84,
-  "maraton_streak": "+5 maratón",
   "motivo_principal": "¿Por qué este pick?: Explicación clara y directa del motivo táctico principal.",
   "analisis_detallado": "Análisis profundo: Generación de peligro ofensivo, debilidades defensivas rivales y valor matemático positivo (+EV).",
   "claves_metricas": [
@@ -138,7 +158,7 @@ Responde ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
     "Valor Esperado (+EV): +13.8%"
   ],
   "stake": "Stake 2.5 / 10 (Confianza Alta)",
-  "tags": ["Valor +EV", "Alta Probabilidad", "NVIDIA NIM"]
+  "tags": ["Valor +EV", "Alta Probabilidad"]
 }
 `;
 
@@ -161,19 +181,20 @@ Responde ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
         motivo_principal: aiData.motivo_principal || dynamicFallback.motivo_principal,
         analisis_detallado: aiData.analisis_detallado || aiData.justificacion || dynamicFallback.analisis_detallado,
         claves_metricas: aiData.claves_metricas && aiData.claves_metricas.length > 0 ? aiData.claves_metricas : dynamicFallback.claves_metricas,
-        stake: aiData.stake || dynamicFallback.stake
+        stake: aiData.stake || dynamicFallback.stake,
+        source: 'ai'
       };
 
       try {
         localStorage.setItem(cacheKey, JSON.stringify({ data: enrichedData, timestamp: Date.now() }));
-      } catch (e) {}
+      } catch { /* almacenamiento no disponible o caché corrupta: se ignora */ }
       return enrichedData;
     }
   } catch (err) {
-    console.warn('[AI Match Pick Fallback]', err.message);
+    console.warn('[IA] Pick no disponible:', err.message);
   }
 
-  return dynamicFallback;
+  return { ...dynamicFallback, source: 'local' };
 }
 
 /**
@@ -199,16 +220,13 @@ export async function askTacticalAI(match, userQuestion, meta) {
   const minuteNum = parseMinuteNumber(minuteStr);
   const isLive = match?.status === 'live' || (minuteNum > 0 && match?.status !== 'finished');
   
-  const homePoss = Number(match?.stats?.attack?.[0]?.home || 50);
-  const awayPoss = Number(match?.stats?.attack?.[0]?.away || 50);
-  const homeShots = Number(match?.stats?.attack?.[1]?.home || 0);
-  const awayShots = Number(match?.stats?.attack?.[1]?.away || 0);
   const homeTarget = Number(match?.stats?.attack?.[2]?.home || 0);
   const awayTarget = Number(match?.stats?.attack?.[2]?.away || 0);
   const q = (userQuestion || '').toLowerCase();
 
-  const homeOdds = match?.homeTeam?.odds || match?.oddsInfo?.homeOdds || 1.85;
-  const awayOdds = match?.awayTeam?.odds || match?.oddsInfo?.awayOdds || 3.80;
+  // Para la estimación local sin IA: cuotas reales o, si no hay, valores neutros (no se muestran)
+  const homeOdds = Number(match?.oddsInfo?.homeOdds || match?.homeTeam?.odds) || 2.5;
+  const awayOdds = Number(match?.oddsInfo?.awayOdds || match?.awayTeam?.odds) || 2.5;
   const homeRecent = (match.homeTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.homeTeam?.form || '';
   const awayRecent = (match.awayTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.awayTeam?.form || '';
 
@@ -219,7 +237,8 @@ export async function askTacticalAI(match, userQuestion, meta) {
           role: 'system', 
           content: `Eres NVIDIA IA, un analista táctico de fútbol y trader deportivo de élite.
 CONTEXTO DEL PARTIDO:
-- Partido: ${home} (Cuota: @${homeOdds}) vs ${away} (Cuota: @${awayOdds})
+- Partido: ${home} vs ${away}
+- ${describeOdds(match)}
 - Marcador: ${homeScore} - ${awayScore}
 - Estado: ${isLive ? `En Vivo Minuto ${minuteStr}` : 'Previa (Aún no empieza)'}
 - Forma Local: ${homeRecent || 'Sin registro reciente'}
@@ -318,7 +337,6 @@ function calculateDynamicSportsMetrics(match) {
   const preAwayOdds = Number(match.awayTeam?.odds || match.oddsInfo?.awayOdds || 3.20);
   const preDrawOdds = Number(match.oddsInfo?.drawOdds || 3.10);
 
-  let mainTitle = 'SELECCIÓN PRINCIPAL (VALUE BET CALCULADA)';
   let mainPickText = '';
   let mainCuota = 1.85;
   let mainProb = 82;
@@ -476,7 +494,6 @@ function calculateDynamicSportsMetrics(match) {
       pick: mainPickText,
       cuota: mainCuota,
       probabilidad: mainProb,
-      streak: '+5 maratón',
       motivo_principal: motivoPrincipal,
       analisis_detallado: analisisDetallado,
       justificacion: mainJustification,
@@ -519,7 +536,7 @@ function calculateDynamicSportsMetrics(match) {
  */
 export async function generateFullMatchAIPredictions(match) {
   const isLive = match.status === 'live';
-  const cacheKey = `ai_multi_picks_v3_${match.id}_${match.homeTeam?.score || 0}_${match.awayTeam?.score || 0}_${isLive ? 'live' : 'pre'}`;
+  const cacheKey = `ai_multi_picks_v4_${match.id}_${match.homeTeam?.score || 0}_${match.awayTeam?.score || 0}_${isLive ? 'live' : 'pre'}`;
   
   try {
     const cached = localStorage.getItem(cacheKey);
@@ -530,7 +547,7 @@ export async function generateFullMatchAIPredictions(match) {
         return parsed.data;
       }
     }
-  } catch (e) {}
+  } catch { /* almacenamiento no disponible o caché corrupta: se ignora */ }
 
   const home = match.homeTeam?.shortName || match.homeTeam?.name || 'Local';
   const away = match.awayTeam?.shortName || match.awayTeam?.name || 'Visita';
@@ -538,11 +555,6 @@ export async function generateFullMatchAIPredictions(match) {
   const awayScore = match.awayTeam?.score || 0;
 
   // Real ESPN or Provider Odds
-  const homeOdds = match.homeTeam?.odds || match.oddsInfo?.homeOdds || 'N/A';
-  const awayOdds = match.awayTeam?.odds || match.oddsInfo?.awayOdds || 'N/A';
-  const drawOdds = match.oddsInfo?.drawOdds || 'N/A';
-  const overUnder = match.oddsInfo?.overUnder || 'O/U 2.5';
-  const provider = match.oddsInfo?.provider || 'Mercado Internacional';
 
   const dynamicFallback = calculateDynamicSportsMetrics(match);
 
@@ -559,12 +571,9 @@ Analiza este partido de fútbol en profundidad con datos reales del mercado y ge
   * Forma reciente de Visita: ${awayRecent}
 - Historial Directo (H2H): ${h2hSummary}
 - Estado del Partido: ${match.status === 'live' ? `EN VIVO Minuto ${match.minute}` : match.timeStr || 'Por iniciar'}
-- Cuotas Reales del Mercado (${provider}): Local ${homeOdds} | Empate ${drawOdds} | Visita ${awayOdds} | Línea: ${overUnder}
-- Estadísticas del Partido:
-  * Posesión: Local ${match.stats?.attack?.[0]?.home || 50}% vs Visita ${match.stats?.attack?.[0]?.away || 50}%
-  * Tiros Totales: Local ${match.stats?.attack?.[1]?.home || 5} vs Visita ${match.stats?.attack?.[1]?.away || 4}
-  * Tiros al Arco: Local ${match.stats?.attack?.[2]?.home || 2} vs Visita ${match.stats?.attack?.[2]?.away || 2}
-  * Tarjetas: Local ${match.homeTeam?.yellowCards || 0} amarillas vs Visita ${match.awayTeam?.yellowCards || 0} amarillas
+- ${describeOdds(match)}
+- Estadísticas del partido:
+  * ${describeStats(match)}
 
 INSTRUCCIONES:
 - Selecciones coherentes con el marcador y el minuto actuales, basadas en los datos de arriba.
@@ -627,7 +636,7 @@ INSTRUCCIONES:
 
       try {
         localStorage.setItem(cacheKey, JSON.stringify({ data: normalizedData, timestamp: Date.now() }));
-      } catch (e) {}
+      } catch { /* almacenamiento no disponible o caché corrupta: se ignora */ }
       return normalizedData;
     }
   } catch (err) {

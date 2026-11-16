@@ -1,6 +1,7 @@
 import React from 'react';
 import { Radio } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
+import { pressable } from '../utils/a11y';
 
 export default function TickerMarquee({ matches = [], onSelectMatch }) {
   if (!matches || matches.length === 0) return null;
@@ -16,7 +17,7 @@ export default function TickerMarquee({ matches = [], onSelectMatch }) {
           return (
             <div
               key={`${m.id}-${index}`}
-              className="ticker-item"
+              className="ticker-item" {...pressable} 
               onClick={() => {
                 sounds.playClick();
                 onSelectMatch(m);

@@ -94,7 +94,7 @@ class SoundEngine {
 
       osc.start();
       osc.stop(this.ctx.currentTime + 0.06);
-    } catch (e) {}
+    } catch { /* el navegador bloqueó el audio: se ignora */ }
   }
 }
 

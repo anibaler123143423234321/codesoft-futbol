@@ -1,23 +1,19 @@
 import React, { useEffect, useRef } from 'react';
-import { 
-  Tv, 
-  Send, 
-  Sparkles, 
-  Users, 
-  ShieldCheck, 
-  ArrowRight,
+import {
+  Tv,
+  Sparkles,
+  Users,
   TrendingUp,
-  Activity,
   Play
 } from 'lucide-react';
 import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';
+import { pressable } from '../utils/a11y';
 
 export default function HeroBanner({ 
   featuredMatch, 
   onSelectMatch, 
   setView, 
-  onOpenTelegram,
   onOpenPickModal,
   liveCount = 6 
 }) {
@@ -147,7 +143,7 @@ export default function HeroBanner({
               <canvas ref={canvasRef} className="spotlight-canvas-bg" />
               <div className="spotlight-badge-center">
                 <span className="live-dot" />
-                <span>{match.status === 'live' ? `EN VIVO · ${match.minute || "95'"}` : 'PARTIDO DESTACADO'}</span>
+                <span>{match.status === 'live' ? `EN VIVO${match.minute ? ` · ${match.minute}` : ''}` : 'PARTIDO DESTACADO'}</span>
               </div>
             </div>
 
@@ -188,37 +184,42 @@ export default function HeroBanner({
                 </div>
               </div>
 
-              {/* Odds Bar */}
-              <div className="odds-bar">
-                <div className="odd-box">
-                  <div className="odd-label">LOCAL</div>
-                  <div className="odd-val">{match.homeTeam?.odds || '2.75'}</div>
-                </div>
-                <div className="odd-box">
-                  <div className="odd-label">EMPATE</div>
-                  <div className="odd-val">{match.drawOdds || '3.10'}</div>
-                </div>
-                <div className="odd-box">
-                  <div className="odd-label">VISITA</div>
-                  <div className="odd-val">{match.awayTeam?.odds || '2.90'}</div>
-                </div>
-              </div>
+              {/* Cuotas 1X2 reales (solo si el proveedor las publica) */}
+              {match.oddsInfo?.hasMoneyline ? (
+                <>
+                  <div className="odds-bar">
+                    <div className="odd-box">
+                      <div className="odd-label">LOCAL</div>
+                      <div className="odd-val">{match.oddsInfo.homeOdds.toFixed(2)}</div>
+                    </div>
+                    <div className="odd-box">
+                      <div className="odd-label">EMPATE</div>
+                      <div className="odd-val">{match.oddsInfo.drawOdds.toFixed(2)}</div>
+                    </div>
+                    <div className="odd-box">
+                      <div className="odd-label">VISITA</div>
+                      <div className="odd-val">{match.oddsInfo.awayOdds.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <div className="odds-source">
+                    Cuotas de {match.oddsInfo.provider}{match.oddsInfo.overUnder ? ` · ${match.oddsInfo.overUnder}` : ''}
+                  </div>
+                </>
+              ) : (
+                <div className="odds-source">Sin cuotas publicadas para este partido</div>
+              )}
 
-              {/* AI Pick Highlight Banner */}
-              <div 
-                className="spotlight-ai-banner" 
-                style={{ cursor: 'pointer' }}
+              {/* Acceso al análisis con IA */}
+              <button
+                type="button"
+                className="spotlight-ai-banner"
                 onClick={() => onOpenPickModal(match)}
-                title="Haz clic para ver el análisis completo con IA"
               >
                 <div className="spotlight-ai-pick-text">
                   <Sparkles size={16} />
-                  <span>{match.aiPick?.pick || 'Total goles +2.5 / total tarjetas +3.5'}</span>
+                  <span>Ver análisis con IA de este partido</span>
                 </div>
-                <div className="spotlight-ai-cuota">
-                  Cuota {match.aiPick?.cuota || '2.45'}
-                </div>
-              </div>
+              </button>
 
               {/* Action row to enter live match */}
               <button 
@@ -248,7 +249,7 @@ export default function HeroBanner({
         <div className="features-grid">
           {/* Card 1: Partidos en vivo */}
           <div 
-            className="feature-card"
+            className="feature-card" {...pressable} 
             style={{ cursor: 'pointer' }}
             onClick={() => {
               sounds.playClick();
@@ -272,7 +273,7 @@ export default function HeroBanner({
 
           {/* Card 2: Picks con IA */}
           <div 
-            className="feature-card"
+            className="feature-card" {...pressable} 
             style={{ cursor: 'pointer' }}
             onClick={() => {
               sounds.playClick();
@@ -283,24 +284,24 @@ export default function HeroBanner({
               <span className="feature-pill-tag" style={{ color: 'var(--green-neon)' }}>IA PREDICTIVA</span>
               <h3 className="feature-card-title">Picks con IA</h3>
               <p className="feature-card-desc">
-                Analizamos cuotas, estadísticas y múltiples fuentes para encontrar las selecciones más interesantes con tecnología NVIDIA NIM (Llama 3.1 70B).
+                La IA lee cuotas, estadísticas oficiales y forma reciente de cada partido y propone selecciones con su probabilidad estimada.
               </p>
             </div>
             <div className="feature-card-badges">
               <span className="pill-badge-blue">
                 <TrendingUp size={14} />
-                68 % aciertos
+                5 mercados
               </span>
               <span className="pill-badge-green">
                 <Sparkles size={14} />
-                +4 maratón
+                Datos ESPN
               </span>
             </div>
           </div>
 
           {/* Card 3: Comunidad activa */}
           <div 
-            className="feature-card"
+            className="feature-card" {...pressable} 
             style={{ cursor: 'pointer' }}
             onClick={() => {
               sounds.playClick();
@@ -317,11 +318,11 @@ export default function HeroBanner({
             <div className="feature-card-badges">
               <span className="pill-badge-green">
                 <Users size={14} />
-                281 online
+                Chat por partido
               </span>
               <span className="pill-badge-blue">
                 <Sparkles size={14} />
-                NVIDIA 70B AI
+                Encuestas en vivo
               </span>
             </div>
           </div>

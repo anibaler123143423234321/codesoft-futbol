@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Radio, Calendar, Flame, Filter } from 'lucide-react';
+import { Search, Calendar } from 'lucide-react';
 import MatchCard from './MatchCard';
 import { ESPN_SUPPORTED_LEAGUES } from '../api/espnApi';
 import { sounds } from '../utils/soundEffects';

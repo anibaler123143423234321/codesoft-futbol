@@ -1,418 +1,290 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Sparkles, 
-  TrendingUp, 
-  CheckCircle2, 
-  Cpu, 
-  Zap, 
-  Activity, 
-  RotateCw,
-  Search,
-  ChevronDown,
-  X,
-  Check
-} from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Sparkles, Search, X, Check, AlertTriangle, Target, TrendingUp, Play, RotateCw } from 'lucide-react';
 import { generateMatchAIPick } from '../api/cerebrasAi';
 import { sounds } from '../utils/soundEffects';
+import TeamLogo from './TeamLogo';
+import '../picks.css';
 
-export default function AIPicksView({ matches = [], onSelectMatch, onOpenTelegram, onOpenPickModal }) {
-  const [selectedMatchId, setSelectedMatchId] = useState(matches[0]?.id || '');
-  const [customPick, setCustomPick] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+const FILTERS = [
+  { key: 'all', label: 'Todos' },
+  { key: 'live', label: 'En vivo' },
+  { key: 'odds', label: 'Con cuotas' },
+];
 
-  // Searchable Match Selector State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+const fmtOdds = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 1 ? n.toFixed(2) : '—';
+};
+const clampPct = (v) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
 
-  const currentSelectedMatch = matches.find(m => m.id === selectedMatchId) || matches[0];
+function statusLabel(m) {
+  if (m.status === 'live') return { text: `EN VIVO${m.minute ? ` · ${m.minute}` : ''}`, cls: 'live' };
+  if (m.status === 'finished') return { text: 'Finalizado', cls: 'done' };
+  return { text: m.date || 'Por iniciar', cls: '' };
+}
 
-  // Close dropdown on outside click
+export default function AIPicksView({ matches = [], onSelectMatch, onOpenPickModal }) {
+  const [selectedId, setSelectedId] = useState(() => (matches.find(m => m.status === 'live') || matches[0])?.id);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('all');
+  // { matchId, data } cuando hay resultado; el estado de carga guarda el partido en análisis
+  const [result, setResult] = useState(null);
+  const [loadingId, setLoadingId] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const resultRef = useRef(null);
+
+  const selected = matches.find(m => m.id === selectedId) || matches[0];
+  const liveCount = matches.filter(m => m.status === 'live').length;
+  const oddsCount = matches.filter(m => m.oddsInfo?.hasMoneyline).length;
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return matches.filter(m => {
+      if (filter === 'live' && m.status !== 'live') return false;
+      if (filter === 'odds' && !m.oddsInfo?.hasMoneyline) return false;
+      if (!q) return true;
+      return [m.homeTeam?.name, m.awayTeam?.name, m.leagueName].some(t => (t || '').toLowerCase().includes(q));
+    });
+  }, [matches, query, filter]);
+
+  // Cronómetro mientras la IA trabaja
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (!loadingId) return;
+    setElapsed(0);
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [loadingId]);
 
-  // Filter matches based on search term
-  const filteredMatches = matches.filter(m => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    const home = (m.homeTeam?.name || m.homeTeam?.shortName || '').toLowerCase();
-    const away = (m.awayTeam?.name || m.awayTeam?.shortName || '').toLowerCase();
-    const league = (m.leagueName || '').toLowerCase();
-    return home.includes(query) || away.includes(query) || league.includes(query);
-  });
-
-  const handleSelectMatch = (match) => {
+  const analyze = async (match) => {
+    if (!match || loadingId) return;
     sounds.playClick();
-    setSelectedMatchId(match.id);
-    setIsDropdownOpen(false);
-    setSearchQuery('');
-  };
-
-  const handleGenerateCustomPick = async () => {
-    if (!currentSelectedMatch) return;
-    sounds.playClick();
-    setIsLoading(true);
+    setSelectedId(match.id);
+    setLoadingId(match.id);
+    setResult(null);
+    // En móvil el panel queda arriba de la lista: llevar la vista al resultado
+    requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
     try {
-      const result = await generateMatchAIPick(currentSelectedMatch);
-      setCustomPick(result);
-      sounds.playGoalChime();
+      const data = await generateMatchAIPick(match);
+      setResult({ matchId: match.id, data });
+      if (data?.source === 'ai') sounds.playGoalChime();
     } catch (e) {
       console.error(e);
+      setResult({ matchId: match.id, data: null });
     } finally {
-      setIsLoading(false);
+      setLoadingId(null);
     }
   };
 
+  const pick = result?.matchId === selected?.id ? result.data : null;
+  const isLoading = loadingId === selected?.id;
+  const pct = clampPct(pick?.probabilidad);
+  const reason = pick?.motivo_principal || pick?.justificacion;
+  const detail = pick?.analisis_detallado && pick.analisis_detallado !== reason ? pick.analisis_detallado : null;
+
   return (
-    <div className="ai-picks-container" id="ai-picks-view">
-      {/* Hero Engine Card */}
-      <div className="ai-hero-card">
+    <div className="ap" id="ai-picks-view">
+      {/* Encabezado */}
+      <header className="ap-head">
         <div>
-          <div className="ai-engine-badge">
-            <Cpu size={14} style={{ color: '#76b900' }} />
-            <span>POWERED BY NVIDIA NIM AI (LLAMA 3.1 70B)</span>
-          </div>
-
-          <h1 className="ai-hero-title">
-            Inteligencia Artificial aplicada al Fútbol
-          </h1>
-
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '24px' }}>
-            Modelos de redes neuronales y matrices predictivas Poisson/xG procesando en menos de <strong>700 milisegundos</strong> millones de puntos de datos de ESPN, volumen de tiros, fatiga de plantilla y tendencias de cuotas de alto valor con NVIDIA NIM Cloud.
+          <span className="ap-eyebrow"><Sparkles size={13} /> Análisis con IA</span>
+          <h1>Pronósticos con IA</h1>
+          <p>
+            Elegí un partido y la IA lee marcador, estadísticas oficiales de ESPN, forma reciente y cuotas
+            para proponer una selección con su probabilidad y el motivo. Son pronósticos orientativos, no garantías.
           </p>
-
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button className="btn-primary" onClick={() => matches[0] && onOpenPickModal(matches[0])}>
-              <Sparkles size={16} />
-              <span>Abrir Asistente IA</span>
-            </button>
-          </div>
         </div>
+        <dl className="ap-stats">
+          <div><dt>Partidos hoy</dt><dd>{matches.length}</dd></div>
+          <div><dt>En vivo</dt><dd className={liveCount ? 'live' : ''}>{liveCount}</dd></div>
+          <div><dt>Con cuotas</dt><dd>{oddsCount}</dd></div>
+        </dl>
+      </header>
 
-        {/* Stats Pills */}
-        <div className="ai-stats-pill-grid">
-          <div className="ai-stat-pill">
-            <div className="ai-stat-pill-val">68 %</div>
-            <div className="ai-stat-pill-lbl">Tasa de Aciertos</div>
-          </div>
-          <div className="ai-stat-pill">
-            <div className="ai-stat-pill-val">+14.8 %</div>
-            <div className="ai-stat-pill-lbl">ROI Promedio</div>
-          </div>
-          <div className="ai-stat-pill">
-            <div className="ai-stat-pill-val">580 ms</div>
-            <div className="ai-stat-pill-lbl">Velocidad NVIDIA NIM</div>
-          </div>
-          <div className="ai-stat-pill">
-            <div className="ai-stat-pill-val">+4,000</div>
-            <div className="ai-stat-pill-lbl">Análisis / Día</div>
-          </div>
-        </div>
-      </div>
+      <div className="ap-grid">
+        {/* Panel de análisis */}
+        <section className="ap-panel ap-analyzer" aria-label="Análisis del partido elegido" ref={resultRef}>
+          {selected ? (
+            <>
+              <div className="ap-match">
+                <div className="ap-match-top">
+                  <span className="ap-league">{selected.leagueName || 'Fútbol'}</span>
+                  <span className={`ap-status ${statusLabel(selected).cls}`}>{statusLabel(selected).text}</span>
+                </div>
+                <div className="ap-teams">
+                  <div className="ap-team">
+                    <TeamLogo src={selected.homeTeam?.logo} alt={selected.homeTeam?.name} size={40} isHome />
+                    <span>{selected.homeTeam?.name}</span>
+                  </div>
+                  <div className="ap-score">
+                    {selected.status === 'scheduled'
+                      ? <b className="vs">VS</b>
+                      : <b>{selected.homeTeam?.score ?? 0}<i>-</i>{selected.awayTeam?.score ?? 0}</b>}
+                  </div>
+                  <div className="ap-team away">
+                    <span>{selected.awayTeam?.name}</span>
+                    <TeamLogo src={selected.awayTeam?.logo} alt={selected.awayTeam?.name} size={40} isHome={false} />
+                  </div>
+                </div>
 
-      {/* Interactive Custom Match Analyzer */}
-      <div className="ai-custom-generator-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <Zap size={20} style={{ color: '#76b900' }} />
-          <h2 className="ai-generator-title">
-            Generador de Pronósticos Tácticos en Tiempo Real
-          </h2>
-        </div>
+                {selected.oddsInfo?.hasMoneyline ? (
+                  <div className="ap-odds" aria-label={`Cuotas de ${selected.oddsInfo.provider}`}>
+                    <div><small>1</small><b>{fmtOdds(selected.oddsInfo.homeOdds)}</b></div>
+                    <div><small>X</small><b>{fmtOdds(selected.oddsInfo.drawOdds)}</b></div>
+                    <div><small>2</small><b>{fmtOdds(selected.oddsInfo.awayOdds)}</b></div>
+                    <span>{selected.oddsInfo.provider}{selected.oddsInfo.overUnder ? ` · ${selected.oddsInfo.overUnder}` : ''}</span>
+                  </div>
+                ) : (
+                  <p className="ap-no-odds">Sin cuotas publicadas para este partido</p>
+                )}
 
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
-          Escribe o busca cualquier partido de la cartelera para que NVIDIA NIM IA calcule el pick óptimo en milisegundos:
-        </p>
+                <div className="ap-actions">
+                  <button className="ap-btn primary" onClick={() => analyze(selected)} disabled={!!loadingId}>
+                    {isLoading
+                      ? <><RotateCw size={15} className="ap-spin" /> Analizando…</>
+                      : <><Sparkles size={15} /> {pick ? 'Volver a analizar' : 'Analizar con IA'}</>}
+                  </button>
+                  <button className="ap-btn" onClick={() => { sounds.playClick(); onSelectMatch(selected); }}>
+                    <Play size={14} /> Ver partido
+                  </button>
+                  <button className="ap-btn ghost" onClick={() => onOpenPickModal(selected)}>
+                    Todos los mercados
+                  </button>
+                </div>
+              </div>
 
-        {/* Searchable Match Selector Row */}
-        <div className="ai-generator-form-row">
-          <div className="searchable-match-picker" ref={dropdownRef}>
-            {/* Input Trigger Bar */}
-            <div 
-              className={`match-picker-trigger ${isDropdownOpen ? 'active' : ''}`}
-              onClick={() => setIsDropdownOpen(prev => !prev)}
-            >
-              <Search size={16} style={{ color: 'var(--cyan-neon)', flexShrink: 0 }} />
-              
+              {/* Resultado */}
+              <div className="ap-result" aria-live="polite">
+                {isLoading && (
+                  <div className="ap-loading" role="status">
+                    <div className="ap-loader"><i /><i /><i /></div>
+                    <b>Analizando el partido…</b>
+                    <span>La IA está leyendo marcador, estadísticas y cuotas · {elapsed}s</span>
+                  </div>
+                )}
+
+                {!isLoading && !pick && result?.matchId === selected.id && (
+                  <div className="ap-empty warn" role="alert">
+                    <AlertTriangle size={22} />
+                    <b>No se pudo generar el análisis</b>
+                    <span>Probá de nuevo en unos segundos.</span>
+                  </div>
+                )}
+
+                {!isLoading && !pick && result?.matchId !== selected.id && (
+                  <div className="ap-empty">
+                    <Target size={22} />
+                    <b>Listo para analizar</b>
+                    <span>Tocá “Analizar con IA” para generar el pronóstico de este partido.</span>
+                  </div>
+                )}
+
+                {!isLoading && pick && (
+                  <article className="ap-card">
+                    <div className={`ap-source ${pick.source === 'ai' ? 'ok' : 'warn'}`}>
+                      {pick.source === 'ai'
+                        ? <><Check size={13} /> Generado por IA</>
+                        : <><AlertTriangle size={13} /> Estimación estadística: la IA no respondió</>}
+                    </div>
+
+                    <div className="ap-card-main">
+                      <div className="ap-card-info">
+                        <span className="ap-eyebrow"><Target size={12} /> Selección recomendada</span>
+                        <h3>{pick.pick}</h3>
+                        {reason && <p className="ap-reason">{reason.replace(/^¿Por qué este pick\?:\s*/i, '')}</p>}
+                      </div>
+                      <div className="ap-card-side">
+                        <div className="ap-cuota"><small>Cuota</small><b>{fmtOdds(pick.cuota)}</b></div>
+                        <div className="ap-conf">
+                          <div><small>Confianza</small><b>{pct}%</b></div>
+                          <div className="ap-bar"><i style={{ width: `${pct}%` }} /></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {detail && (
+                      <div className="ap-detail">
+                        <span className="ap-eyebrow">Análisis</span>
+                        <p>{detail}</p>
+                      </div>
+                    )}
+
+                    {(pick.claves_metricas?.length > 0 || pick.stake) && (
+                      <div className="ap-chips">
+                        {(pick.claves_metricas || []).map((m, i) => <span key={i}>{m}</span>)}
+                        {pick.stake && <span className="stake"><TrendingUp size={12} /> {pick.stake}</span>}
+                      </div>
+                    )}
+                  </article>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="ap-empty"><b>No hay partidos disponibles</b></div>
+          )}
+        </section>
+
+        {/* Lista de partidos */}
+        <aside className="ap-panel ap-list" aria-label="Partidos de hoy">
+          <div className="ap-list-head">
+            <div className="ap-search">
+              <Search size={15} />
               <input
-                type="text"
-                className="match-picker-search-input"
-                placeholder={currentSelectedMatch ? `${currentSelectedMatch.homeTeam?.name} vs ${currentSelectedMatch.awayTeam?.name} (${currentSelectedMatch.leagueName})` : "Buscar equipo o liga..."}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setIsDropdownOpen(true);
-                }}
-                onFocus={() => setIsDropdownOpen(true)}
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar equipo o liga"
+                aria-label="Buscar equipo o liga"
               />
-
-              {searchQuery ? (
-                <button 
-                  type="button" 
-                  className="picker-clear-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchQuery('');
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              ) : (
-                <ChevronDown 
-                  size={16} 
-                  style={{ 
-                    color: 'var(--text-muted)', 
-                    transform: isDropdownOpen ? 'rotate(180deg)' : 'none', 
-                    transition: 'transform 0.2s ease',
-                    flexShrink: 0
-                  }} 
-                />
+              {query && (
+                <button onClick={() => setQuery('')} aria-label="Borrar búsqueda"><X size={14} /></button>
               )}
             </div>
-
-            {/* Dropdown Results Menu */}
-            {isDropdownOpen && (
-              <div className="match-picker-dropdown">
-                <div className="picker-dropdown-header">
-                  <span>Partidos Disponibles ({filteredMatches.length})</span>
-                  {searchQuery && (
-                    <span style={{ color: 'var(--cyan-neon)', fontSize: '0.72rem' }}>
-                      Filtrado por: "{searchQuery}"
-                    </span>
-                  )}
-                </div>
-
-                <div className="picker-dropdown-list">
-                  {filteredMatches.length > 0 ? (
-                    filteredMatches.map(m => {
-                      const isSelected = m.id === selectedMatchId;
-                      const isLive = m.status === 'live';
-                      return (
-                        <div
-                          key={m.id}
-                          className={`picker-match-item ${isSelected ? 'selected' : ''}`}
-                          onClick={() => handleSelectMatch(m)}
-                        >
-                          <div className="picker-item-left">
-                            <div className="picker-item-teams">
-                              <span className="picker-team-name">{m.homeTeam?.name}</span>
-                              <span className="picker-score-tag">
-                                {isLive ? (
-                                  <span style={{ color: 'var(--red-live)', fontWeight: 800 }}>
-                                    🔴 {m.homeTeam?.score ?? 0} - {m.awayTeam?.score ?? 0}
-                                  </span>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)' }}>VS</span>
-                                )}
-                              </span>
-                              <span className="picker-team-name">{m.awayTeam?.name}</span>
-                            </div>
-                            <div className="picker-item-meta">
-                              <span>{m.leagueName || 'Competición'}</span>
-                              {m.status === 'finished' && <span>· FT</span>}
-                            </div>
-                          </div>
-
-                          {isSelected && (
-                            <Check size={16} style={{ color: 'var(--green-neon)', flexShrink: 0 }} />
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="picker-no-results">
-                      <p>No se encontraron partidos para "{searchQuery}"</p>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Intenta con otro equipo o nombre de liga</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button 
-            className="btn-primary ai-generator-btn" 
-            onClick={handleGenerateCustomPick}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <RotateCw size={16} className="animate-spin" />
-                <span>Analizando con NVIDIA NIM AI...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles size={16} />
-                <span>⚡ Analizar Partido con IA</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Display Custom Generated Pick */}
-        {customPick && (
-          <div 
-            style={{
-              background: 'linear-gradient(135deg, rgba(13, 22, 38, 0.95), rgba(8, 12, 22, 0.95))',
-              border: '1px solid rgba(25, 201, 100, 0.4)',
-              borderRadius: 'var(--radius-lg)',
-              padding: '24px',
-              animation: 'fadeInMsg 0.3s ease-out',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 25px rgba(25, 201, 100, 0.1)'
-            }}
-          >
-            {/* Top Stat Ribbon */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="pill-badge-green" style={{ fontSize: '0.85rem' }}>
-                  <CheckCircle2 size={15} />
-                  {customPick.probabilidad}% Probabilidad Estimada
-                </span>
-                <span className="pill-badge-blue" style={{ fontSize: '0.82rem' }}>
-                  <TrendingUp size={13} />
-                  {customPick.maraton_streak || '+5 maratón'}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                  {customPick.stake || 'Stake 2.5 / 10'}
-                </span>
-                <span style={{ fontFamily: 'var(--font-score)', color: 'var(--gold-neon)', fontWeight: 800, fontSize: '1.25rem', background: 'rgba(255, 184, 0, 0.1)', padding: '2px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 184, 0, 0.3)' }}>
-                  Cuota: @{customPick.cuota}
-                </span>
-              </div>
-            </div>
-
-            {/* Pick Name Header */}
-            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: 'var(--radius-md)', padding: '14px 18px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--cyan-neon)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                SELECCIÓN DE ALTO VALOR RECOMENDADA
-              </div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff', margin: 0 }}>
-                🎯 {customPick.pick}
-              </h3>
-            </div>
-
-            {/* 1. Motivo Principal Box ("Mira por este motivo estoy mostrando ese pick") */}
-            <div style={{ background: 'rgba(25, 201, 100, 0.06)', borderLeft: '4px solid var(--green-neon)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', padding: '12px 16px', marginBottom: '14px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--green-neon)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', textTransform: 'uppercase' }}>
-                <Sparkles size={14} />
-                <span>Fundamento Clave del Pick</span>
-              </div>
-              <p style={{ color: '#fff', fontSize: '0.88rem', lineHeight: '1.5', margin: 0, fontWeight: 600 }}>
-                {customPick.motivo_principal || customPick.justificacion}
-              </p>
-            </div>
-
-            {/* 2. Deep Tactical Analysis */}
-            {customPick.analisis_detallado && customPick.analisis_detallado !== customPick.motivo_principal && (
-              <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: '14px', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--cyan-neon)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  <Cpu size={14} />
-                  <span>Análisis Táctico y Cuantitativo (NVIDIA NIM 70B)</span>
-                </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.6', margin: 0 }}>
-                  {customPick.analisis_detallado}
-                </p>
-              </div>
-            )}
-
-            {/* 3. Metric Pills */}
-            {customPick.claves_metricas && customPick.claves_metricas.length > 0 && (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                {customPick.claves_metricas.map((metric, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 106, 0, 0.08)', border: '1px solid rgba(255, 106, 0, 0.2)', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.76rem', color: '#e5e7eb', fontWeight: 700 }}>
-                    <Activity size={12} style={{ color: 'var(--cyan-neon)' }} />
-                    <span>{metric}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Tags */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '12px' }}>
-              {customPick.tags?.map((t, idx) => (
-                <span key={idx} className="chat-reaction-chip" style={{ fontSize: '0.74rem', color: 'var(--cyan-neon)' }}>
-                  #{t}
-                </span>
+            <div className="ap-filters" role="tablist" aria-label="Filtrar partidos">
+              {FILTERS.map(f => (
+                <button
+                  key={f.key}
+                  role="tab"
+                  aria-selected={filter === f.key}
+                  className={filter === f.key ? 'active' : ''}
+                  onClick={() => setFilter(f.key)}
+                >
+                  {f.label}
+                </button>
               ))}
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Grid of Picks for Today */}
-      <div>
-        <div className="section-tag">
-          <span style={{ width: '14px', height: '2px', background: 'var(--cyan-neon)', display: 'inline-block' }} />
-          DESTACADOS DE LA JORNADA
-        </div>
-        <h2 className="section-title">Picks de Alto Valor para Hoy</h2>
-
-        <div className="ai-picks-grid">
-          {matches.map((m) => {
-            const pick = m.aiPick;
-            if (!pick) return null;
-
-            return (
-              <div key={m.id} className="ai-pick-card">
-                <div>
-                  <div className="ai-pick-header">
-                    <span className="match-league-label">{m.leagueName}</span>
-                    <span className="ai-confidence-badge">
-                      <Sparkles size={12} />
-                      {pick.probabilidad || 80}% Confianza
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                    <img src={m.homeTeam?.logo} alt={m.homeTeam?.name} style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
-                      {m.homeTeam?.shortName} vs {m.awayTeam?.shortName}
-                    </span>
-                    <img src={m.awayTeam?.logo} alt={m.awayTeam?.name} style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
-                  </div>
-
-                  <div className="ai-pick-recommendation-box">
-                    <div className="ai-pick-name">{pick.pick}</div>
-                    <div className="ai-pick-cuota-val">Cuota: {pick.cuota}</div>
-                  </div>
-
-                  <p className="ai-pick-reasoning">{pick.justificacion}</p>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '10px' }}>
-                  <button 
-                    className="btn-secondary" 
-                    style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                    onClick={() => {
-                      sounds.playClick();
-                      onSelectMatch(m);
-                    }}
+          <ul className="ap-rows">
+            {visible.length === 0 && <li className="ap-rows-empty">Ningún partido coincide.</li>}
+            {visible.map(m => {
+              const st = statusLabel(m);
+              const active = m.id === selected?.id;
+              return (
+                <li key={m.id}>
+                  <button
+                    className={`ap-row ${active ? 'active' : ''}`}
+                    onClick={() => { sounds.playClick(); setSelectedId(m.id); }}
+                    aria-current={active ? 'true' : undefined}
                   >
-                    Ver Partido
+                    <span className="ap-row-teams">
+                      <span><TeamLogo src={m.homeTeam?.logo} alt={m.homeTeam?.name} size={18} isHome />{m.homeTeam?.shortName || m.homeTeam?.name}</span>
+                      <span><TeamLogo src={m.awayTeam?.logo} alt={m.awayTeam?.name} size={18} isHome={false} />{m.awayTeam?.shortName || m.awayTeam?.name}</span>
+                    </span>
+                    <span className="ap-row-score">
+                      {m.status === 'scheduled' ? null : <><b>{m.homeTeam?.score ?? 0}</b><b>{m.awayTeam?.score ?? 0}</b></>}
+                    </span>
+                    <span className="ap-row-meta">
+                      <small className={st.cls}>{st.text}</small>
+                      {m.oddsInfo?.hasMoneyline && (
+                        <small className="ap-row-odds">{fmtOdds(m.oddsInfo.homeOdds)} · {fmtOdds(m.oddsInfo.drawOdds)} · {fmtOdds(m.oddsInfo.awayOdds)}</small>
+                      )}
+                    </span>
                   </button>
-
-                  <button 
-                    className="btn-primary" 
-                    style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                    onClick={() => onOpenPickModal(m)}
-                  >
-                    <Sparkles size={12} style={{ color: '#76b900' }} />
-                    <span>Ver NVIDIA IA</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                </li>
+              );
+            })}
+          </ul>
+        </aside>
       </div>
     </div>
   );

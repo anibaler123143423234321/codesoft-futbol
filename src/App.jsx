@@ -1,18 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import TickerMarquee from './components/TickerMarquee';
 import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
-import CarteleraGrid from './components/CarteleraGrid';
-import MatchCenter from './components/MatchCenter';
-import AIPicksView from './components/AIPicksView';
-import CommunityView from './components/CommunityView';
-import StatsView from './components/StatsView';
-import ModalPick from './components/ModalPick';
 import Footer from './components/Footer';
 import { fetchEspnScoreboard, fetchEspnMatchSummary } from './api/espnApi';
-// import { fetchFullMatchDetail } from './api/apiFootball'; // Desactivado: reemplazado 100% por ESPN API ilimitada
 import { sounds } from './utils/soundEffects';
-import { Send, X, CheckCircle2, RotateCw } from 'lucide-react';
+import { usePolling } from './hooks/usePolling';
+import { RotateCw } from 'lucide-react';
+
+// Vistas cargadas bajo demanda: el inicio no descarga el reproductor (hls.js) ni el resto de pantallas
+const loadCartelera = () => import('./components/CarteleraGrid');
+const loadMatchCenter = () => import('./components/MatchCenter');
+const loadPicks = () => import('./components/AIPicksView');
+const loadCommunity = () => import('./components/CommunityView');
+const loadStats = () => import('./components/StatsView');
+const loadModalPick = () => import('./components/ModalPick');
+const CarteleraGrid = lazy(loadCartelera);
+const MatchCenter = lazy(loadMatchCenter);
+const AIPicksView = lazy(loadPicks);
+const CommunityView = lazy(loadCommunity);
+const StatsView = lazy(loadStats);
+const ModalPick = lazy(loadModalPick);
+
+// Intervalos de actualización (ms)
+const SCOREBOARD_LIVE_MS = 15000;   // hay partidos en vivo
+const SCOREBOARD_IDLE_MS = 60000;   // sin partidos en vivo
+const SUMMARY_LIVE_MS = 8000;       // partido abierto y en vivo
+const SUMMARY_IDLE_MS = 120000;     // partido abierto por iniciar
+
+function ViewFallback() {
+  return (
+    <div className="view-fallback" role="status" aria-live="polite">
+      <RotateCw className="animate-spin" size={22} />
+      <span>Cargando…</span>
+    </div>
+  );
+}
 
 export default function App() {
   const [matches, setMatches] = useState([]);
@@ -21,109 +44,110 @@ export default function App() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [selectedLeague, setSelectedLeague] = useState('all');
   const [modalPickMatch, setModalPickMatch] = useState(null);
+  const hasLiveMatches = matches.some(m => m.status === 'live');
 
-  // Initial and Periodic Fetch from real ESPN Live Scoreboard
+  // Tras la primera carga, precargar las vistas en segundo plano para que navegar sea instantáneo
   useEffect(() => {
-    let isMounted = true;
+    if (loading) return;
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
+    const cancel = window.cancelIdleCallback || clearTimeout;
+    const id = idle(() => {
+      [loadMatchCenter, loadCartelera, loadModalPick, loadPicks, loadStats, loadCommunity]
+        .forEach(load => load().catch(() => {}));
+    });
+    return () => cancel(id);
+  }, [loading]);
 
-    async function loadScoreboard() {
-      try {
-        const liveData = await fetchEspnScoreboard(selectedLeague);
-        if (isMounted) {
-          if (liveData && liveData.length > 0) {
-            setMatches(prevMatches => {
-              return liveData.map(newItem => {
-                const existing = prevMatches.find(p => p.id === newItem.id);
-                if (!existing) return { ...newItem, _source: {} };
-                const src = existing._source || {};
-                return {
-                  ...newItem,
-                  _source: src,
-                  stats: src.stats ? existing.stats : (existing.stats || newItem.stats),
-                  scorers: src.scorers ? existing.scorers : (existing.scorers && existing.scorers.length > 0 ? existing.scorers : newItem.scorers),
-                  commentary: src.commentary ? existing.commentary : (existing.commentary || newItem.commentary),
-                  rosters: src.rosters ? existing.rosters : (existing.rosters || newItem.rosters),
-                  gameInfo: src.gameInfo ? existing.gameInfo : (existing.gameInfo || newItem.gameInfo),
-                  poll: existing.poll || newItem.poll,
-                  homeTeam: {
-                    ...newItem.homeTeam,
-                    yellowCards: existing.homeTeam?.yellowCards !== undefined ? existing.homeTeam.yellowCards : (newItem.homeTeam?.yellowCards ?? 0),
-                    redCards: existing.homeTeam?.redCards !== undefined ? existing.homeTeam.redCards : (newItem.homeTeam?.redCards ?? 0),
-                  },
-                  awayTeam: {
-                    ...newItem.awayTeam,
-                    yellowCards: existing.awayTeam?.yellowCards !== undefined ? existing.awayTeam.yellowCards : (newItem.awayTeam?.yellowCards ?? 0),
-                    redCards: existing.awayTeam?.redCards !== undefined ? existing.awayTeam.redCards : (newItem.awayTeam?.redCards ?? 0),
-                  }
-                };
-              });
-            });
+  // Marcadores de ESPN: más seguido si hay partidos en vivo, en pausa con la pestaña oculta
+  const leagueRef = useRef(selectedLeague);
+  leagueRef.current = selectedLeague;
 
-            setSelectedMatch(prev => {
-              if (!prev) return { ...liveData[0], _source: {} };
-              const updated = liveData.find(m => m.id === prev.id);
-              if (!updated) return prev;
-              const src = prev._source || {};
-
+  async function loadScoreboard() {
+    const league = selectedLeague;
+    try {
+      const liveData = await fetchEspnScoreboard(league);
+      // Si mientras tanto se cambió de liga, esta respuesta ya no sirve
+      if (leagueRef.current === league) {
+        if (liveData && liveData.length > 0) {
+          setMatches(prevMatches => {
+            return liveData.map(newItem => {
+              const existing = prevMatches.find(p => p.id === newItem.id);
+              if (!existing) return { ...newItem, _source: {} };
+              const src = existing._source || {};
               return {
-                ...prev,
-                ...updated,
+                ...newItem,
+                _source: src,
+                stats: src.stats ? existing.stats : (existing.stats || newItem.stats),
+                scorers: src.scorers ? existing.scorers : (existing.scorers && existing.scorers.length > 0 ? existing.scorers : newItem.scorers),
+                commentary: src.commentary ? existing.commentary : (existing.commentary || newItem.commentary),
+                rosters: src.rosters ? existing.rosters : (existing.rosters || newItem.rosters),
+                gameInfo: src.gameInfo ? existing.gameInfo : (existing.gameInfo || newItem.gameInfo),
+                poll: existing.poll || newItem.poll,
                 homeTeam: {
-                  ...updated.homeTeam,
-                  ...prev.homeTeam,
-                  score: updated.homeTeam?.score ?? prev.homeTeam?.score,
-                  yellowCards: prev.homeTeam?.yellowCards !== undefined ? prev.homeTeam.yellowCards : (updated.homeTeam?.yellowCards ?? 0),
-                  redCards: prev.homeTeam?.redCards !== undefined ? prev.homeTeam.redCards : (updated.homeTeam?.redCards ?? 0),
+                  ...newItem.homeTeam,
+                  yellowCards: existing.homeTeam?.yellowCards !== undefined ? existing.homeTeam.yellowCards : (newItem.homeTeam?.yellowCards ?? 0),
+                  redCards: existing.homeTeam?.redCards !== undefined ? existing.homeTeam.redCards : (newItem.homeTeam?.redCards ?? 0),
                 },
                 awayTeam: {
-                  ...updated.awayTeam,
-                  ...prev.awayTeam,
-                  score: updated.awayTeam?.score ?? prev.awayTeam?.score,
-                  yellowCards: prev.awayTeam?.yellowCards !== undefined ? prev.awayTeam.yellowCards : (updated.awayTeam?.yellowCards ?? 0),
-                  redCards: prev.awayTeam?.redCards !== undefined ? prev.awayTeam.redCards : (updated.awayTeam?.redCards ?? 0),
-                },
-                status: updated.status || prev.status,
-                clock: updated.clock || prev.clock,
-                minute: updated.minute || prev.minute,
-                timeStr: updated.timeStr || prev.timeStr,
-                statusText: updated.statusText || prev.statusText,
-                stats: src.stats ? prev.stats : (prev.stats || updated.stats),
-                scorers: src.scorers ? prev.scorers : (prev.scorers && prev.scorers.length > 0 ? prev.scorers : updated.scorers),
-                commentary: src.commentary ? prev.commentary : (prev.commentary || updated.commentary),
-                rosters: src.rosters ? prev.rosters : (prev.rosters || updated.rosters),
-                gameInfo: src.gameInfo ? prev.gameInfo : (prev.gameInfo || updated.gameInfo),
-                poll: prev.poll || updated.poll,
+                  ...newItem.awayTeam,
+                  yellowCards: existing.awayTeam?.yellowCards !== undefined ? existing.awayTeam.yellowCards : (newItem.awayTeam?.yellowCards ?? 0),
+                  redCards: existing.awayTeam?.redCards !== undefined ? existing.awayTeam.redCards : (newItem.awayTeam?.redCards ?? 0),
+                }
               };
             });
-          }
-          setLoading(false);
+          });
+
+          setSelectedMatch(prev => {
+            if (!prev) return { ...liveData[0], _source: {} };
+            const updated = liveData.find(m => m.id === prev.id);
+            if (!updated) return prev;
+            const src = prev._source || {};
+
+            return {
+              ...prev,
+              ...updated,
+              homeTeam: {
+                ...updated.homeTeam,
+                ...prev.homeTeam,
+                score: updated.homeTeam?.score ?? prev.homeTeam?.score,
+                yellowCards: prev.homeTeam?.yellowCards !== undefined ? prev.homeTeam.yellowCards : (updated.homeTeam?.yellowCards ?? 0),
+                redCards: prev.homeTeam?.redCards !== undefined ? prev.homeTeam.redCards : (updated.homeTeam?.redCards ?? 0),
+              },
+              awayTeam: {
+                ...updated.awayTeam,
+                ...prev.awayTeam,
+                score: updated.awayTeam?.score ?? prev.awayTeam?.score,
+                yellowCards: prev.awayTeam?.yellowCards !== undefined ? prev.awayTeam.yellowCards : (updated.awayTeam?.yellowCards ?? 0),
+                redCards: prev.awayTeam?.redCards !== undefined ? prev.awayTeam.redCards : (updated.awayTeam?.redCards ?? 0),
+              },
+              status: updated.status || prev.status,
+              clock: updated.clock || prev.clock,
+              minute: updated.minute || prev.minute,
+              timeStr: updated.timeStr || prev.timeStr,
+              statusText: updated.statusText || prev.statusText,
+              stats: src.stats ? prev.stats : (prev.stats || updated.stats),
+              scorers: src.scorers ? prev.scorers : (prev.scorers && prev.scorers.length > 0 ? prev.scorers : updated.scorers),
+              commentary: src.commentary ? prev.commentary : (prev.commentary || updated.commentary),
+              rosters: src.rosters ? prev.rosters : (prev.rosters || updated.rosters),
+              gameInfo: src.gameInfo ? prev.gameInfo : (prev.gameInfo || updated.gameInfo),
+              poll: prev.poll || updated.poll,
+            };
+          });
         }
-      } catch (err) {
-        console.error('ESPN API fetch error:', err);
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }
+    } catch (err) {
+      console.error('ESPN API fetch error:', err);
+      setLoading(false);
     }
+  }
 
-    loadScoreboard();
-    const interval = setInterval(loadScoreboard, 15000);
+  usePolling(loadScoreboard, hasLiveMatches ? SCOREBOARD_LIVE_MS : SCOREBOARD_IDLE_MS, { key: selectedLeague });
 
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [selectedLeague]);
-
-  // Source priority: 'api-football' (3) > 'espn-summary' (2) > 'espn-generated' (1) > none (0)
-  const SOURCE_PRIORITY = { 'api-football': 3, 'espn-summary': 2, 'espn-generated': 1 };
-  const canOverwrite = (currentSource, newSource) => {
-    if (!currentSource) return true;
-    return (SOURCE_PRIORITY[newSource] || 0) >= (SOURCE_PRIORITY[currentSource] || 0);
-  };
-  const normalizeTeamName = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-
-  // Function to load complete live detail (ESPN Summary + API-Football) for any match
+  // Detalle completo del partido (resumen de ESPN)
   const loadMatchDetail = async (matchToLoad) => {
     if (!matchToLoad || !matchToLoad.id) return;
+
 
     // 1. ESPN Summary (free, unlimited, live Opta stats & clock)
     try {
@@ -208,22 +232,15 @@ export default function App() {
     }
   };
 
-  // Automatically fetch detailed summary whenever selectedMatch changes
-  useEffect(() => {
-    if (selectedMatch?.id) {
-      loadMatchDetail(selectedMatch);
-    }
-  }, [selectedMatch?.id]);
-
-  // Live periodic refresh for active live match every 6 seconds (Ultra-Fast Response)
-  useEffect(() => {
-    if (selectedMatch && (selectedMatch.status === 'live' || currentView === 'envivo')) {
-      const liveInterval = setInterval(() => {
-        loadMatchDetail(selectedMatch);
-      }, 6000);
-      return () => clearInterval(liveInterval);
-    }
-  }, [selectedMatch?.id, selectedMatch?.status, currentView]);
+  // Detalle del partido abierto: se pide al elegirlo y luego se actualiza solo en la vista
+  // En vivo y según su estado (un partido finalizado ya no cambia, así que no se repite)
+  const summaryEvery = currentView !== 'envivo' || selectedMatch?.status === 'finished'
+    ? null
+    : selectedMatch?.status === 'live' ? SUMMARY_LIVE_MS : SUMMARY_IDLE_MS;
+  usePolling(() => loadMatchDetail(selectedMatch), summaryEvery, {
+    key: selectedMatch?.id,
+    enabled: !!selectedMatch?.id,
+  });
 
   const handleSelectMatch = async (match) => {
     sounds.playClick();
@@ -296,6 +313,7 @@ export default function App() {
 
       {/* Main View Router */}
       <main className="main-content">
+        <Suspense fallback={<ViewFallback />}>
         {currentView === 'inicio' && (
           <HeroBanner
             featuredMatch={currentMatchToDisplay}
@@ -319,7 +337,6 @@ export default function App() {
         {currentView === 'envivo' && (
           <MatchCenter
             match={currentMatchToDisplay}
-            allMatches={matches}
             liveMatches={liveMatches}
             onSelectMatch={handleSelectMatch}
             onBack={() => handleNavChange('cartelera')}
@@ -342,14 +359,17 @@ export default function App() {
         {currentView === 'comunidad' && (
           <CommunityView />
         )}
+        </Suspense>
       </main>
 
-      {/* NVIDIA NIM IA Pick Modal */}
+      {/* Modal de análisis con IA */}
       {modalPickMatch && (
-        <ModalPick
-          match={modalPickMatch}
-          onClose={() => setModalPickMatch(null)}
-        />
+        <Suspense fallback={null}>
+          <ModalPick
+            match={modalPickMatch}
+            onClose={() => setModalPickMatch(null)}
+          />
+        </Suspense>
       )}
 
       {/* Footer */}

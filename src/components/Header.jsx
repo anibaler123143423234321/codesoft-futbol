@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import { 
-  Flame, 
-  Tv, 
-  Calendar, 
-  Sparkles, 
-  BarChart3, 
-  MessageSquare, 
-  Volume2, 
-  VolumeX, 
-  Send,
+import {
+  Flame,
+  Tv,
+  Calendar,
+  Sparkles,
+  BarChart3,
+  MessageSquare,
+  Volume2,
+  VolumeX,
   Zap
 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
+import { pressable } from '../utils/a11y';
 
-export default function Header({ currentView, setView, liveMatchesCount = 6, onOpenTelegram }) {
+export default function Header({ currentView, setView, liveMatchesCount = 6 }) {
   const [muted, setMuted] = useState(sounds.muted);
 
   const handleSoundToggle = () => {
@@ -38,8 +38,7 @@ export default function Header({ currentView, setView, liveMatchesCount = 6, onO
       <div className="header-content">
         {/* Brand Logo */}
         <div 
-          className="logo-brand" 
-          onClick={() => {
+          className="logo-brand" {...pressable} onClick={() => {
             sounds.playClick();
             setView('inicio');
           }}

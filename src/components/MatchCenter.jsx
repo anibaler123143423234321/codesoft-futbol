@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Flag, Clock, Radio, Tv, Sparkles, ChevronRight, Calendar } from 'lucide-react';
+import { ArrowLeft, Clock, ChevronRight } from 'lucide-react';
 import TacticalWorkspace from './TacticalWorkspace';
 import LiveStatsBars from './LiveStatsBars';
 import MatchEventsTimeline from './MatchEventsTimeline';
@@ -11,15 +11,13 @@ import { useLiveMatchTimer } from '../hooks/useLiveMatchTimer';
 
 export default function MatchCenter({ 
   match, 
-  allMatches = [], 
   liveMatches = [], 
   onSelectMatch, 
   onBack, 
   onOpenPickModal 
 }) {
+  const { formattedTime, isLive, isFinished, isScheduled } = useLiveMatchTimer(match);
   if (!match) return null;
-
-  const { formattedTime, isLive, isHalftime, isFinished, isScheduled } = useLiveMatchTimer(match);
 
   return (
     <div className="match-center-container" id="match-center-view">

@@ -67,3 +67,81 @@ body {
 
 .live-dot { box-shadow: none; }
 .animate-spin { color: var(--accent); }
+
+/* Carga de vistas bajo demanda */
+.view-fallback { min-height: 50vh; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text-secondary); font-size: 0.86rem; }
+
+/* Portada: origen de las cuotas y acceso a la IA */
+.odds-source { margin: 6px 0 12px; font-size: 0.7rem; color: var(--text-muted); text-align: center; }
+button.spotlight-ai-banner { width: 100%; font: inherit; color: inherit; cursor: pointer; text-align: left; box-shadow: none; }
+button.spotlight-ai-banner:hover { border-color: var(--green-neon); }
+.pill-badge-gold { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--radius-full); background: rgba(245, 158, 11, 0.12); color: var(--gold-neon); border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.75rem; font-weight: 700; }
+
+/* Comunidad: tus pronósticos */
+.community-col-title { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 1.1rem; font-weight: 800; color: #fff; }
+.community-votes-card { display: flex; flex-direction: column; gap: 16px; padding: 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); }
+.community-votes-empty { font-size: 0.86rem; line-height: 1.55; color: var(--text-secondary); }
+.community-votes-empty b { color: #fff; }
+.community-votes-total { display: flex; align-items: baseline; gap: 8px; }
+.community-votes-total b { font-family: var(--font-score); font-size: 2rem; color: #fff; line-height: 1; }
+.community-votes-total span { font-size: 0.82rem; color: var(--text-secondary); }
+.community-votes-split { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.community-votes-split div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px; border-radius: var(--radius-md); background: var(--bg-elevated); }
+.community-votes-split b { font-family: var(--font-score); font-size: 1.2rem; color: #fff; }
+.community-votes-split span { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.community-ranking-note { display: flex; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border-color); font-size: 0.74rem; line-height: 1.5; color: var(--text-muted); }
+.community-ranking-note svg { flex: none; margin-top: 2px; color: var(--gold-neon); }
+
+/* `overflow-x: hidden` convertía al contenedor en zona de scroll y rompía la cabecera fija */
+@supports (overflow: clip) {
+  .app-container { overflow-x: clip !important; }
+}
+
+/* ============================================================
+   MÓVIL: cabecera compacta + barra de pestañas inferior
+   ============================================================ */
+@media (max-width: 768px) {
+  .app-container { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+
+  .header-nav { padding: 0 12px; }
+  .header-content { flex-wrap: nowrap; min-height: 52px; gap: 10px; }
+  .logo-subtitle { display: none; }
+  .logo-title { font-size: 1.02rem; }
+  .header-actions { margin-left: auto; gap: 8px; }
+  .header-actions .icon-btn { width: 36px; height: 36px; }
+
+  .nav-pills {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    order: 0; width: auto; height: auto; margin: 0;
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    overflow: visible; border-radius: 0;
+    background: var(--bg-card); border-top: 1px solid var(--border-color);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .nav-pill-btn {
+    position: relative; flex-direction: column; justify-content: center; gap: 3px;
+    height: 58px; padding: 6px 2px; min-width: 0;
+    font-size: 0.6rem; font-weight: 700; white-space: nowrap;
+    border: none; border-top: 2px solid transparent; border-radius: 0;
+  }
+  .nav-pill-btn svg { width: 19px; height: 19px; }
+  .nav-pill-btn > span:first-of-type { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .nav-pill-btn.active { border: none; border-top: 2px solid var(--accent); color: var(--accent); }
+  .nav-pill-btn > span + span { position: absolute; top: 6px; left: calc(50% + 6px); font-size: 0.56rem !important; padding: 0 5px !important; }
+
+  /* Encabezado del partido: escudo arriba, nombre abajo, sin cortes */
+  .match-center-header { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: 8px; padding: 12px 10px; }
+  .mc-team-side { flex-direction: column; align-items: center; gap: 6px; min-width: 0; text-align: center; }
+  .mc-team-side.home { flex-direction: column-reverse; }
+  .mc-team-info, .mc-team-info.home, .mc-team-info.away { align-items: center; text-align: center; min-width: 0; }
+  .mc-team-name { max-width: none; font-size: 0.82rem; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mc-cards-indicator { justify-content: center !important; }
+  .mc-score-center-box { padding-top: 4px; }
+  .mc-scoreboard { font-size: 1.7rem; }
+}
+
+/* Foco visible en tarjetas y elementos usables con teclado */
+[role="button"]:focus-visible, .match-card:focus-visible, .feature-card:focus-visible, .ticker-item:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}

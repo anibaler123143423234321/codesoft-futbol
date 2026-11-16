@@ -35,6 +35,8 @@ export function useLiveMatchTimer(match) {
     setSeconds(sec);
     baseTimeRef.current = Date.now();
     baseSecRef.current = sec;
+    // Se resincroniza solo cuando cambian los datos de reloj del partido
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match?.id, match?.minute, match?.clockSeconds, match?.status]);
 
   useEffect(() => {

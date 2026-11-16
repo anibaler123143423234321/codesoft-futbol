@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Trophy, Target, Shield, RotateCw } from 'lucide-react';
+import { BarChart3, Trophy, RotateCw } from 'lucide-react';
 import { ESPN_SUPPORTED_LEAGUES, fetchEspnStandings } from '../api/espnApi';
 import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';

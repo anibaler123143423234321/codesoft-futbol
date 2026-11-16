@@ -1,109 +1,88 @@
-import React from 'react';
-import { Users, Send, Trophy, Flame, MessageSquare, Sparkles } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Users, Trophy, MessageSquare, Vote } from 'lucide-react';
 import CommunityChat from './CommunityChat';
-import { sounds } from '../utils/soundEffects';
 
-export default function CommunityView({ onOpenTelegram }) {
-  const leaderboard = [
-    { rank: 1, name: 'Carlos_Picks', aciertos: '92%', streak: '7 en racha', points: '1,420 pts', badge: 'VIP' },
-    { rank: 2, name: 'SantiFutbol', aciertos: '88%', streak: '5 en racha', points: '1,280 pts', badge: 'MOD' },
-    { rank: 3, name: 'Mateo_Bet99', aciertos: '84%', streak: '4 en racha', points: '1,150 pts', badge: 'PRO' },
-    { rank: 4, name: 'DiegoGol', aciertos: '81%', streak: '3 en racha', points: '980 pts', badge: '' },
-    { rank: 5, name: 'NicoMadrid', aciertos: '79%', streak: '3 en racha', points: '920 pts', badge: 'VIP' },
-  ];
+const VOTE_LABEL = { home: 'Local', draw: 'Empate', away: 'Visita' };
+
+// Pronósticos que dejaste en las encuestas "¿Quién ganará?" (se guardan solo en este navegador)
+function readLocalVotes() {
+  const votes = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('poll_vote_')) {
+        votes.push({ matchId: key.slice('poll_vote_'.length), vote: localStorage.getItem(key) });
+      }
+    }
+  } catch {
+    /* almacenamiento no disponible */
+  }
+  return votes;
+}
+
+export default function CommunityView() {
+  const votes = useMemo(readLocalVotes, []);
+  const tally = votes.reduce((acc, v) => ({ ...acc, [v.vote]: (acc[v.vote] || 0) + 1 }), {});
 
   return (
     <div className="community-view-container" id="community-hub-view">
-      {/* Header Banner */}
       <div className="community-header-banner">
         <div>
           <div className="section-tag">
             <Users size={14} />
-            <span>COMUNIDAD OFICIAL CODESOFT</span>
+            <span>COMUNIDAD</span>
           </div>
-          <h1 className="community-banner-title">
-            Únete a la Mayor Comunidad de Fútbol en Vivo
-          </h1>
+          <h1 className="community-banner-title">Hablá de fútbol en vivo</h1>
           <p className="community-banner-subtitle">
-            Comparte tus análisis, participa en encuestas durante los partidos, compite en el ranking de tipsters y recibe las alertas de picks de NVIDIA IA antes del pitazo inicial.
+            Comentá la jornada en el chat, votá quién gana cada partido y compará tu lectura con la del análisis con IA.
           </p>
-        </div>
-
-        <div className="pill-badge-green" style={{ padding: '10px 18px', fontSize: '0.88rem' }}>
-          <Sparkles size={16} />
-          <span>Comunidad IA (+15K Usuarios)</span>
         </div>
       </div>
 
-      {/* Grid: Chat + Leaderboard */}
       <div className="community-grid-layout">
-        {/* Chat Room */}
         <div className="community-chat-col">
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 className="community-col-title">
             <MessageSquare size={18} style={{ color: 'var(--cyan-neon)' }} />
-            <span>Chat Global de la Jornada</span>
+            <span>Chat global de la jornada</span>
           </h3>
           <CommunityChat matchTitle="Jornada Global" />
         </div>
 
-        {/* Top Tipsters Leaderboard */}
         <div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Trophy size={18} style={{ color: 'var(--gold-neon)' }} />
-            <span>Top Tipsters & Pronosticadores</span>
+          <h3 className="community-col-title">
+            <Vote size={18} style={{ color: 'var(--gold-neon)' }} />
+            <span>Tus pronósticos</span>
           </h3>
 
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {leaderboard.map((user) => (
-                <div 
-                  key={user.rank}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    background: user.rank === 1 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                    border: user.rank === 1 ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-md)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span 
-                      style={{
-                        fontFamily: 'var(--font-score)',
-                        fontWeight: 800,
-                        fontSize: '1.1rem',
-                        color: user.rank === 1 ? 'var(--gold-neon)' : user.rank === 2 ? '#c0c0c0' : user.rank === 3 ? '#cd7f32' : 'var(--text-muted)',
-                        width: '24px'
-                      }}
-                    >
-                      #{user.rank}
-                    </span>
-
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>{user.name}</span>
-                        {user.badge && (
-                          <span className={`chat-user-badge ${user.badge === 'VIP' ? 'badge-vip' : user.badge === 'MOD' ? 'badge-mod' : 'badge-ai'}`}>
-                            {user.badge}
-                          </span>
-                        )}
-                      </div>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--cyan-neon)' }}>
-                        🔥 {user.streak}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontFamily: 'var(--font-score)', fontWeight: 800, color: 'var(--green-neon)', fontSize: '0.95rem' }}>
-                      {user.aciertos}
-                    </div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{user.points}</span>
-                  </div>
+          <div className="community-votes-card">
+            {votes.length === 0 ? (
+              <p className="community-votes-empty">
+                Todavía no votaste en ningún partido. Abrí un partido en <b>En vivo</b> y respondé
+                “¿Quién ganará?” para empezar tu historial.
+              </p>
+            ) : (
+              <>
+                <div className="community-votes-total">
+                  <b>{votes.length}</b>
+                  <span>{votes.length === 1 ? 'pronóstico registrado' : 'pronósticos registrados'}</span>
                 </div>
-              ))}
+                <div className="community-votes-split">
+                  {['home', 'draw', 'away'].map(k => (
+                    <div key={k}>
+                      <b>{tally[k] || 0}</b>
+                      <span>{VOTE_LABEL[k]}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="community-ranking-note">
+              <Trophy size={14} />
+              <span>
+                El ranking entre usuarios se activa cuando la app tenga cuentas: hoy tus votos se
+                guardan solo en este navegador.
+              </span>
             </div>
           </div>
         </div>

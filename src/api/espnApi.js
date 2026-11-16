@@ -7,6 +7,55 @@ const getBaseUrl = () => {
   return 'https://site.api.espn.com/apis';
 };
 
+/** Horario de inicio en español y hora local: "Hoy · 20:30", "Mañana · 13:00" o "18/11 · 21:00". */
+export function formatKickoff(iso) {
+  if (!iso) return 'Por iniciar';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Por iniciar';
+  const hour = d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOfDay(d) - startOfDay(new Date())) / 86400000);
+  const day = days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : days === -1 ? 'Ayer'
+    : d.toLocaleDateString('es', { day: '2-digit', month: '2-digit' });
+  return `${day} · ${hour}`;
+}
+
+// Cuota americana (+150 / -200) → decimal (2.50 / 1.50)
+function americanToDecimal(am) {
+  const n = parseFloat(am);
+  if (!Number.isFinite(n) || n === 0) return null;
+  return Number((n > 0 ? n / 100 + 1 : 100 / Math.abs(n) + 1).toFixed(2));
+}
+
+/**
+ * Cuotas 1X2 reales del proveedor que publica ESPN (normalmente DraftKings).
+ * ESPN las trae en `moneyline` (cierre o apertura); los campos `homeTeamOdds` suelen venir vacíos.
+ * Devuelve null si el partido no tiene cuotas.
+ */
+export function parseEspnOdds(espnOdds) {
+  if (!espnOdds) return null;
+  const ml = espnOdds.moneyline || {};
+  const pick = (side, legacy) =>
+    legacy?.decimalOdds ||
+    americanToDecimal(ml[side]?.close?.odds ?? ml[side]?.open?.odds) ||
+    americanToDecimal(legacy?.moneyLine ?? legacy?.close?.moneyLine);
+
+  const homeOdds = pick('home', espnOdds.homeTeamOdds);
+  const awayOdds = pick('away', espnOdds.awayTeamOdds);
+  const drawOdds = pick('draw', espnOdds.drawOdds);
+  const total = espnOdds.overUnder ?? espnOdds.total?.over?.close?.line?.replace(/^o/, '');
+
+  return {
+    provider: espnOdds.provider?.displayName || espnOdds.provider?.name || 'ESPN',
+    details: espnOdds.details || null,
+    overUnder: total ? `O/U ${total}` : null,
+    homeOdds,
+    drawOdds,
+    awayOdds,
+    hasMoneyline: !!(homeOdds && drawOdds && awayOdds),
+  };
+}
+
 export const ESPN_SUPPORTED_LEAGUES = [
   { id: 'all', name: 'Todos los Partidos', icon: '⚽' },
   { id: 'uefa.champions', name: 'Champions League', icon: '⭐' },
@@ -144,7 +193,6 @@ function parseEspnEvents(events, league) {
 
     const isLive = !isPastMatch && (ev.status?.type?.state === 'in' || ev.status?.type?.name?.includes('IN_PROGRESS') || ev.status?.type?.name?.includes('HALFTIME') || ev.status?.type?.detail === 'HT');
     const isFinished = ev.status?.type?.state === 'post' || ev.status?.type?.completed === true || ev.status?.type?.name?.includes('FINAL') || ev.status?.type?.name?.includes('FULL_TIME') || isPastMatch;
-    const isScheduled = !isFinished && !isLive;
     const status = isFinished ? 'finished' : isLive ? 'live' : 'scheduled';
     
     let minute = '1\'';
@@ -162,9 +210,7 @@ function parseEspnEvents(events, league) {
     const homeScore = parseInt(home?.score || '0', 10);
     const awayScore = parseInt(away?.score || '0', 10);
 
-    const espnOdds = comp?.odds?.[0];
-    const overUnder = espnOdds?.overUnder ? `O/U ${espnOdds.overUnder}` : null;
-    const providerSpread = espnOdds?.details || null;
+    const odds = parseEspnOdds(comp?.odds?.[0]);
 
     const { leagueTitle, isWomen, isFriendly, category } = resolveDetailedLeagueInfo(ev, comp, home, away, league);
 
@@ -176,7 +222,7 @@ function parseEspnEvents(events, league) {
     const tvChannel = broadcastsList.length > 0 ? broadcastsList.join(' / ') : null;
 
     const cleanTime = ev.date ? new Date(ev.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hoy';
-    const timeStr = isLive ? `EN VIVO · ${minute}` : isFinished ? 'FINALIZADO' : `HORARIO: ${cleanTime}`;
+    const timeStr = isLive ? `EN VIVO · ${minute}` : isFinished ? 'FINALIZADO' : formatKickoff(ev.date);
 
     return {
       id: ev.id || `espn-${index}`,
@@ -205,6 +251,7 @@ function parseEspnEvents(events, league) {
         logo: home?.team?.logo || home?.team?.logos?.[0]?.href || '',
         score: homeScore,
         winner: home?.winner || false,
+        odds: odds?.homeOdds || null,
         yellowCards: 0,
         redCards: 0,
       },
@@ -215,14 +262,11 @@ function parseEspnEvents(events, league) {
         logo: away?.team?.logo || away?.team?.logos?.[0]?.href || '',
         score: awayScore,
         winner: away?.winner || false,
+        odds: odds?.awayOdds || null,
         yellowCards: 0,
         redCards: 0,
       },
-      oddsInfo: {
-        overUnder,
-        details: providerSpread,
-        provider: espnOdds?.provider?.name || 'ESPN Odds'
-      },
+      oddsInfo: odds,
       serversCount: 4,
       featured: index === 0,
       scorers: [],
@@ -259,9 +303,7 @@ function parseEspnSummary(summary, matchId, league) {
 
   const isFinished = comp?.status?.type?.state === 'post' || comp?.status?.type?.completed === true || comp?.status?.type?.name?.includes('FINAL') || comp?.status?.type?.name?.includes('FULL_TIME');
   const isLive = !isFinished && (comp?.status?.type?.state === 'in' || comp?.status?.type?.name?.includes('IN_PROGRESS') || comp?.status?.type?.name?.includes('HALFTIME') || comp?.status?.type?.detail === 'HT');
-  const isScheduled = !isFinished && !isLive;
-  const status = isFinished ? 'finished' : isLive ? 'live' : 'scheduled';
-  
+
   let minute = '1\'';
   if (isFinished) {
     minute = 'FT';
@@ -273,7 +315,6 @@ function parseEspnSummary(summary, matchId, league) {
   } else {
     minute = comp?.status?.type?.detail || comp?.status?.type?.shortDetail || 'Por Iniciar';
   }
-  const timeStr = isLive ? `EN VIVO · ${minute}` : isFinished ? 'FINALIZADO' : (comp?.status?.type?.detail || 'Por Iniciar');
 
   const homeScore = parseInt(home?.score || '0', 10);
   const awayScore = parseInt(away?.score || '0', 10);
@@ -430,28 +471,7 @@ function parseEspnSummary(summary, matchId, league) {
   };
 
   // Extract real market odds from ESPN pickcenter or competition odds
-  const espnOdds = comp?.odds?.[0] || summary.odds?.[0] || summary.pickcenter?.[0];
-  let realOdds = null;
-  if (espnOdds) {
-    const americanToDecimal = (am) => {
-      const n = parseFloat(am);
-      if (isNaN(n)) return null;
-      if (n > 0) return Number(((n / 100) + 1).toFixed(2));
-      if (n < 0) return Number(((100 / Math.abs(n)) + 1).toFixed(2));
-      return null;
-    };
-
-    realOdds = {
-      provider: espnOdds.provider?.name || 'DraftKings / ESPN',
-      details: espnOdds.details || null,
-      overUnder: espnOdds.overUnder || (espnOdds.total ? `O/U ${espnOdds.total}` : null),
-      spread: espnOdds.spread || null,
-      homeOdds: espnOdds.homeTeamOdds?.decimalOdds || americanToDecimal(espnOdds.homeTeamOdds?.moneyLine || espnOdds.homeTeamOdds?.close?.moneyLine),
-      awayOdds: espnOdds.awayTeamOdds?.decimalOdds || americanToDecimal(espnOdds.awayTeamOdds?.moneyLine || espnOdds.awayTeamOdds?.close?.moneyLine),
-      drawOdds: espnOdds.drawOdds?.decimalOdds || americanToDecimal(espnOdds.drawOdds?.moneyLine || espnOdds.drawOdds?.close?.moneyLine),
-      favorite: espnOdds.homeTeamOdds?.favorite ? 'home' : espnOdds.awayTeamOdds?.favorite ? 'away' : 'draw'
-    };
-  }
+  const realOdds = parseEspnOdds(comp?.odds?.[0] || summary.odds?.[0] || summary.pickcenter?.[0]);
 
   const { leagueTitle, isWomen, isFriendly, category } = resolveDetailedLeagueInfo(summary.header, comp, home, away, league);
 
@@ -543,7 +563,7 @@ function parseEspnSummary(summary, matchId, league) {
     status: isFinished ? 'finished' : isLive ? 'live' : 'scheduled',
     minute: minute,
     clockSeconds: typeof comp?.status?.clock === 'number' ? comp.status.clock : null,
-    timeStr: isLive ? `EN VIVO · ${minute}` : isFinished ? 'FINALIZADO' : (comp?.status?.type?.detail || 'Por Iniciar'),
+    timeStr: isLive ? `EN VIVO · ${minute}` : isFinished ? 'FINALIZADO' : formatKickoff(comp?.date || summary.header?.competitions?.[0]?.date),
     linescores: {
       home: homeLinescores,
       away: awayLinescores
@@ -554,7 +574,8 @@ function parseEspnSummary(summary, matchId, league) {
       shortName: home?.team?.shortDisplayName || home?.team?.name || 'Local',
       logo: home?.team?.logos?.[0]?.href || home?.team?.logo || '',
       score: homeScore,
-      odds: realOdds?.homeOdds || null,
+      // Solo si hay cuota: así no se pisa la que ya trajo el marcador
+      ...(realOdds?.homeOdds ? { odds: realOdds.homeOdds } : {}),
       yellowCards: homeCards.yellows,
       redCards: homeCards.reds,
       form: recentForm.home.form,
@@ -566,13 +587,13 @@ function parseEspnSummary(summary, matchId, league) {
       shortName: away?.team?.shortDisplayName || away?.team?.name || 'Visita',
       logo: away?.team?.logos?.[0]?.href || away?.team?.logo || '',
       score: awayScore,
-      odds: realOdds?.awayOdds || null,
+      ...(realOdds?.awayOdds ? { odds: realOdds.awayOdds } : {}),
       yellowCards: awayCards.yellows,
       redCards: awayCards.reds,
       form: recentForm.away.form,
       recentGames: recentForm.away.games,
     },
-    oddsInfo: realOdds,
+    ...(realOdds?.hasMoneyline ? { oddsInfo: realOdds } : {}),
     stats: parsedStats,
     scorers: scorers,
     commentary: commentaryList,
@@ -588,7 +609,7 @@ function parseEspnSummary(summary, matchId, league) {
   };
 }
 
-export function resolveDetailedLeagueInfo(ev, comp, home, away, league = 'all') {
+export function resolveDetailedLeagueInfo(ev, comp, home, away, _league = 'all') {
   const slug = (ev?.season?.slug || ev?.season?.name || '').toLowerCase();
   const rawTitle = (ev?.league?.name || comp?.type?.text || comp?.notes?.[0]?.headline || '').toLowerCase();
   const homeName = (home?.team?.displayName || home?.name || '').toLowerCase();
@@ -663,12 +684,6 @@ export function resolveDetailedLeagueInfo(ev, comp, home, away, league = 'all') 
   }
 
   return { leagueTitle: title, isWomen, isFriendly, category };
-}
-
-function findStatInBox(box, name) {
-  if (!box || !box.statistics) return 0;
-  const s = box.statistics.find(st => st.name === name || st.label?.toLowerCase() === name.toLowerCase());
-  return s ? parseInt(s.displayValue, 10) || 0 : 0;
 }
 
 /**

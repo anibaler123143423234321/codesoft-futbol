@@ -2,7 +2,6 @@ export default function MatchEventsTimeline({ match }) {
   const scorers = match?.scorers || [];
   const isLive = match?.status === 'live';
   const isFinished = match?.status === 'finished';
-  const isScheduled = match?.status === 'scheduled' || (!isLive && !isFinished);
 
   const homeScore = Number(match?.homeTeam?.score || 0);
   const awayScore = Number(match?.awayTeam?.score || 0);

@@ -57,11 +57,6 @@ function toPitch(team, x, y) {
   return { x: (px / 100) * PITCH_W, y: (py / 100) * PITCH_H };
 }
 
-function fmtDuration(s) {
-  const m = Math.floor(s / 60);
-  const r = Math.floor(s % 60);
-  return `${m}:${r < 10 ? '0' : ''}${r}`;
-}
 
 export default function TacticalWorkspace({ match, onOpenPickModal }) {
   const { formattedTime, seconds, isLive, isFinished, isScheduled, isHalftime } = useLiveMatchTimer(match);
@@ -73,7 +68,7 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
     match?.rawEspnStatus?.detail === 'HT' || 
     match?.rawEspnStatus?.name?.includes('HALFTIME');
 
-  const plays = match.plays || [];
+  const plays = useMemo(() => match.plays || [], [match.plays]);
   const matchVideos = match.videos || [];
   const [latestVideos, setLatestVideos] = useState([]);
   const [brokenIds, setBrokenIds] = useState(() => new Set());

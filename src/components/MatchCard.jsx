@@ -1,13 +1,14 @@
 import React from 'react';
-import { Play, Sparkles, Tv } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';
+import { pressable } from '../utils/a11y';
 
 export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
 
-  const handleClick = (e) => {
+  const handleClick = () => {
     sounds.playClick();
     onSelectMatch(match);
   };
@@ -19,7 +20,7 @@ export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
 
   return (
     <div 
-      className={`match-card ${isLive ? 'is-live' : ''}`}
+      className={`match-card ${isLive ? 'is-live' : ''}`} {...pressable} 
       onClick={handleClick}
       id={`match-card-${match.id}`}
     >
@@ -93,7 +94,7 @@ export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
           ) : isFinished ? (
             <span>RESUMEN FINAL</span>
           ) : (
-            <span>HORARIO: {match.date || 'Hoy'}</span>
+            <span>{match.timeStr || match.date || 'Por iniciar'}</span>
           )}
         </span>
 

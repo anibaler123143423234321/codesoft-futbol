@@ -59,6 +59,9 @@ export default function ModalPick({ match, onClose }) {
       .catch(() => { if (alive) setAiState('failed'); });
 
     return () => { alive = false; };
+    // Solo se vuelve a pedir al cambiar de partido o al reintentar; las actualizaciones
+    // del marcador cada pocos segundos no deben relanzar un análisis de la IA.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match.id, attempt]);
 
   useEffect(() => {

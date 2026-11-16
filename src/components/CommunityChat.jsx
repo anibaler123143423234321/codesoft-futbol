@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  MessageSquare, 
-  Eye, 
-  Heart, 
-  Send, 
-  Smile, 
-  Image as ImageIcon, 
-  Sparkles,
+import {
+  MessageSquare,
+  Heart,
+  Send,
   X,
   Trash2,
   Wifi,
@@ -16,7 +12,7 @@ import { SOCCER_GIFS } from '../api/mockData';
 import { socketService } from '../utils/socketService';
 import { sounds } from '../utils/soundEffects';
 
-export default function CommunityChat({ matchTitle = 'Partido' }) {
+export default function CommunityChat() {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const [userName, setUserName] = useState(() => {
@@ -24,8 +20,7 @@ export default function CommunityChat({ matchTitle = 'Partido' }) {
   });
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
-  const [viewerCount, setViewerCount] = useState(1248);
-  const [wsConnected, setWsConnected] = useState(false);
+  const [, setWsConnected] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
 
   const chatBoxRef = useRef(null);
@@ -63,14 +58,6 @@ export default function CommunityChat({ matchTitle = 'Partido' }) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // Subtle viewer fluctuation
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setViewerCount(prev => prev + Math.floor(Math.random() * 5) - 2);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleSendMessage = (e) => {
     e?.preventDefault();
@@ -157,11 +144,6 @@ export default function CommunityChat({ matchTitle = 'Partido' }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div className="chat-live-views">
-            <Eye size={13} style={{ color: 'var(--red-live)' }} />
-            <span>{viewerCount.toLocaleString()}</span>
-          </div>
-
           {/* Clean Chat to 0 Button */}
           <button 
             className="icon-btn" 

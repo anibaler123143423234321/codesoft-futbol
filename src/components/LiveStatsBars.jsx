@@ -1,19 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  BarChart3, 
-  Shield, 
-  Zap, 
-  Target, 
-  Users, 
-  Radio, 
-  Info, 
-  Activity, 
-  History, 
-  MapPin, 
-  Award, 
-  Clock,
-  TrendingUp,
-  CheckCircle2
+import {
+  BarChart3,
+  Shield,
+  Users,
+  Info,
+  Activity,
+  History,
+  MapPin,
+  Award,
+  Clock
 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 
@@ -87,6 +82,8 @@ export default function LiveStatsBars({
       userSelectedTabRef.current = false;
       setActiveTab(getDefaultTab());
     }
+    // Solo al cambiar de partido: si no, se pisaría la pestaña que eligió el usuario
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchIdentifier]);
 
   const handleTabClick = (tab) => {
