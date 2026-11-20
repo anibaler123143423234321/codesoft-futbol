@@ -8,6 +8,7 @@ import CommunityChat from './CommunityChat';
 import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';
 import { useLiveMatchTimer } from '../hooks/useLiveMatchTimer';
+import { useMatchSounds } from '../hooks/useMatchSounds';
 
 export default function MatchCenter({ 
   match, 
@@ -17,6 +18,7 @@ export default function MatchCenter({
   onOpenPickModal 
 }) {
   const { formattedTime, isLive, isFinished, isScheduled } = useLiveMatchTimer(match);
+  useMatchSounds(match);
   if (!match) return null;
 
   return (

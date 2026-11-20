@@ -12,6 +12,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/rapidapi-stream/*"
+  to = "/.netlify/functions/rapidapi-stream/:splat"
+  status = 200
+
+[[redirects]]
   from = "/api/nvidia/*"
   to = "/.netlify/functions/nvidia/:splat"
   status = 200

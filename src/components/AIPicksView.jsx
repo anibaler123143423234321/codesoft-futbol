@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Sparkles, Search, X, Check, AlertTriangle, Target, TrendingUp, Play, RotateCw } from 'lucide-react';
-import { generateMatchAIPick } from '../api/cerebrasAi';
+import { Sparkles, Search, X, AlertTriangle, Play, RotateCw, ExternalLink, BookOpen, Database, ChevronDown, ShieldAlert, Flag, Square, Hand } from 'lucide-react';
+import { explainPrediction } from '../api/cerebrasAi';
+import { fetchEspnMatchSummary, fetchTeamRecentStats } from '../api/espnApi';
+import { buildPrediction, buildSources, citeNumbers } from '../api/predictionModel';
 import { sounds } from '../utils/soundEffects';
+import { useMatchSounds } from '../hooks/useMatchSounds';
 import TeamLogo from './TeamLogo';
 import '../picks.css';
 
@@ -15,7 +18,22 @@ const fmtOdds = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 1 ? n.toFixed(2) : '—';
 };
-const clampPct = (v) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
+const fmtPct = (p, d = 0) => `${(p * 100).toFixed(d)}%`;
+const fmtEdge = (e) => (e == null ? '—' : `${e > 0 ? '+' : ''}${(e * 100).toFixed(1)}%`);
+const slug = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-').toLowerCase();
+// Cada cuánto se vuelve a pedir el resumen de ESPN de un partido en vivo
+const LIVE_REFRESH_MS = 45000;
+
+// Cambio de probabilidad desde la lectura anterior, en puntos porcentuales
+function Delta({ d }) {
+  if (d == null || Math.abs(d) < 0.005) return null;
+  const up = d > 0;
+  return (
+    <span className={`ap-delta ${up ? 'up' : 'down'}`} title="Cambio desde la actualización anterior">
+      {up ? '▲' : '▼'} {Math.abs(d * 100).toFixed(1)}
+    </span>
+  );
+}
 
 function statusLabel(m) {
   if (m.status === 'live') return { text: `EN VIVO${m.minute ? ` · ${m.minute}` : ''}`, cls: 'live' };
@@ -23,17 +41,64 @@ function statusLabel(m) {
   return { text: m.date || 'Por iniciar', cls: '' };
 }
 
-export default function AIPicksView({ matches = [], onSelectMatch, onOpenPickModal }) {
+// Cita numerada que lleva a su fuente en la lista del final
+function Cite({ nums }) {
+  if (!nums?.length) return null;
+  const go = (e, n) => {
+    e.preventDefault();
+    const el = document.getElementById(`ap-src-${n}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  };
+  return (
+    <sup className="ap-cite">
+      {nums.map(n => (
+        <a key={n} href={`#ap-src-${n}`} onClick={(e) => go(e, n)} aria-label={`Fuente ${n}`}>[{n}]</a>
+      ))}
+    </sup>
+  );
+}
+
+// Mezcla el resumen de ESPN (forma, enlace, cuotas completas) sin pisar marcador ni minuto del marcador en vivo
+function mergeDetail(m, d, recent) {
+  if (!d) return m;
+  const team = (t, dt, rs) => ({
+    ...t,
+    recentGames: dt?.recentGames,
+    form: dt?.form,
+    yellowCards: dt?.yellowCards ?? t?.yellowCards,
+    redCards: dt?.redCards ?? t?.redCards,
+    recentStats: rs || undefined,
+  });
+  const oddsFrom = m.oddsInfo?.hasMoneyline && m.oddsInfo.overOdds ? m.oddsInfo : (d.oddsInfo?.hasMoneyline ? d.oddsInfo : m.oddsInfo);
+  return {
+    ...m,
+    espnLink: d.espnLink || m.espnLink,
+    h2hHistory: d.h2hHistory,
+    stats: d.stats?.hasData ? d.stats : m.stats,
+    oddsInfo: oddsFrom,
+    homeTeam: team(m.homeTeam, d.homeTeam, recent?.home),
+    awayTeam: team(m.awayTeam, d.awayTeam, recent?.away),
+  };
+}
+
+export default function AIPicksView({ matches = [], onSelectMatch }) {
   const [selectedId, setSelectedId] = useState(() => (matches.find(m => m.status === 'live') || matches[0])?.id);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  // { matchId, data } cuando hay resultado; el estado de carga guarda el partido en análisis
-  const [result, setResult] = useState(null);
-  const [loadingId, setLoadingId] = useState(null);
-  const [elapsed, setElapsed] = useState(0);
-  const resultRef = useRef(null);
+  const [details, setDetails] = useState({});
+  const [report, setReport] = useState(null); // { key, data }
+  const [reportLoading, setReportLoading] = useState(false);
+  const [openGroups, setOpenGroups] = useState({});
+  const [recent, setRecent] = useState({});
+  const [deltas, setDeltas] = useState({ id: null, map: {} });
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const panelRef = useRef(null);
 
-  const selected = matches.find(m => m.id === selectedId) || matches[0];
+  const base = matches.find(m => m.id === selectedId) || matches[0];
   const liveCount = matches.filter(m => m.status === 'live').length;
   const oddsCount = matches.filter(m => m.oddsInfo?.hasMoneyline).length;
 
@@ -47,50 +112,120 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenPickMod
     });
   }, [matches, query, filter]);
 
-  // Cronómetro mientras la IA trabaja
+  // Resumen de ESPN del partido elegido: forma reciente, enlace oficial y cuotas de goles
+  // Se pide una vez por partido; el resultado queda guardado por id aunque se cambie de partido
+  const requested = useRef(new Set());
   useEffect(() => {
-    if (!loadingId) return;
-    setElapsed(0);
-    const t = setInterval(() => setElapsed(s => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [loadingId]);
+    const id = base?.id;
+    if (!id || requested.current.has(id)) return;
+    requested.current.add(id);
+    setDetails(prev => ({ ...prev, [id]: null }));
+    fetchEspnMatchSummary(id, base.league || 'all')
+      .then(d => setDetails(prev => ({ ...prev, [id]: d || false })))
+      .catch(() => setDetails(prev => ({ ...prev, [id]: false })));
+  }, [base?.id, base?.league]);
 
-  const analyze = async (match) => {
-    if (!match || loadingId) return;
+  // En vivo, el resumen (córners, tarjetas, atajadas) se vuelve a pedir cada 45 s
+  const isLive = base?.status === 'live';
+  useEffect(() => {
+    if (!isLive || !base?.id) return;
+    const id = base.id;
+    const league = base.league || 'all';
+    const t = setInterval(() => {
+      if (document.hidden) return;
+      fetchEspnMatchSummary(id, league).then(d => { if (d) setDetails(prev => ({ ...prev, [id]: d })); }).catch(() => {});
+    }, LIVE_REFRESH_MS);
+    return () => clearInterval(t);
+  }, [isLive, base?.id, base?.league]);
+
+  const detail = base ? details[base.id] : undefined;
+
+  // Córners, tarjetas y atajadas de los últimos partidos de cada equipo (una vez por partido)
+  useEffect(() => {
+    const id = base?.id;
+    if (!id || !detail || recent[id] !== undefined) return;
+    setRecent(prev => ({ ...prev, [id]: null }));
+    Promise.all([
+      fetchTeamRecentStats(detail.homeTeam?.id, detail.homeTeam?.recentGames),
+      fetchTeamRecentStats(detail.awayTeam?.id, detail.awayTeam?.recentGames),
+    ])
+      .then(([home, away]) => setRecent(prev => ({ ...prev, [id]: { home, away } })))
+      .catch(() => setRecent(prev => ({ ...prev, [id]: false })));
+  }, [base?.id, detail, recent]);
+
+  const recentStats = base ? recent[base.id] : undefined;
+  const match = useMemo(() => mergeDetail(base, detail, recentStats), [base, detail, recentStats]);
+  const pred = useMemo(() => (match ? buildPrediction(match) : null), [match]);
+  useMatchSounds(match);
+
+  // Compara cada probabilidad con la lectura anterior del mismo partido para marcar subas y bajas
+  const lastProbs = useRef({ id: null, probs: null });
+  useEffect(() => {
+    if (!pred || !match) return;
+    const probs = Object.fromEntries(pred.markets.map(mk => [mk.id, mk.p]));
+    probs['1x2-1'] = pred.outcome.p1; probs['1x2-X'] = pred.outcome.px; probs['1x2-2'] = pred.outcome.p2;
+    const q = pred.quality;
+    const sig = `${match.id}|${q.hasOdds}|${q.hasTotalOdds}|${q.hasForm}|${q.hasProps}`;
+    const before = lastProbs.current;
+    lastProbs.current = { id: sig, probs };
+    setUpdatedAt(new Date());
+    if (before.id !== sig || !before.probs) { setDeltas({ id: match.id, map: {} }); return; }
+    const map = {};
+    for (const [k, p] of Object.entries(probs)) {
+      if (before.probs[k] != null && Math.abs(p - before.probs[k]) >= 0.005) map[k] = p - before.probs[k];
+    }
+    if (Object.keys(map).length) setDeltas({ id: match.id, map });
+  }, [pred, match]);
+  const delta = (k) => (deltas.id === match?.id ? deltas.map[k] : undefined);
+  const sources = useMemo(() => buildSources(match, pred), [match, pred]);
+
+  // El informe vale para este partido y este marcador
+  const reportKey = match ? `${match.id}:${match.homeTeam?.score}-${match.awayTeam?.score}:${pred?.quality.hasForm}` : '';
+  const currentReport = report?.key === reportKey ? report.data : null;
+
+  const generateReport = async () => {
+    if (!pred || reportLoading) return;
     sounds.playClick();
-    setSelectedId(match.id);
-    setLoadingId(match.id);
-    setResult(null);
-    // En móvil el panel queda arriba de la lista: llevar la vista al resultado
-    requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    setReportLoading(true);
+    const key = reportKey;
     try {
-      const data = await generateMatchAIPick(match);
-      setResult({ matchId: match.id, data });
-      if (data?.source === 'ai') sounds.playGoalChime();
-    } catch (e) {
-      console.error(e);
-      setResult({ matchId: match.id, data: null });
+      const data = await explainPrediction(match, pred, sources);
+      setReport({ key, data });
+      if (data.source === 'ai') sounds.playGoalChime();
     } finally {
-      setLoadingId(null);
+      setReportLoading(false);
     }
   };
 
-  const pick = result?.matchId === selected?.id ? result.data : null;
-  const isLoading = loadingId === selected?.id;
-  const pct = clampPct(pick?.probabilidad);
-  const reason = pick?.motivo_principal || pick?.justificacion;
-  const detail = pick?.analisis_detallado && pick.analisis_detallado !== reason ? pick.analisis_detallado : null;
+  const select = (m) => {
+    sounds.playClick();
+    setSelectedId(m.id);
+    if (window.matchMedia('(max-width: 1024px)').matches) {
+      requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+  };
+
+  const groups = useMemo(() => {
+    const g = new Map();
+    for (const mk of pred?.markets || []) {
+      if (!g.has(mk.group)) g.set(mk.group, []);
+      g.get(mk.group).push(mk);
+    }
+    return [...g.entries()];
+  }, [pred]);
+
+  const cites = (keys) => citeNumbers(sources, keys);
+  const loadingDetail = base && (detail === null || recentStats === null);
 
   return (
     <div className="ap" id="ai-picks-view">
-      {/* Encabezado */}
       <header className="ap-head">
         <div>
-          <span className="ap-eyebrow"><Sparkles size={13} /> Análisis con IA</span>
-          <h1>Pronósticos con IA</h1>
+          <span className="ap-eyebrow"><Sparkles size={13} /> Pronósticos con IA</span>
+          <h1>Probabilidades y pronósticos para cada partido de hoy</h1>
           <p>
-            Elegí un partido y la IA lee marcador, estadísticas oficiales de ESPN, forma reciente y cuotas
-            para proponer una selección con su probabilidad y el motivo. Son pronósticos orientativos, no garantías.
+            Calculamos la probabilidad de cada mercado con las cuotas del proveedor sin su margen y un modelo
+            de goles de Poisson. La IA redacta el informe solo con esos números, y cada dato cita su fuente.
           </p>
         </div>
         <dl className="ap-stats">
@@ -101,121 +236,243 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenPickMod
       </header>
 
       <div className="ap-grid">
-        {/* Panel de análisis */}
-        <section className="ap-panel ap-analyzer" aria-label="Análisis del partido elegido" ref={resultRef}>
-          {selected ? (
+        <section className="ap-panel ap-analyzer" aria-label="Pronóstico del partido elegido" ref={panelRef}>
+          {match && pred ? (
             <>
+              {/* Partido */}
               <div className="ap-match">
                 <div className="ap-match-top">
-                  <span className="ap-league">{selected.leagueName || 'Fútbol'}</span>
-                  <span className={`ap-status ${statusLabel(selected).cls}`}>{statusLabel(selected).text}</span>
+                  <span className="ap-league">{match.leagueName || 'Fútbol'}</span>
+                  <span className={`ap-status ${statusLabel(match).cls}`}>{statusLabel(match).text}</span>
                 </div>
                 <div className="ap-teams">
                   <div className="ap-team">
-                    <TeamLogo src={selected.homeTeam?.logo} alt={selected.homeTeam?.name} size={40} isHome />
-                    <span>{selected.homeTeam?.name}</span>
+                    <TeamLogo src={match.homeTeam?.logo} alt={match.homeTeam?.name} size={40} isHome />
+                    <span>{match.homeTeam?.name}</span>
                   </div>
                   <div className="ap-score">
-                    {selected.status === 'scheduled'
+                    {match.status === 'scheduled'
                       ? <b className="vs">VS</b>
-                      : <b>{selected.homeTeam?.score ?? 0}<i>-</i>{selected.awayTeam?.score ?? 0}</b>}
+                      : <b>{match.homeTeam?.score ?? 0}<i>-</i>{match.awayTeam?.score ?? 0}</b>}
                   </div>
                   <div className="ap-team away">
-                    <span>{selected.awayTeam?.name}</span>
-                    <TeamLogo src={selected.awayTeam?.logo} alt={selected.awayTeam?.name} size={40} isHome={false} />
+                    <span>{match.awayTeam?.name}</span>
+                    <TeamLogo src={match.awayTeam?.logo} alt={match.awayTeam?.name} size={40} isHome={false} />
                   </div>
                 </div>
 
-                {selected.oddsInfo?.hasMoneyline ? (
-                  <div className="ap-odds" aria-label={`Cuotas de ${selected.oddsInfo.provider}`}>
-                    <div><small>1</small><b>{fmtOdds(selected.oddsInfo.homeOdds)}</b></div>
-                    <div><small>X</small><b>{fmtOdds(selected.oddsInfo.drawOdds)}</b></div>
-                    <div><small>2</small><b>{fmtOdds(selected.oddsInfo.awayOdds)}</b></div>
-                    <span>{selected.oddsInfo.provider}{selected.oddsInfo.overUnder ? ` · ${selected.oddsInfo.overUnder}` : ''}</span>
+                {/* Probabilidad 1X2 del modelo */}
+                <div className="ap-prob" aria-label="Probabilidad del resultado final">
+                  <div className="ap-prob-bar" aria-hidden="true">
+                    <i className="h" style={{ flexGrow: pred.outcome.p1 }} />
+                    <i className="d" style={{ flexGrow: pred.outcome.px }} />
+                    <i className="a" style={{ flexGrow: pred.outcome.p2 }} />
                   </div>
-                ) : (
-                  <p className="ap-no-odds">Sin cuotas publicadas para este partido</p>
-                )}
+                  <div className="ap-prob-legend">
+                    {[
+                      ['1', match.homeTeam?.shortName || match.homeTeam?.name, pred.outcome.p1, match.oddsInfo?.homeOdds, 'h'],
+                      ['X', 'Empate', pred.outcome.px, match.oddsInfo?.drawOdds, 'd'],
+                      ['2', match.awayTeam?.shortName || match.awayTeam?.name, pred.outcome.p2, match.oddsInfo?.awayOdds, 'a'],
+                    ].map(([k, name, p, mo, cls]) => (
+                      <div key={k} className={`ap-prob-item ${cls}`}>
+                        <small><b>{k}</b> {name}</small>
+                        <strong>{fmtPct(p, 1)} <Delta d={delta(`1x2-${k}`)} /></strong>
+                        <span>Justa {fmtOdds(1 / p)}{pred.quality.hasOdds ? ` · ${match.oddsInfo.provider} ${fmtOdds(mo)}` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="ap-prob-note">
+                    Goles esperados: {pred.home} {pred.expectedHome.toFixed(2)} · {pred.away} {pred.expectedAway.toFixed(2)}
+                    <Cite nums={cites([pred.quality.hasOdds ? 'odds' : pred.quality.hasForm ? 'form' : 'espn', 'maher', 'dixonColes', ...(pred.quality.isLive ? ['dixonRobinson'] : [])])} />
+                  </p>
+                  {pred.props && (
+                    <ul className="ap-props" aria-label="Conteos esperados al final">
+                      <li><Flag size={13} /> Córners <b>{pred.props.corners[0].toFixed(1)} · {pred.props.corners[1].toFixed(1)}</b></li>
+                      <li><Square size={13} className="yc" /> Amarillas <b>{pred.props.yellow[0].toFixed(1)} · {pred.props.yellow[1].toFixed(1)}</b></li>
+                      <li><Hand size={13} /> Atajadas <b>{pred.props.saves[0].toFixed(1)} · {pred.props.saves[1].toFixed(1)}</b></li>
+                      <Cite nums={cites(['recent', 'greenwoodYule'])} />
+                    </ul>
+                  )}
+                  {updatedAt && (
+                    <p className="ap-updated">
+                      {pred.quality.isLive && <span className="ap-live-dot" aria-hidden="true" />}
+                      {pred.quality.isLive
+                        ? `Se recalcula con cada actualización del partido · última ${updatedAt.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                        : `Calculado a las ${updatedAt.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })} · se recalcula cuando empieza el partido`}
+                    </p>
+                  )}
+                </div>
 
                 <div className="ap-actions">
-                  <button className="ap-btn primary" onClick={() => analyze(selected)} disabled={!!loadingId}>
-                    {isLoading
-                      ? <><RotateCw size={15} className="ap-spin" /> Analizando…</>
-                      : <><Sparkles size={15} /> {pick ? 'Volver a analizar' : 'Analizar con IA'}</>}
+                  <button className="ap-btn primary" onClick={generateReport} disabled={reportLoading}>
+                    {reportLoading
+                      ? <><RotateCw size={15} className="ap-spin" /> Redactando informe…</>
+                      : <><Sparkles size={15} /> {currentReport ? 'Actualizar informe' : 'Generar informe con IA'}</>}
                   </button>
-                  <button className="ap-btn" onClick={() => { sounds.playClick(); onSelectMatch(selected); }}>
+                  <button className="ap-btn" onClick={() => { sounds.playClick(); onSelectMatch(match); }}>
                     <Play size={14} /> Ver partido
                   </button>
-                  <button className="ap-btn ghost" onClick={() => onOpenPickModal(selected)}>
-                    Todos los mercados
-                  </button>
+                  <span className={`ap-conf-tag c-${pred.confidence.toLowerCase()}`} title="Según la calidad de los datos disponibles, no según la probabilidad">
+                    Confianza {pred.confidence}
+                    {loadingDetail && <RotateCw size={12} className="ap-spin" aria-label="Cargando datos de ESPN" />}
+                  </span>
                 </div>
               </div>
 
-              {/* Resultado */}
-              <div className="ap-result" aria-live="polite">
-                {isLoading && (
-                  <div className="ap-loading" role="status">
-                    <div className="ap-loader"><i /><i /><i /></div>
-                    <b>Analizando el partido…</b>
-                    <span>La IA está leyendo marcador, estadísticas y cuotas · {elapsed}s</span>
+              <div className="ap-body">
+                {/* Pronósticos destacados */}
+                <section className="ap-block" aria-labelledby="ap-picks-h">
+                  <h2 id="ap-picks-h" className="ap-block-h">Pronósticos del modelo</h2>
+                  <div className="ap-picks">
+                    {pred.picks.map(pk => (
+                      <article key={pk.tier + pk.id} className={`ap-pick t-${slug(pk.tier)}`}>
+                        <span className="ap-pick-tier">{pk.tier}</span>
+                        <h3>{pk.label}<Cite nums={cites(pk.marketOdds ? ['odds', ...pk.refs] : pk.refs)} /></h3>
+                        <div className="ap-pick-meter" aria-hidden="true"><i style={{ width: fmtPct(pk.p) }} /></div>
+                        <dl>
+                          <div><dt>Probabilidad</dt><dd>{fmtPct(pk.p, 1)} <Delta d={delta(pk.id)} /></dd></div>
+                          <div><dt>Cuota justa</dt><dd>{fmtOdds(pk.fair)}</dd></div>
+                          {pk.marketOdds && <div><dt>{match.oddsInfo.provider}</dt><dd>{fmtOdds(pk.marketOdds)}</dd></div>}
+                        </dl>
+                      </article>
+                    ))}
                   </div>
-                )}
+                  <p className="ap-hint">
+                    Cuota justa = 1 ÷ probabilidad. Una cuota de casa por encima de la justa indica valor según el modelo.
+                  </p>
+                </section>
 
-                {!isLoading && !pick && result?.matchId === selected.id && (
-                  <div className="ap-empty warn" role="alert">
-                    <AlertTriangle size={22} />
-                    <b>No se pudo generar el análisis</b>
-                    <span>Probá de nuevo en unos segundos.</span>
-                  </div>
-                )}
-
-                {!isLoading && !pick && result?.matchId !== selected.id && (
-                  <div className="ap-empty">
-                    <Target size={22} />
-                    <b>Listo para analizar</b>
-                    <span>Tocá “Analizar con IA” para generar el pronóstico de este partido.</span>
-                  </div>
-                )}
-
-                {!isLoading && pick && (
-                  <article className="ap-card">
-                    <div className={`ap-source ${pick.source === 'ai' ? 'ok' : 'warn'}`}>
-                      {pick.source === 'ai'
-                        ? <><Check size={13} /> Generado por IA</>
-                        : <><AlertTriangle size={13} /> Estimación estadística: la IA no respondió</>}
+                {/* Informe */}
+                <section className="ap-block" aria-labelledby="ap-report-h" aria-live="polite">
+                  <h2 id="ap-report-h" className="ap-block-h">Informe</h2>
+                  {reportLoading && (
+                    <div className="ap-loading" role="status">
+                      <div className="ap-loader"><i /><i /><i /></div>
+                      <span>La IA está redactando con los números del modelo</span>
                     </div>
+                  )}
+                  {!reportLoading && !currentReport && (
+                    <div className="ap-report-empty">
+                      <p>El informe resume el pronóstico en 3 o 4 puntos, cada uno con su fuente. La IA no puede agregar cifras que no estén en los datos: si lo intenta, ese punto se descarta.</p>
+                      <button className="ap-btn primary" onClick={generateReport}><Sparkles size={15} /> Generar informe con IA</button>
+                    </div>
+                  )}
+                  {!reportLoading && currentReport && (
+                    <article className="ap-report">
+                      <span className={`ap-source ${currentReport.source === 'ai' ? 'ok' : 'warn'}`}>
+                        {currentReport.source === 'ai'
+                          ? <>Redactado por IA · {currentReport.model}</>
+                          : <><AlertTriangle size={13} /> La IA no respondió: informe armado por el modelo</>}
+                      </span>
+                      <p className="ap-report-head">{currentReport.headline}</p>
+                      <ul>
+                        {currentReport.points.map((pt, i) => (
+                          <li key={i}>{pt.text}<Cite nums={pt.cites} /></li>
+                        ))}
+                      </ul>
+                      {currentReport.risk && (
+                        <p className="ap-risk"><ShieldAlert size={15} /> <span><b>Riesgo:</b> {currentReport.risk}</span></p>
+                      )}
+                    </article>
+                  )}
+                </section>
 
-                    <div className="ap-card-main">
-                      <div className="ap-card-info">
-                        <span className="ap-eyebrow"><Target size={12} /> Selección recomendada</span>
-                        <h3>{pick.pick}</h3>
-                        {reason && <p className="ap-reason">{reason.replace(/^¿Por qué este pick\?:\s*/i, '')}</p>}
-                      </div>
-                      <div className="ap-card-side">
-                        <div className="ap-cuota"><small>Cuota</small><b>{fmtOdds(pick.cuota)}</b></div>
-                        <div className="ap-conf">
-                          <div><small>Confianza</small><b>{pct}%</b></div>
-                          <div className="ap-bar"><i style={{ width: `${pct}%` }} /></div>
+                {/* Todos los mercados */}
+                <section className="ap-block" aria-labelledby="ap-markets-h">
+                  <h2 id="ap-markets-h" className="ap-block-h">Todos los mercados</h2>
+                  <div className="ap-markets">
+                    <div className="ap-mk-row ap-mk-head" aria-hidden="true">
+                      <span>Mercado</span><span>Prob.</span><span>Justa</span><span>Casa</span><span className="edge">Ventaja</span>
+                    </div>
+                    {groups.map(([name, rows], gi) => {
+                      const open = openGroups[name] ?? (gi < 4 || ['Córners', 'Tarjetas', 'Atajadas'].includes(name));
+                      return (
+                        <div key={name} className="ap-mk-group">
+                          <button
+                            className="ap-mk-title"
+                            aria-expanded={open}
+                            onClick={() => setOpenGroups(s => ({ ...s, [name]: !open }))}
+                          >
+                            {name} <ChevronDown size={14} />
+                          </button>
+                          {open && rows.map(mk => (
+                            <div key={mk.id} className="ap-mk-row">
+                              <span className="lbl">{mk.label}<Cite nums={cites(mk.marketOdds ? ['odds', ...mk.refs] : mk.refs)} /></span>
+                              <span className="num"><Delta d={delta(mk.id)} /><i className="ap-mk-bar" style={{ width: fmtPct(mk.p) }} />{fmtPct(mk.p, 1)}</span>
+                              <span className="num">{fmtOdds(mk.fair)}</span>
+                              <span className="num">{fmtOdds(mk.marketOdds)}</span>
+                              <span className={`num edge ${mk.edge > 0 ? 'pos' : mk.edge < 0 ? 'neg' : ''}`}>{fmtEdge(mk.edge)}</span>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })}
+                  </div>
+                  {!pred.quality.hasProps && match.status !== 'finished' && (
+                    <p className="ap-hint">
+                      {recentStats === null || detail === null
+                        ? 'Cargando córners, tarjetas y atajadas de los últimos partidos…'
+                        : 'Sin estadísticas de partidos recientes en ESPN para estos equipos: no se calculan córners, tarjetas ni atajadas.'}
+                    </p>
+                  )}
+                  {pred.quality.hasOdds && !pred.quality.isLive && (
+                    <p className="ap-hint">Ventaja = probabilidad × cuota de la casa − 1. Cuando es negativa, la diferencia es el margen que cobra la casa.</p>
+                  )}
+                </section>
 
-                    {detail && (
-                      <div className="ap-detail">
-                        <span className="ap-eyebrow">Análisis</span>
-                        <p>{detail}</p>
-                      </div>
-                    )}
+                {/* Metodología */}
+                <section className="ap-block" aria-labelledby="ap-method-h">
+                  <h2 id="ap-method-h" className="ap-block-h"><Database size={14} /> Método y supuestos</h2>
+                  <dl className="ap-method">
+                    <div><dt>Goles esperados (λ)</dt><dd>{pred.lambdaHome.toFixed(2)} · {pred.lambdaAway.toFixed(2)}</dd></div>
+                    {pred.market && <div><dt>Margen de la casa 1X2</dt><dd>{fmtPct(pred.market.margin, 1)}</dd></div>}
+                    {pred.market && <div><dt>Parámetro z de Shin</dt><dd>{pred.market.z.toFixed(3)}</dd></div>}
+                    {pred.fitError != null && <div><dt>Error de ajuste</dt><dd>{(pred.fitError * 100).toFixed(2)} pts</dd></div>}
+                  </dl>
+                  <ol className="ap-steps">
+                    {pred.quality.hasOdds
+                      ? <li>Se quita el margen a las cuotas con el método de Shin<Cite nums={cites(['odds', 'shin', 'strumbelj'])} />.</li>
+                      : <li>Sin cuotas: los goles esperados salen de los últimos partidos de cada equipo<Cite nums={cites(['form'])} />.</li>}
+                    <li>Se buscan los goles esperados de cada equipo que reproducen esas probabilidades con un modelo de Poisson<Cite nums={cites(['maher'])} /> y la corrección de marcadores bajos de Dixon y Coles<Cite nums={cites(['dixonColes'])} />.</li>
+                    {pred.quality.isLive && <li>En vivo, los goles que faltan se escalan por el tiempo restante y se suman al marcador<Cite nums={cites(['espn', 'dixonRobinson'])} />.</li>}
+                    <li>Cada mercado de goles es la suma de las probabilidades de los marcadores que lo cumplen.</li>
+                    {pred.quality.hasProps && <li>Córners, tarjetas y atajadas usan los promedios de los últimos partidos de cada equipo<Cite nums={cites(['recent'])} /> con una distribución binomial negativa, que admite más variación que Poisson<Cite nums={cites(['greenwoodYule'])} />. En vivo se suma lo que ya ocurrió.</li>}
+                  </ol>
+                  <ul className="ap-assume">
+                    {pred.assumptions.map((a, i) => <li key={i}>{a}</li>)}
+                  </ul>
+                </section>
 
-                    {(pick.claves_metricas?.length > 0 || pick.stake) && (
-                      <div className="ap-chips">
-                        {(pick.claves_metricas || []).map((m, i) => <span key={i}>{m}</span>)}
-                        {pick.stake && <span className="stake"><TrendingUp size={12} /> {pick.stake}</span>}
-                      </div>
-                    )}
-                  </article>
-                )}
+                {/* Fuentes */}
+                <section className="ap-block" aria-labelledby="ap-src-h">
+                  <h2 id="ap-src-h" className="ap-block-h"><BookOpen size={14} /> Fuentes</h2>
+                  <ol className="ap-sources">
+                    {sources.map(s => (
+                      <li key={s.n} id={`ap-src-${s.n}`} className={s.type}>
+                        <span className="ap-src-n">[{s.n}]</span>
+                        <div>
+                          <p className="ap-src-title">
+                            {s.ref
+                              ? <>{s.ref.authors} ({s.ref.year}). {s.ref.title}. <i>{s.ref.journal}, {s.ref.volume}</i>({s.ref.issue}), {s.ref.pages}.</>
+                              : s.title}
+                          </p>
+                          <p className="ap-src-detail">{s.detail}</p>
+                          <p className="ap-src-meta">
+                            <a href={s.url} target="_blank" rel="noopener noreferrer">
+                              {s.doi ? `doi.org/${s.doi}` : s.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}
+                              <ExternalLink size={11} />
+                            </a>
+                            {s.accessed && <span>Consultado el {s.accessed}</span>}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+
+                <p className="ap-legal">
+                  Pronóstico estadístico con fines informativos, no es una recomendación de apuesta. Ningún modelo garantiza resultados. Solo mayores de 18 años; jugá con responsabilidad.
+                </p>
               </div>
             </>
           ) : (
@@ -258,12 +515,12 @@ export default function AIPicksView({ matches = [], onSelectMatch, onOpenPickMod
             {visible.length === 0 && <li className="ap-rows-empty">Ningún partido coincide.</li>}
             {visible.map(m => {
               const st = statusLabel(m);
-              const active = m.id === selected?.id;
+              const active = m.id === match?.id;
               return (
                 <li key={m.id}>
                   <button
                     className={`ap-row ${active ? 'active' : ''}`}
-                    onClick={() => { sounds.playClick(); setSelectedId(m.id); }}
+                    onClick={() => select(m)}
                     aria-current={active ? 'true' : undefined}
                   >
                     <span className="ap-row-teams">

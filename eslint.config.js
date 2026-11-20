@@ -23,7 +23,7 @@ export default [
         ...globals.browser,
         // Constantes que inyecta vite.config.js en tiempo de compilación
         __NVIDIA_MODEL__: 'readonly',
-        __RAPIDAPI_KEY__: 'readonly',
+        __SIGNAL_URL__: 'readonly',
       },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },

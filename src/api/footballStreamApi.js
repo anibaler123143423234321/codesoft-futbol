@@ -3,11 +3,9 @@
 // Con caché inteligente, control de cuotas y manejo de errores
 // ========================================================
 
-const RAPIDAPI_KEY = typeof __RAPIDAPI_KEY__ !== 'undefined' && __RAPIDAPI_KEY__
-  ? __RAPIDAPI_KEY__
-  : '145cb9d94dmshae1f304d7a5dc56p1bb2b8jsn47474853c5af';
-
-const RAPIDAPI_HOST = 'football-live-stream-api.p.rapidapi.com';
+// La clave de RapidAPI no está en el navegador: todas las peticiones pasan por /api/rapidapi-stream,
+// que agrega la clave en el servidor (proxy de Vite en desarrollo, función de Netlify en producción).
+const STREAM_PROXY = '/api/rapidapi-stream';
 
 // --------------------------------------------------------
 // MEMORY CACHE & RATE LIMIT PROTECTION
@@ -79,40 +77,13 @@ async function requestRapidApi(path) {
     throw err;
   }
 
-  const isLocal = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  );
-
-  let response = null;
-
-  if (isLocal) {
-    try {
-      response = await fetch(`/api/rapidapi-stream${path}`);
-    } catch {
-      // Si el proxy local no responde, intentar directo
-    }
-  }
-
-  if (!response || !response.ok) {
-    // Si la respuesta fue 429 o 403 en el proxy, no reintentar directo para no quemar tokens
-    if (response && (response.status === 429 || response.status === 403)) {
-      handleApiErrorStatus(response.status);
-    }
-
-    const directUrl = `https://${RAPIDAPI_HOST}${path}`;
-    try {
-      response = await fetch(directUrl, {
-        headers: {
-          'X-RapidAPI-Key': RAPIDAPI_KEY,
-          'X-RapidAPI-Host': RAPIDAPI_HOST,
-        },
-      });
-    } catch (netErr) {
-      const err = new Error('No se pudo conectar con el servidor de transmisiones.');
-      err.type = 'NETWORK_ERROR';
-      throw err;
-    }
+  let response;
+  try {
+    response = await fetch(`${STREAM_PROXY}${path}`, { headers: { Accept: 'application/json' } });
+  } catch {
+    const err = new Error('No se pudo conectar con el servidor de transmisiones.');
+    err.type = 'NETWORK_ERROR';
+    throw err;
   }
 
   if (!response.ok) {

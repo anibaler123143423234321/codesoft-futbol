@@ -650,3 +650,135 @@ INSTRUCCIONES:
 export function getLocalMatchPredictions(match) {
   return { ...calculateDynamicSportsMetrics(match), source: 'local' };
 }
+
+// ---------------------------------------------------------------- Informe del modelo con IA
+
+const pct = (p) => `${(p * 100).toFixed(1)}%`;
+
+// Todos los números que aparecen en un texto (1.5, 72, 72,4 → 72.4)
+function numbersIn(text) {
+  return (String(text).match(/\d+(?:[.,]\d+)?/g) || []).map(n => Number(n.replace(',', '.')));
+}
+
+/**
+ * Pide a la IA un informe breve del pronóstico. La IA solo redacta: los números vienen del modelo.
+ * Cada frase debe citar fuentes por su número; si una frase trae un número que no figura en los
+ * datos entregados, se descarta (así no pasan cifras inventadas).
+ * Devuelve { headline, points: [{ text, cites }], risk, source: 'ai' | 'local', model }.
+ */
+export async function explainPrediction(match, pred, sources) {
+  const local = localExplanation(match, pred, sources);
+  if (!pred) return local;
+
+  const cite = (key) => sources.find(s => s.key === key)?.n;
+  const lines = [
+    `Partido: ${pred.home} (local) vs ${pred.away} (visita). Competición: ${match.leagueName || 'sin dato'} [${cite('espn')}].`,
+    `Estado: ${match.status === 'live' ? `en vivo, minuto ${pred.quality.minute}, marcador ${match.homeTeam?.score ?? 0}-${match.awayTeam?.score ?? 0}` : match.status === 'finished' ? 'finalizado' : 'por jugarse'} [${cite('espn')}].`,
+  ];
+  if (pred.market) {
+    lines.push(`Cuotas 1X2 ${match.oddsInfo.provider}: ${match.oddsInfo.homeOdds} / ${match.oddsInfo.drawOdds} / ${match.oddsInfo.awayOdds}; margen de la casa ${pct(pred.market.margin)} [${cite('odds')}].`);
+    lines.push(`Probabilidades sin margen (Shin): local ${pct(pred.market.p1)}, empate ${pct(pred.market.px)}, visita ${pct(pred.market.p2)} [${cite('odds')}][${cite('shin')}].`);
+    if (pred.market.pOver != null) lines.push(`Mercado de más de ${match.oddsInfo.totalLine} goles sin margen: ${pct(pred.market.pOver)} [${cite('odds')}].`);
+  }
+  if (pred.quality.hasForm) {
+    const f = pred.form;
+    lines.push(`Últimos partidos ${pred.home}: ${f.home.string}, ${f.home.gf.toFixed(1)} goles a favor y ${f.home.ga.toFixed(1)} en contra por partido [${cite('form')}].`);
+    lines.push(`Últimos partidos ${pred.away}: ${f.away.string}, ${f.away.gf.toFixed(1)} goles a favor y ${f.away.ga.toFixed(1)} en contra por partido [${cite('form')}].`);
+  }
+  lines.push(`Goles esperados del modelo al final: ${pred.home} ${pred.expectedHome.toFixed(2)}, ${pred.away} ${pred.expectedAway.toFixed(2)} [${cite('maher')}][${cite('dixonColes')}]${pred.quality.isLive ? `[${cite('dixonRobinson')}]` : ''}.`);
+  lines.push(`Probabilidades del modelo: local ${pct(pred.outcome.p1)}, empate ${pct(pred.outcome.px)}, visita ${pct(pred.outcome.p2)}.`);
+  for (const pk of pred.picks) {
+    lines.push(`Pronóstico "${pk.tier}": ${pk.label}, probabilidad ${pct(pk.p)}, cuota justa ${pk.fair.toFixed(2)}${pk.marketOdds ? `, cuota del mercado ${pk.marketOdds.toFixed(2)}` : ''}.`);
+  }
+  lines.push(`Confianza por calidad de datos: ${pred.confidence}.`);
+  if (pred.assumptions.length) lines.push(`Supuestos: ${pred.assumptions.join(' ')}`);
+
+  const facts = lines.join('\n');
+  const allowed = new Set(numbersIn(facts).map(n => n.toFixed(2)));
+  const validIds = new Set(sources.map(s => s.n));
+
+  const prompt = `Sos analista de un equipo de pronósticos de fútbol. Redactá un informe breve con estos DATOS. Cada número entre corchetes es el número de la fuente.
+
+DATOS:
+${facts}
+
+REGLAS:
+- Usá solo los números de DATOS, escritos igual. No agregues estadísticas, rachas, lesiones, xG ni nada que no esté arriba.
+- Cada punto termina citando sus fuentes con los números de los corchetes.
+- Español neutro, frases cortas y concretas. Sin promesas de ganancia ni palabras como "seguro" o "fijo".
+
+Respondé SOLO este JSON:
+{"titular":"una frase con la lectura principal del partido","puntos":[{"texto":"frase","fuentes":[1]}],"riesgo":"qué podría hacer fallar el pronóstico, en una frase"}
+Entre 3 y 4 puntos.`;
+
+  try {
+    const res = await callAiCompletion({
+      messages: [
+        { role: 'system', content: 'Redactás informes de pronósticos deportivos basados solo en los datos que te dan. Respondés JSON estricto.' },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 550,
+    });
+    if (!res?.content) return local;
+    const data = JSON.parse(extractJson(res.content));
+    // Las citas se muestran aparte: se quitan las que la IA haya escrito dentro del texto ([2], [2, 4], [2][4])
+    const clean = (t) => String(t || '').replace(/\s*\[\s*\d+(?:\s*[,;-]\s*\d+)*\s*\]/g, '').replace(/\s+([.,;])/g, '$1').trim();
+    const numbersOk = (t) => numbersIn(t).every(n => allowed.has(n.toFixed(2)) || (Number.isInteger(n) && n <= 11));
+    const points = (Array.isArray(data.puntos) ? data.puntos : [])
+      .map(pt => ({ text: clean(pt.texto), cites: [...new Set((pt.fuentes || []).map(Number).filter(n => validIds.has(n)))] }))
+      .filter(pt => pt.text && pt.cites.length && numbersOk(pt.text));
+    if (points.length < 2) return local;
+    const headline = numbersOk(data.titular) ? clean(data.titular) : local.headline;
+    const risk = numbersOk(data.riesgo) ? clean(data.riesgo) : local.risk;
+    return { headline: headline || local.headline, points, risk: risk || local.risk, source: 'ai', model: res.provider };
+  } catch (e) {
+    console.warn('[IA] Informe no disponible:', e.message);
+    return local;
+  }
+}
+
+// Informe sin IA, armado directamente con los números del modelo
+function localExplanation(match, pred, sources) {
+  if (!pred) return { headline: '', points: [], risk: '', source: 'local' };
+  const n = (key) => sources.find(s => s.key === key)?.n;
+  const ids = (...keys) => keys.map(n).filter(Boolean);
+  const { p1, px, p2 } = pred.outcome;
+  const fav = p1 >= p2 ? pred.home : pred.away;
+  const favP = Math.max(p1, p2);
+  const points = [];
+
+  if (pred.market) {
+    points.push({
+      text: `Sin el margen de la casa (${pct(pred.market.margin)}), las cuotas dan ${pct(pred.market.p1)} al local, ${pct(pred.market.px)} al empate y ${pct(pred.market.p2)} a la visita.`,
+      cites: ids('odds', 'shin', 'strumbelj'),
+    });
+  }
+  points.push({
+    text: `El modelo espera ${pred.expectedHome.toFixed(2)} goles de ${pred.home} y ${pred.expectedAway.toFixed(2)} de ${pred.away} al final del partido.`,
+    cites: ids(pred.market ? 'odds' : pred.quality.hasForm ? 'form' : 'espn', 'maher', 'dixonColes', ...(pred.quality.isLive ? ['dixonRobinson'] : [])),
+  });
+  if (pred.quality.hasForm) {
+    const f = pred.form;
+    points.push({
+      text: `En sus últimos partidos, ${pred.home} hizo ${f.home.gf.toFixed(1)} y recibió ${f.home.ga.toFixed(1)} goles por partido; ${pred.away}, ${f.away.gf.toFixed(1)} y ${f.away.ga.toFixed(1)}.`,
+      cites: ids('form'),
+    });
+  }
+  if (pred.quality.isLive) {
+    points.push({
+      text: `Con ${match.homeTeam?.score ?? 0}-${match.awayTeam?.score ?? 0} al minuto ${pred.quality.minute}, queda el ${Math.round(pred.quality.remaining * 100)}% del partido para cambiar el resultado.`,
+      cites: ids('espn', 'dixonRobinson'),
+    });
+  }
+  const top = pred.picks[0];
+  return {
+    headline: px > favP
+      ? `El empate es el resultado más probable (${pct(px)}).`
+      : `${fav} es favorito con ${pct(favP)} de ganar${top ? `; el pronóstico más probable es "${top.label}" (${pct(top.p)})` : ''}.`,
+    points,
+    risk: pred.confidence === 'Baja'
+      ? 'Faltan cuotas o partidos recientes, así que el pronóstico se apoya en supuestos genéricos.'
+      : `El modelo no ve alineaciones, lesiones ni expulsiones; un gol temprano cambia todas las probabilidades.`,
+    source: 'local',
+  };
+}

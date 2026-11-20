@@ -44,15 +44,23 @@ export function parseEspnOdds(espnOdds) {
   const awayOdds = pick('away', espnOdds.awayTeamOdds);
   const drawOdds = pick('draw', espnOdds.drawOdds);
   const total = espnOdds.overUnder ?? espnOdds.total?.over?.close?.line?.replace(/^o/, '');
+  // Cuotas del total de goles (over/under) a esa línea, si el proveedor las publica
+  const overOdds = americanToDecimal(espnOdds.overOdds ?? espnOdds.total?.over?.close?.odds ?? espnOdds.total?.over?.open?.odds);
+  const underOdds = americanToDecimal(espnOdds.underOdds ?? espnOdds.total?.under?.close?.odds ?? espnOdds.total?.under?.open?.odds);
+  const totalLine = Number.parseFloat(total);
 
   return {
     provider: espnOdds.provider?.displayName || espnOdds.provider?.name || 'ESPN',
     details: espnOdds.details || null,
     overUnder: total ? `O/U ${total}` : null,
+    totalLine: Number.isFinite(totalLine) ? totalLine : null,
+    overOdds,
+    underOdds,
     homeOdds,
     drawOdds,
     awayOdds,
     hasMoneyline: !!(homeOdds && drawOdds && awayOdds),
+    fetchedAt: new Date().toISOString(),
   };
 }
 
@@ -515,10 +523,14 @@ function parseEspnSummary(summary, matchId, league) {
       const events = (group.events || []).slice(-5);
       
       target.games = events.map(e => ({
+        id: e.id || null,
         date: e.gameDate ? e.gameDate.split('T')[0] : '',
         opponent: e.opponent?.displayName || e.opponent?.abbreviation || 'Rival',
         score: e.score || `${e.homeTeamScore || 0}-${e.awayTeamScore || 0}`,
         result: e.gameResult || (Number(e.homeTeamScore) > Number(e.awayTeamScore) ? 'W' : Number(e.homeTeamScore) < Number(e.awayTeamScore) ? 'L' : 'D'),
+        // Goles a favor y en contra desde el punto de vista del equipo ('@' = jugó de visita)
+        goalsFor: e.homeTeamScore == null ? null : Number(e.atVs === '@' ? e.awayTeamScore : e.homeTeamScore),
+        goalsAgainst: e.homeTeamScore == null ? null : Number(e.atVs === '@' ? e.homeTeamScore : e.awayTeamScore),
         competition: e.competitionName || e.leagueName || ''
       }));
       target.form = target.games.map(g => g.result).join('-');
@@ -717,4 +729,47 @@ export async function fetchEspnLatestVideos(limit = 8) {
     console.error('Error fetching ESPN videos:', error);
     return [];
   }
+}
+
+// ---------------------------------------------------------------- Estadísticas de partidos recientes
+
+// Resumen de un partido terminado, guardado en memoria: no cambia, se pide una sola vez
+const recentBoxCache = new Map();
+async function fetchFinishedBox(eventId) {
+  if (recentBoxCache.has(eventId)) return recentBoxCache.get(eventId);
+  const p = fetch(`${getBaseUrl()}/site/v2/sports/soccer/all/summary?event=${eventId}`, { headers: { Accept: 'application/json' } })
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => (d?.boxscore?.teams || []).map(t => ({
+      teamId: String(t.team?.id),
+      stats: Object.fromEntries((t.statistics || []).map(s => [s.name, Number.parseFloat(s.displayValue)])),
+    })))
+    .catch(() => null);
+  recentBoxCache.set(eventId, p);
+  return p;
+}
+
+/**
+ * Córners, tarjetas y atajadas de los últimos partidos de un equipo (a favor y del rival).
+ * Devuelve { n, games: [{ cornersFor, cornersAgainst, yellowFor, yellowAgainst, redFor, redAgainst, savesFor, savesAgainst }], eventIds }.
+ */
+export async function fetchTeamRecentStats(teamId, recentGames = []) {
+  const ids = recentGames.map(g => g.id).filter(Boolean).slice(-5);
+  if (!teamId || !ids.length) return { n: 0, games: [], eventIds: [] };
+  const boxes = await Promise.all(ids.map(fetchFinishedBox));
+  const games = [];
+  boxes.forEach((teams, k) => {
+    if (!teams || teams.length < 2) return;
+    const own = teams.find(t => t.teamId === String(teamId));
+    const opp = teams.find(t => t.teamId !== String(teamId));
+    if (!own || !opp || !Number.isFinite(own.stats.wonCorners)) return;
+    const v = (x) => (Number.isFinite(x) ? x : 0);
+    games.push({
+      eventId: ids[k],
+      cornersFor: v(own.stats.wonCorners), cornersAgainst: v(opp.stats.wonCorners),
+      yellowFor: v(own.stats.yellowCards), yellowAgainst: v(opp.stats.yellowCards),
+      redFor: v(own.stats.redCards), redAgainst: v(opp.stats.redCards),
+      savesFor: v(own.stats.saves), savesAgainst: v(opp.stats.saves),
+    });
+  });
+  return { n: games.length, games, eventIds: games.map(g => g.eventId) };
 }

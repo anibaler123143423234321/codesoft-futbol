@@ -163,13 +163,15 @@ function hlsProxyDevPlugin() {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const nvidiaKey = env.NVIDIA_API_KEY || env.VITE_NVIDIA_API_KEY || '';
-  const rapidApiKey = env.RAPIDAPI_KEY || env.VITE_RAPIDAPI_KEY || '145cb9d94dmshae1f304d7a5dc56p1bb2b8jsn47474853c5af';
+  // La clave de RapidAPI vive solo en .env y la agrega el proxy: nunca llega al navegador
+  const rapidApiKey = env.RAPIDAPI_KEY || '';
 
   return {
     plugins: [react(), chatWebSocketPlugin(), hlsProxyDevPlugin()],
     define: {
       '__NVIDIA_MODEL__': JSON.stringify(env.NVIDIA_MODEL || ''),
-      '__RAPIDAPI_KEY__': JSON.stringify(rapidApiKey),
+      // Señal por defecto del reproductor (SIGNAL_URL en .env); el usuario puede cambiarla en la app
+      '__SIGNAL_URL__': JSON.stringify(env.SIGNAL_URL || ''),
     },
     server: {
       port: 3000,

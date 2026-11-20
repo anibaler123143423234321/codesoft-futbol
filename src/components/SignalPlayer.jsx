@@ -17,8 +17,11 @@ import {
 
 const STORAGE_KEY = 'codesoft.signalUrl';
 
+// Señal de .env (SIGNAL_URL) para cuando el usuario todavía no guardó una propia
+const DEFAULT_SIGNAL_URL = typeof __SIGNAL_URL__ !== 'undefined' ? __SIGNAL_URL__ : '';
+
 const readSavedUrl = () => {
-  try { return localStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
+  try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_SIGNAL_URL; } catch { return DEFAULT_SIGNAL_URL; }
 };
 const saveUrl = (url) => {
   try { url ? localStorage.setItem(STORAGE_KEY, url) : localStorage.removeItem(STORAGE_KEY); } catch { /* sin almacenamiento */ }

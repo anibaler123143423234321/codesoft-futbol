@@ -719,31 +719,45 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
         </div>
       </div>
 
-      {/* Línea de tiempo */}
+      {/* Línea de tiempo: una fila por tipo de jugada, un carril por equipo */}
       <div className="tw-panel tw-timeline">
         <div className="tw-timeline-head">
           <span>Jugadas · {visiblePlays.length}</span>
-          <small>Clic en una jugada para verla en la cancha</small>
+          <div className="tw-tl-legend" aria-label="Colores de cada equipo">
+            <span><i style={{ background: HOME_COLOR }} />{homeName} <small>arriba</small></span>
+            <span><i style={{ background: AWAY_COLOR }} />{awayName} <small>abajo</small></span>
+          </div>
         </div>
         <div className="tw-rows">
-          {CATEGORIES.map(c => (
-            <div key={c.key} className={`tw-row ${hiddenCats.has(c.key) ? 'off' : ''}`}>
-              <button className="tw-row-label" onClick={() => toggleCat(c.key)} title="Mostrar / ocultar">
-                <i style={{ background: c.color }} />{c.label}
-              </button>
-              <div className="tw-track">
-                {visiblePlays.filter(p => p.category === c.key).map(p => (
-                  <button
-                    key={p.id}
-                    className={`tw-tick ${p.id === selectedId ? 'active' : ''}`}
-                    style={{ left: pct(p.seconds), background: c.color, borderColor: p.team === 'away' ? AWAY_COLOR : HOME_COLOR }}
-                    onClick={() => selectPlay(p)}
-                    title={`${p.minute} · ${TYPE_ES[p.typeText] || p.typeText}${p.player ? ' · ' + p.player : ''}`}
-                  />
-                ))}
+          {CATEGORIES.map(c => {
+            const m = metrics.find(x => x.key === c.key);
+            return (
+              <div key={c.key} className={`tw-row ${hiddenCats.has(c.key) ? 'off' : ''}`}>
+                <button className="tw-row-label" onClick={() => toggleCat(c.key)} title="Mostrar / ocultar">
+                  <i style={{ background: c.color }} />{c.label}
+                  <span className="tw-row-count" aria-label={`${homeName} ${m.home}, ${awayName} ${m.away}`}>
+                    <b style={{ color: HOME_COLOR }}>{m.home}</b>·<b style={{ color: AWAY_COLOR }}>{m.away}</b>
+                  </span>
+                </button>
+                <div className="tw-track">
+                  {visiblePlays.filter(p => p.category === c.key).map(p => {
+                    const teamName = p.team === 'away' ? awayName : p.team === 'home' ? homeName : 'Sin equipo';
+                    const label = `${p.minute} · ${TYPE_ES[p.typeText] || p.typeText}${p.player ? ' · ' + p.player : ''} · ${teamName}`;
+                    return (
+                      <button
+                        key={p.id}
+                        className={`tw-tick ${p.team === 'away' ? 'away' : p.team === 'home' ? 'home' : 'none'} ${p.id === selectedId ? 'active' : ''}`}
+                        style={{ left: pct(p.seconds), background: p.team === 'away' ? AWAY_COLOR : p.team === 'home' ? HOME_COLOR : '#94a3b8' }}
+                        onClick={() => selectPlay(p)}
+                        aria-label={label}
+                        data-tip={label}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div className="tw-playhead-wrap">
             <div className="tw-playhead" style={{ left: pct(playheadSeconds) }} />
           </div>
@@ -756,6 +770,19 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
             <em style={{ left: pct(90 * 60) }}>90'</em>
           </div>
         </div>
+        {selected ? (
+          <div className="tw-tl-detail" aria-live="polite">
+            <span className="tw-tl-min">{selected.minute}</span>
+            <span className="tw-tl-team" style={{ '--team': selected.team === 'away' ? AWAY_COLOR : HOME_COLOR }}>
+              {selected.team === 'away' ? awayName : selected.team === 'home' ? homeName : 'Sin equipo'}
+            </span>
+            <b>{TYPE_ES[selected.typeText] || selected.typeText}</b>
+            {selected.player && <span>{selected.player}{selected.player2 ? ` → ${selected.player2}` : ''}</span>}
+            {selected.text && <p>{selected.text}</p>}
+          </div>
+        ) : (
+          <p className="tw-tl-hint">Tocá un punto para ver minuto, equipo y jugador.</p>
+        )}
       </div>
     </section>
   );
