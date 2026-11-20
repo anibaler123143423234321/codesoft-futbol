@@ -10,7 +10,9 @@ import {
   findStreamForMatch, 
   fetchAllLiveStreamMatches, 
   fetchMatchStreamLink, 
-  extractM3u8Url 
+  extractM3u8Url,
+  getProxiedHlsUrl,
+  isM3u8Url 
 } from '../api/footballStreamApi';
 
 const STORAGE_KEY = 'codesoft.signalUrl';
@@ -248,21 +250,25 @@ export default function SignalPlayer({
 
     // Reproducción HLS para modo URL
     if (mode === 'url' && parsed?.kind === 'hls') {
+      const hlsSource = getProxiedHlsUrl(parsed.src);
       if (Hls.isSupported()) {
         hls = new Hls({ lowLatencyMode: true });
         hls.on(Hls.Events.ERROR, (_e, data) => {
           if (data.fatal) setError('No se pudo cargar la señal HLS. Revisá el enlace .m3u8.');
         });
-        hls.loadSource(parsed.src);
+        hls.loadSource(hlsSource);
         hls.attachMedia(el);
       } else {
-        el.src = parsed.src;
+        el.src = hlsSource;
       }
       el.play().catch(() => {});
     }
 
     // Reproducción HLS para modo LIVESTREAM
     if (mode === 'livestream' && playerType === 'hls' && liveStreamData?.m3u8Url) {
+      const hlsSource = getProxiedHlsUrl(liveStreamData.m3u8Url);
+      let triedFallback = false;
+
       if (Hls.isSupported()) {
         hls = new Hls({ 
           lowLatencyMode: true,
@@ -270,14 +276,32 @@ export default function SignalPlayer({
         });
         hls.on(Hls.Events.ERROR, (_e, data) => {
           if (data.fatal) {
-            console.warn('HLS directo falló, alternando a visor web...', data);
-            setPlayerType('iframe');
+            console.warn('HLS directo experimentó un fallo:', data);
+
+            // Si es un error de red y todavía no probamos el proxy público de respaldo
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !triedFallback) {
+              triedFallback = true;
+              console.warn('Reintentando señal HLS con proxy de respaldo...');
+              const fallbackUrl = `https://corsproxy.io/?url=${encodeURIComponent(liveStreamData.m3u8Url)}`;
+              hls.loadSource(fallbackUrl);
+              hls.startLoad();
+              return;
+            }
+
+            // Si hay un visor web alternativo válido (iframe no .m3u8)
+            const hasValidIframe = liveStreamData?.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl);
+            if (hasValidIframe) {
+              console.warn('HLS no disponible, alternando a visor web...', data);
+              setPlayerType('iframe');
+            } else {
+              setError('La señal en vivo no responde en este momento. Podés intentar recargar o seleccionar otro partido.');
+            }
           }
         });
-        hls.loadSource(liveStreamData.m3u8Url);
+        hls.loadSource(hlsSource);
         hls.attachMedia(el);
       } else {
-        el.src = liveStreamData.m3u8Url;
+        el.src = hlsSource;
       }
       el.play().catch(() => {});
     }
@@ -434,12 +458,12 @@ export default function SignalPlayer({
             </button>
           </form>
 
-          {liveStreamData && (
+          {liveStreamData && liveStreamData.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl) && (
             <div className="sp-player-toggle">
               <button 
                 type="button"
                 className={`sp-toggle-btn ${playerType === 'hls' ? 'active' : ''}`}
-                onClick={() => setPlayerType('hls')}
+                onClick={() => { sounds.playClick(); setPlayerType('hls'); }}
                 title="Reproductor directo de alta fidelidad HLS"
               >
                 HLS Directo
@@ -447,7 +471,7 @@ export default function SignalPlayer({
               <button 
                 type="button"
                 className={`sp-toggle-btn ${playerType === 'iframe' ? 'active' : ''}`}
-                onClick={() => setPlayerType('iframe')}
+                onClick={() => { sounds.playClick(); setPlayerType('iframe'); }}
                 title="Visor web integrado"
               >
                 Visor Web
@@ -495,13 +519,12 @@ export default function SignalPlayer({
       <div className="sp-stage">
         {/* Iframe para URL o Livestream visor web */}
         {((mode === 'url' && parsed?.kind === 'iframe') || 
-          (mode === 'livestream' && playerType === 'iframe' && liveStreamData?.iframeUrl)) && (
+          (mode === 'livestream' && playerType === 'iframe' && liveStreamData?.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl))) && (
           <iframe
             key={mode === 'livestream' ? liveStreamData.iframeUrl : parsed.src}
             src={mode === 'livestream' ? liveStreamData.iframeUrl : parsed.src}
             title="Señal en vivo"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
             referrerPolicy="no-referrer"
           />
         )}
@@ -521,7 +544,14 @@ export default function SignalPlayer({
             referrerPolicy="no-referrer"
             onError={() => {
               if (mode === 'clips') onClipError?.(clip?.id);
-              else if (mode === 'livestream') setPlayerType('iframe');
+              else if (mode === 'livestream') {
+                const hasValidIframe = liveStreamData?.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl);
+                if (hasValidIframe) {
+                  setPlayerType('iframe');
+                } else {
+                  setError('No se pudo reproducir este stream directo.');
+                }
+              }
               else if (directSrc) setError('No se pudo reproducir este video. Probá con un enlace directo o el visor web.');
             }}
           />

@@ -42,6 +42,32 @@ export function extractM3u8Url(url) {
 }
 
 /**
+ * Verifica si una URL apunta a una lista de reproducción HLS (.m3u8).
+ */
+export function isM3u8Url(url) {
+  if (!url) return false;
+  return /\.m3u8($|\?)/i.test(url);
+}
+
+/**
+ * Retorna la URL procesada a través del proxy CORS local/Netlify para evitar
+ * el error "No 'Access-Control-Allow-Origin' header is present on the requested resource".
+ */
+export function getProxiedHlsUrl(url) {
+  if (!url) return '';
+  const clean = url.trim();
+  // Si ya es relativa o ya apunta al proxy, devolver tal cual
+  if (clean.startsWith('/api/hls-proxy') || clean.startsWith('/')) {
+    return clean;
+  }
+  // Si es una URL http/https externa, enrutar por el proxy HLS
+  if (/^https?:\/\//i.test(clean)) {
+    return `/api/hls-proxy?url=${encodeURIComponent(clean)}`;
+  }
+  return clean;
+}
+
+/**
  * Petición genérica con control estricto de códigos HTTP (429 Quota, 403 Subscripción).
  */
 async function requestRapidApi(path) {
@@ -191,12 +217,45 @@ export async function fetchMatchStreamLink(matchId) {
   try {
     const data = await requestRapidApi(`/link/${matchId}`);
     const rawUrl = data?.url || data?.links?.[0]?.url || '';
-    const m3u8Url = extractM3u8Url(rawUrl);
+
+    let m3u8Url = '';
+    let iframeUrl = '';
+
+    if (rawUrl) {
+      if (rawUrl.includes('?url=')) {
+        m3u8Url = extractM3u8Url(rawUrl);
+        iframeUrl = rawUrl;
+      } else if (isM3u8Url(rawUrl)) {
+        m3u8Url = rawUrl;
+      } else if (rawUrl.startsWith('http')) {
+        iframeUrl = rawUrl;
+      }
+    }
+
+    if (Array.isArray(data?.links)) {
+      for (const item of data.links) {
+        const link = item?.url || '';
+        if (!link) continue;
+        if (link.includes('?url=')) {
+          if (!m3u8Url) m3u8Url = extractM3u8Url(link);
+          if (!iframeUrl) iframeUrl = link;
+        } else if (isM3u8Url(link)) {
+          if (!m3u8Url) m3u8Url = link;
+        } else if (link.startsWith('http') && !iframeUrl) {
+          iframeUrl = link;
+        }
+      }
+    }
+
+    // Un enlace directo .m3u8 NUNCA debe ser iframeUrl porque los navegadores no renderizan .m3u8 en <iframe>
+    if (iframeUrl && isM3u8Url(iframeUrl)) {
+      iframeUrl = '';
+    }
 
     const result = {
       rawUrl,
-      m3u8Url: m3u8Url || rawUrl,
-      iframeUrl: rawUrl.startsWith('http') ? rawUrl : '',
+      m3u8Url: m3u8Url || (isM3u8Url(rawUrl) ? rawUrl : ''),
+      iframeUrl,
       links: data?.links || [],
     };
 

@@ -37,13 +37,136 @@ function chatWebSocketPlugin() {
   };
 }
 
+function rewriteM3u8Content(content, baseUrl, proxyEndpoint) {
+  const lines = content.split(/\r?\n/);
+  const out = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+
+    if (!line) {
+      out.push(rawLine);
+      continue;
+    }
+
+    if (line.startsWith('#')) {
+      if (line.includes('URI="')) {
+        const rewrittenTag = line.replace(/URI="([^"]+)"/g, (_, uri) => {
+          try {
+            const absolute = new URL(uri, baseUrl).href;
+            return `URI="${proxyEndpoint}?url=${encodeURIComponent(absolute)}"`;
+          } catch {
+            return `URI="${uri}"`;
+          }
+        });
+        out.push(rewrittenTag);
+      } else {
+        out.push(rawLine);
+      }
+    } else {
+      try {
+        const absolute = new URL(line, baseUrl).href;
+        out.push(`${proxyEndpoint}?url=${encodeURIComponent(absolute)}`);
+      } catch {
+        out.push(rawLine);
+      }
+    }
+  }
+
+  return out.join('\n');
+}
+
+function hlsProxyDevPlugin() {
+  return {
+    name: 'codesoft-hls-proxy-dev',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url.startsWith('/api/hls-proxy')) return next();
+
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        try {
+          const reqUrl = new URL(req.url, 'http://localhost:3000');
+          const targetUrl = reqUrl.searchParams.get('url');
+          if (!targetUrl) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ error: 'Parámetro url requerido' }));
+          }
+
+          const parsedTarget = new URL(targetUrl);
+          const forwardHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+            'Referer': parsedTarget.origin + '/',
+            'Origin': parsedTarget.origin,
+          };
+
+          if (req.headers.range) {
+            forwardHeaders['Range'] = req.headers.range;
+          }
+
+          const upstreamRes = await fetch(parsedTarget.toString(), {
+            headers: forwardHeaders,
+            redirect: 'follow',
+          });
+
+          const finalBaseUrl = upstreamRes.url || targetUrl;
+          const contentType = (upstreamRes.headers.get('content-type') || '').toLowerCase();
+          const isM3u8ByPath = parsedTarget.pathname.toLowerCase().endsWith('.m3u8') || parsedTarget.search.toLowerCase().includes('.m3u8');
+          const isM3u8ByType = contentType.includes('mpegurl') || contentType.includes('application/x-mpegurl');
+
+          if (isM3u8ByPath || isM3u8ByType) {
+            const text = await upstreamRes.text();
+            if (text.startsWith('#EXTM3U') || isM3u8ByPath) {
+              const rewritten = rewriteM3u8Content(text, finalBaseUrl, '/api/hls-proxy');
+              res.statusCode = upstreamRes.status;
+              res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              return res.end(rewritten);
+            }
+          }
+
+          res.statusCode = upstreamRes.status;
+          if (contentType) res.setHeader('Content-Type', contentType);
+          else if (parsedTarget.pathname.endsWith('.ts')) res.setHeader('Content-Type', 'video/mp2t');
+
+          const contentLength = upstreamRes.headers.get('content-length');
+          if (contentLength) res.setHeader('Content-Length', contentLength);
+          const contentRange = upstreamRes.headers.get('content-range');
+          if (contentRange) res.setHeader('Content-Range', contentRange);
+          const acceptRanges = upstreamRes.headers.get('accept-ranges');
+          if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
+
+          const buf = await upstreamRes.arrayBuffer();
+          return res.end(Buffer.from(buf));
+        } catch (err) {
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const nvidiaKey = env.NVIDIA_API_KEY || env.VITE_NVIDIA_API_KEY || '';
   const rapidApiKey = env.RAPIDAPI_KEY || env.VITE_RAPIDAPI_KEY || '145cb9d94dmshae1f304d7a5dc56p1bb2b8jsn47474853c5af';
 
   return {
-    plugins: [react(), chatWebSocketPlugin()],
+    plugins: [react(), chatWebSocketPlugin(), hlsProxyDevPlugin()],
     define: {
       '__NVIDIA_MODEL__': JSON.stringify(env.NVIDIA_MODEL || ''),
       '__RAPIDAPI_KEY__': JSON.stringify(rapidApiKey),
