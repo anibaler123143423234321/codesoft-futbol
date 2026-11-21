@@ -2,6 +2,8 @@
 // La API de NVIDIA no acepta llamadas directas desde el navegador (CORS) y la clave no debe
 // viajar en el bundle: todas las peticiones pasan por el proxy /api/nvidia, que agrega la clave
 // en el servidor (Vite en desarrollo, función de Netlify en producción).
+import { describeLiveMarket, liveFacts } from '../utils/liveMarket';
+
 const AI_ENDPOINT = '/api/nvidia/v1/chat/completions';
 // Modelos en orden de preferencia: el primero es rápido (~7 s); los demás son respaldo
 // por si NVIDIA retira o satura alguno. NVIDIA_MODEL en .env fuerza uno al principio.
@@ -82,10 +84,165 @@ async function callAiCompletion({ messages, maxTokens = 500 }) {
 // Describe cuotas y estadísticas reales del partido para el prompt.
 // Si faltan se dice explícitamente: nunca se le pasan valores inventados a la IA.
 function describeOdds(match) {
-  const o = match?.oddsInfo;
-  if (!o?.hasMoneyline) return 'Cuotas: no publicadas para este partido';
-  return `Cuotas ${o.provider}: Local ${o.homeOdds} | Empate ${o.drawOdds} | Visita ${o.awayOdds}${o.overUnder ? ` | Línea de goles ${o.overUnder}` : ''}`;
+  const home = match?.homeTeam?.shortName || match?.homeTeam?.name || 'Local';
+  const away = match?.awayTeam?.shortName || match?.awayTeam?.name || 'Visita';
+  const o = match?.liveMarket ? match.preOddsInfo : match?.oddsInfo;
+  const pre = o?.hasMoneyline
+    ? `Cuotas ${match?.liveMarket ? 'previas al partido' : ''} ${o.provider}: Local ${o.homeOdds} | Empate ${o.drawOdds} | Visita ${o.awayOdds}${o.overUnder ? ` | Línea de goles ${o.overUnder}` : ''}`.replace(/\s+/g, ' ')
+    : 'Cuotas previas: no publicadas para este partido';
+  const live = describeLiveMarket(match?.liveMarket, home, away);
+  return live ? `${live}\n- ${pre} (solo como referencia)` : pre;
 }
+
+// Con cuotas en vivo, la IA tiene que partir de ellas y no de las previas
+function liveRules(match) {
+  if (!match?.liveMarket) return '';
+  const lm = match.liveMarket;
+  return `
+REGLAS CON CUOTAS EN VIVO:
+- Razona a partir de las cuotas EN VIVO de los DATOS, no de las previas. Puedes usar cualquier mercado en vivo de la lista.
+- La "cuota" de cada pick es exactamente la cuota en vivo de ese mercado si aparece en los DATOS; si el mercado no está, estima una justa y no la presentes como del mercado.
+- Solo hay valor si el movimiento del 1X2, las estadísticas y las jugadas en vivo (ataques peligrosos, tiros, córners de los últimos minutos) justifican una probabilidad mayor que la implícita sin margen; dilo con números.
+- No recomiendes mercados que el marcador ya resolvió.${lm.suspended || lm.frozen ? `
+- LOS MERCADOS ESTÁN CERRADOS O LAS CUOTAS SON DE ANTES DE LA ÚLTIMA JUGADA: dilo primero, no presentes esas cuotas como jugables ahora, explica cómo cambia la lectura con esa jugada y usa stake 0 hasta que reabran.` : ''}
+`;
+}
+
+// ---------------------------------------------------------------- Datos numerados para citar
+
+/**
+ * Todos los datos que recibe la IA, numerados como fuentes: lo de ESPN y lo de la fuente en vivo
+ * (marcador, cada mercado con sus cuotas, movimiento, estadísticas, jugadas y suspensiones).
+ * @returns {Array<{ n, key, label, text, origin }>}
+ */
+export function buildFactSheet(match) {
+  const home = match?.homeTeam?.shortName || match?.homeTeam?.name || 'Local';
+  const away = match?.awayTeam?.shortName || match?.awayTeam?.name || 'Visita';
+  const facts = [];
+  const add = (key, label, text, origin) => facts.push({ n: facts.length + 1, key, label, text, origin });
+  const lm = match?.liveMarket;
+
+  add('espn-match', 'Partido', `${match?.leagueName || 'Liga sin dato'}. ${home} (local) vs ${away} (visita).`, 'ESPN');
+  if (!lm) {
+    const state = match?.status === 'live'
+      ? `En vivo, minuto ${match?.minute || '—'}, marcador ${match?.homeTeam?.score ?? 0}-${match?.awayTeam?.score ?? 0}.`
+      : match?.status === 'finished' ? `Finalizado ${match?.homeTeam?.score ?? 0}-${match?.awayTeam?.score ?? 0}.` : `Por jugarse (${match?.timeStr || 'sin hora'}).`;
+    add('espn-state', 'Estado del partido', state, 'ESPN');
+  }
+  for (const f of liveFacts(lm, home, away)) {
+    const origin = f.key === 'live-plays' ? 'Jugadas en vivo' : f.key === 'live-stats' || f.key === 'live-state' ? 'Fuente en vivo' : 'Cuotas en vivo';
+    add(f.key, f.label, f.text, origin);
+  }
+  if (match?.stats?.hasData) add('espn-stats', 'Estadísticas del partido', describeStats(match).replace(/\n\s*\*\s*/g, ' | '), 'ESPN');
+
+  const o = lm ? match?.preOddsInfo : match?.oddsInfo;
+  if (o?.hasMoneyline) {
+    add('pre-odds', lm ? 'Cuotas previas al partido' : 'Cuotas', `${o.provider}: ${home} ${o.homeOdds} | Empate ${o.drawOdds} | ${away} ${o.awayOdds}${o.overUnder ? ` | línea de goles ${o.overUnder}` : ''}.`, o.provider || 'Cuotas');
+  }
+  const recent = (team) => (team?.recentGames || []).map((g) => `${g.opponent} (${g.score} ${g.result})`).join(', ') || team?.form || '';
+  if (recent(match?.homeTeam)) add('espn-form-home', `Forma de ${home}`, recent(match.homeTeam), 'ESPN');
+  if (recent(match?.awayTeam)) add('espn-form-away', `Forma de ${away}`, recent(match.awayTeam), 'ESPN');
+  const h2h = (match?.h2hHistory || []).slice(-4).map((h) => `${h.date}: ${h.homeTeam} ${h.homeScore}-${h.awayScore} ${h.awayTeam}`).join(' | ');
+  if (h2h) add('espn-h2h', 'Enfrentamientos directos', h2h, 'ESPN');
+  return facts;
+}
+
+const factLines = (facts) => facts.map((f) => `[${f.n}] ${f.label}: ${f.text}`).join('\n');
+
+// Todos los números de un texto (1.5, 72, 72,4 → 72.4), redondeados a 2 decimales
+const numbersOf = (text) => (String(text).match(/\d+(?:[.,]\d+)?/g) || []).map((n) => Number(n.replace(',', '.')).toFixed(2));
+
+/** Citas válidas: solo números de fuente que existen. Acepta [3], "3" o 3. */
+function validCites(list, facts) {
+  const ids = new Set(facts.map((f) => f.n));
+  return [...new Set((Array.isArray(list) ? list : [list]).map((v) => Number(String(v).replace(/[^\d]/g, ''))).filter((n) => ids.has(n)))];
+}
+
+// Tipo de mercado de un pick o de un mercado, para no confundir una cuota de tarjetas con una de córners
+const TOPICS = [
+  ['corners', /c[óo]rner/i],
+  ['cards', /tarjeta|amarilla|roja/i],
+  ['score', /marcador|resultado exacto|\b\d+\s*-\s*\d+\b/i],
+  ['btts', /ambos/i],
+  ['next', /pr[óo]ximo gol|siguiente gol/i],
+  ['double', /doble oportunidad|\b(1X|X2|12)\b/],
+  ['goals', /\bgol|m[áa]s de|menos|over|under/i],
+  ['result', /./],
+];
+const topicOf = (text) => TOPICS.find(([, re]) => re.test(String(text || '')))[0];
+const isMarketFact = (f) => f.key === 'live-1x2' || f.key === 'pre-odds' || f.key.startsWith('mk-');
+const marketTopic = (f) => (f.key === 'live-1x2' || f.key === 'pre-odds' ? 'result' : topicOf(f.label));
+
+/**
+ * Revisa un pick contra los datos: si su cuota está publicada en un mercado en vivo del mismo tipo,
+ * cita ese mercado; si no, la marca como estimada. Se quitan las citas a mercados de otro tipo
+ * (una selección de córners no puede apoyarse en la cuota de tarjetas). Con los mercados cerrados
+ * queda marcada como no jugable.
+ */
+function auditPick(pick, facts, lm) {
+  if (!pick) return null;
+  const price = Number(pick.cuota);
+  const topic = topicOf(pick.pick);
+  const sameTopic = (f) => marketTopic(f) === topic;
+  // La línea del pick (2.5, 3.5…) también tiene que estar en ese mercado: 1.85 de "Menos 2.5" no es de "Menos 3.5"
+  const pickLines = numbersOf(pick.pick).filter((n) => n.endsWith('.50'));
+  const hit = Number.isFinite(price) && price > 1
+    ? facts.find((f) => {
+      if (!isMarketFact(f) || !sameTopic(f) || (f.key === 'pre-odds' && lm)) return false;
+      const nums = numbersOf(f.text);
+      return nums.includes(price.toFixed(2)) && pickLines.every((l) => nums.includes(l));
+    })
+    : null;
+  const cites = validCites(pick.fuentes, facts).filter((n) => {
+    const f = facts.find((x) => x.n === n);
+    return !isMarketFact(f) || sameTopic(f);
+  });
+  if (hit && !cites.includes(hit.n)) cites.unshift(hit.n);
+  return {
+    ...pick,
+    fuentes: cites,
+    cuotaFuente: hit ? hit.n : null,
+    cuotaEstimada: !hit,
+    // 'closed': la casa cerró los mercados · 'stale': cuotas de antes del último gol o sin 1X2 ahora
+    cerrado: lm?.suspended ? 'closed' : lm?.frozen ? 'stale' : null,
+  };
+}
+
+/**
+ * Con cuotas en vivo de la extensión, el estado del partido sale de la fuente en vivo
+ * (puede seguir en tiempo añadido aunque ESPN ya marque final) y las cuotas previas quedan de referencia.
+ */
+function withLiveState(match) {
+  const lm = match?.liveMarket;
+  if (!lm) return match;
+  return {
+    ...match,
+    status: 'live',
+    minute: lm.clock || match.minute,
+    homeTeam: { ...match.homeTeam, score: lm.score.home, odds: lm.matchResult.home },
+    awayTeam: { ...match.awayTeam, score: lm.score.away, odds: lm.matchResult.away },
+    preOddsInfo: match.oddsInfo,
+    oddsInfo: {
+      ...(match.oddsInfo || {}),
+      hasMoneyline: true,
+      provider: 'en vivo',
+      homeOdds: lm.matchResult.home,
+      drawOdds: lm.matchResult.draw,
+      awayOdds: lm.matchResult.away,
+      overUnder: lm.totalGoals?.line ?? null,
+      totalLine: lm.totalGoals?.line ?? null,
+      overOdds: lm.totalGoals?.over ?? null,
+      underOdds: lm.totalGoals?.under ?? null,
+    },
+  };
+}
+
+// Las cuotas en vivo y el cierre de mercados cambian el análisis: entran en la clave de caché
+const liveSig = (match) => {
+  const lm = match?.liveMarket;
+  if (!lm) return '';
+  return `_lv${Object.values(lm.matchResult).join('-')}${lm.suspended || lm.frozen ? '_closed' : ''}`;
+};
 
 function describeStats(match) {
   const a = match?.stats?.attack;
@@ -103,9 +260,10 @@ function describeStats(match) {
  * Generate deep sports AI Pick & prediction for a soccer match
  */
 export async function generateMatchAIPick(match) {
+  match = withLiveState(match);
   // Estimación local (sin IA): rellena campos faltantes y sirve de respaldo si la IA no responde
   const dynamicFallback = calculateDynamicSportsMetrics(match).mainPick;
-  const cacheKey = `ai_pick_v3_${match.id}_${match.homeTeam?.score}_${match.awayTeam?.score}`;
+  const cacheKey = `ai_pick_v3_${match.id}_${match.homeTeam?.score}_${match.awayTeam?.score}${liveSig(match)}`;
   
   // Check local cache (15-minute TTL)
   try {
@@ -137,7 +295,7 @@ DATOS DEL ENCUENTRO:
 - ${describeOdds(match)}
 - Estadísticas registradas:
   * ${describeStats(match)}
-
+${liveRules(match)}
 INSTRUCCIONES CLAVE DE ANÁLISIS:
 1. Considera la forma reciente de los últimos 5 partidos y el historial H2H para definir un pick concreto y de alto valor (Value Bet, ej. Gana Local Hándicap Asiático 0.0, Ambos Anotan + Más de 2.5 Goles, Doble Oportunidad 1X, Over Córners).
 2. En "motivo_principal": Redacta una explicación contundente que comience con "¿Por qué este pick?: ..." resumiendo la ventaja táctica o matemática directa.
@@ -211,6 +369,7 @@ function parseMinuteNumber(minuteStr) {
  * Chat with tactical AI sports expert - Dynamic tactical sports analyst
  */
 export async function askTacticalAI(match, userQuestion, meta) {
+  match = withLiveState(match);
   if (meta) meta.source = 'local';
   const home = match?.homeTeam?.name || match?.homeTeam?.shortName || 'Local';
   const away = match?.awayTeam?.name || match?.awayTeam?.shortName || 'Visita';
@@ -227,35 +386,45 @@ export async function askTacticalAI(match, userQuestion, meta) {
   // Para la estimación local sin IA: cuotas reales o, si no hay, valores neutros (no se muestran)
   const homeOdds = Number(match?.oddsInfo?.homeOdds || match?.homeTeam?.odds) || 2.5;
   const awayOdds = Number(match?.oddsInfo?.awayOdds || match?.awayTeam?.odds) || 2.5;
-  const homeRecent = (match.homeTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.homeTeam?.form || '';
-  const awayRecent = (match.awayTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.awayTeam?.form || '';
 
+  const facts = buildFactSheet(match);
   try {
     const aiRes = await callAiCompletion({
       messages: [
-        { 
-          role: 'system', 
+        {
+          role: 'system',
           content: `Eres NVIDIA IA, un analista táctico de fútbol y trader deportivo de élite.
-CONTEXTO DEL PARTIDO:
-- Partido: ${home} vs ${away}
-- ${describeOdds(match)}
-- Marcador: ${homeScore} - ${awayScore}
-- Estado: ${isLive ? `En Vivo Minuto ${minuteStr}` : 'Previa (Aún no empieza)'}
-- Forma Local: ${homeRecent || 'Sin registro reciente'}
-- Forma Visita: ${awayRecent || 'Sin registro reciente'}
+Partido: ${home} ${homeScore}-${awayScore} ${away}. ${isLive ? `En vivo, minuto ${minuteStr}.` : 'Previa (aún no empieza).'}
 
+DATOS (el número entre corchetes es el número de fuente):
+${factLines(facts)}
+${liveRules(match)}
 INSTRUCCIÓN VITAL:
-Responde a la consulta del usuario en 2 o 3 oraciones de manera directa, profesional y contundente.
-Si el usuario te pregunta "¿Quién gana?", "dame el ganador" o te pide que te decidas por uno, MOJATE Y DEFINE CLARAMENTE A UN GANADOR justificando por qué (localía, cuotas, plantilla o momento táctico). NO des respuestas evasivas ni repitas mensajes genéricos.` 
+- Responde en 2 o 3 oraciones, directo y concreto, usando SOLO los DATOS (escribe los números igual que ahí).
+- Cada oración termina con la fuente que usaste entre corchetes, por ejemplo [3] o [3][5]. Sin fuente no hay oración.
+- Si te piden un ganador, define uno y justifícalo con los DATOS. Nada de respuestas evasivas.`
         },
         { role: 'user', content: userQuestion }
       ],
-      maxTokens: 250
+      maxTokens: 300
     });
 
     if (aiRes && aiRes.content && aiRes.content.trim().length > 0) {
-      if (meta) meta.source = 'ai';
-      return aiRes.content.trim();
+      const ids = new Set(facts.map((f) => f.n));
+      // Se quitan las citas a fuentes que no existen; las válidas se muestran como chips
+      let text = aiRes.content.trim().replace(/\[(\d+)\]/g, (m, n) => (ids.has(Number(n)) ? m : ''));
+      // Con los mercados cerrados el aviso va siempre primero (el modelo no siempre lo dice)
+      const closed = facts.find((f) => f.key === 'live-suspended');
+      if (closed && !text.includes(`[${closed.n}]`)) {
+        text = `Ojo: ${closed.text.split('. ')[0].replace(/\.$/, '')}; las cuotas son de antes de esa jugada [${closed.n}]. ${text}`;
+      }
+      const cites = validCites((text.match(/\[(\d+)\]/g) || []), facts);
+      if (meta) {
+        meta.source = 'ai';
+        meta.facts = facts;
+        meta.cites = cites;
+      }
+      return text;
     }
   } catch (e) {
     console.warn('AI Chat fallback:', e);
@@ -535,8 +704,9 @@ function calculateDynamicSportsMetrics(match) {
  * Generate deep sports AI Multi-Market predictions for a soccer match
  */
 export async function generateFullMatchAIPredictions(match) {
+  match = withLiveState(match);
   const isLive = match.status === 'live';
-  const cacheKey = `ai_multi_picks_v4_${match.id}_${match.homeTeam?.score || 0}_${match.awayTeam?.score || 0}_${isLive ? 'live' : 'pre'}`;
+  const cacheKey = `ai_multi_picks_v5_${match.id}_${match.homeTeam?.score || 0}_${match.awayTeam?.score || 0}_${isLive ? 'live' : 'pre'}${liveSig(match)}`;
   
   try {
     const cached = localStorage.getItem(cacheKey);
@@ -558,40 +728,35 @@ export async function generateFullMatchAIPredictions(match) {
 
   const dynamicFallback = calculateDynamicSportsMetrics(match);
 
-  const homeRecent = (match.homeTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.homeTeam?.form || 'Información no disponible';
-  const awayRecent = (match.awayTeam?.recentGames || []).map(g => `${g.opponent} (${g.score} ${g.result})`).join(', ') || match.awayTeam?.form || 'Información no disponible';
-  const h2hSummary = (match.h2hHistory || []).slice(-4).map(h => `${h.date}: ${h.homeTeam} ${h.homeScore}-${h.awayScore} ${h.awayTeam}`).join(' | ') || 'Sin enfrentamientos directos recientes registrados';
+  const facts = buildFactSheet(match);
 
   const prompt = `
-Actúa como un Senior Quantitative Sports Trader y Analista Táctico de Fútbol con Inteligencia Artificial.
-Analiza este partido de fútbol en profundidad con datos reales del mercado y genera 5 selecciones de apuesta cuantitativas (Value Bets):
-- Torneo: ${match.leagueName || 'Liga Principal'}
-- Equipos: Local: ${home} (Goles: ${homeScore}) vs Visita: ${away} (Goles: ${awayScore})
-  * Forma reciente de Local: ${homeRecent}
-  * Forma reciente de Visita: ${awayRecent}
-- Historial Directo (H2H): ${h2hSummary}
-- Estado del Partido: ${match.status === 'live' ? `EN VIVO Minuto ${match.minute}` : match.timeStr || 'Por iniciar'}
-- ${describeOdds(match)}
-- Estadísticas del partido:
-  * ${describeStats(match)}
+Actúa como un Senior Quantitative Sports Trader y Analista Táctico de Fútbol.
+Analiza este partido (${home} ${homeScore}-${awayScore} ${away}, ${match.status === 'live' ? `EN VIVO minuto ${match.minute}` : match.timeStr || 'por iniciar'}) y genera 5 selecciones cuantitativas.
 
+DATOS (el número entre corchetes es el número de fuente):
+${factLines(facts)}
+${liveRules(match)}
 INSTRUCCIONES:
-- Selecciones coherentes con el marcador y el minuto actuales, basadas en los datos de arriba.
-- Cuotas decimales realistas; "probabilidad" es un entero de 0 a 100.
+- Usa SOLO los DATOS. No inventes estadísticas, lesiones, rachas ni cuotas que no estén arriba.
+- Cada selección lleva "fuentes": los números de los DATOS que la justifican (al menos uno). Si la cuota sale de un mercado de los DATOS, cita ese mercado.
+- En "motivo_principal" y "claves_metricas" escribe los números igual que en los DATOS.
+- Selecciones coherentes con el marcador y el minuto actuales. "probabilidad" es un entero de 0 a 100.
 - Responde ÚNICAMENTE con este JSON, en español y sin texto adicional:
 {
   "mainPick": {
     "pick": "apuesta recomendada",
     "cuota": 0,
     "probabilidad": 0,
-    "motivo_principal": "motivo táctico en máximo 40 palabras",
-    "claves_metricas": ["métrica 1", "métrica 2", "métrica 3"],
-    "stake": "Stake X / 10"
+    "motivo_principal": "motivo en máximo 40 palabras",
+    "claves_metricas": ["métrica con su número", "métrica con su número"],
+    "stake": "Stake X / 10",
+    "fuentes": [1]
   },
-  "goalsPick": { "pick": "mercado de goles", "cuota": 0, "probabilidad": 0 },
-  "cornersPick": { "pick": "mercado de córners", "cuota": 0, "probabilidad": 0 },
-  "cardsPick": { "pick": "mercado de tarjetas", "cuota": 0, "probabilidad": 0 },
-  "scorePick": { "pick": "${home} X - Y ${away}", "cuota": 0, "probabilidad": 0 }
+  "goalsPick": { "pick": "mercado de goles", "cuota": 0, "probabilidad": 0, "fuentes": [1] },
+  "cornersPick": { "pick": "mercado de córners", "cuota": 0, "probabilidad": 0, "fuentes": [1] },
+  "cardsPick": { "pick": "mercado de tarjetas", "cuota": 0, "probabilidad": 0, "fuentes": [1] },
+  "scorePick": { "pick": "${home} X - Y ${away}", "cuota": 0, "probabilidad": 0, "fuentes": [1] }
 }
 `;
 
@@ -601,26 +766,37 @@ INSTRUCCIONES:
         { role: 'system', content: 'Eres el motor de inferencia cuantitativa de fútbol. Responde siempre con cuotas decimales realistas calculadas dinámicamente y JSON estricto.' },
         { role: 'user', content: prompt }
       ],
-      maxTokens: 700
+      maxTokens: 900
     });
 
     if (aiRes && aiRes.content) {
       const cleanJsonStr = extractJson(aiRes.content);
       const aiData = JSON.parse(cleanJsonStr);
 
+      // Números que la IA puede escribir: los de los DATOS y las cifras de sus propias selecciones
+      const allowed = new Set([
+        ...facts.flatMap((f) => numbersOf(f.text)),
+        ...Object.values(aiData).flatMap((p) => (p && typeof p === 'object' ? numbersOf(`${p.cuota} ${p.probabilidad} ${p.stake || ''}`) : [])),
+      ]);
+      const honest = (t) => numbersOf(t).every((n) => allowed.has(n) || Number(n) <= 11);
+      const stripCites = (t) => String(t || '').replace(/\s*\[\s*\d+(?:\s*[,;-]\s*\d+)*\s*\]/g, '').trim();
+
       // Solo lo que dijo la IA: no se mezcla con textos de la estimación local
       const normalizePick = (p) => {
         if (!p || !p.pick) return null;
         let prob = Number(p.probabilidad ?? p.probability ?? 0);
         if (prob > 0 && prob <= 1) prob *= 100;
-        return {
+        const reason = stripCites(p.motivo_principal || p.justificacion || '');
+        return auditPick({
           pick: String(p.pick),
           cuota: p.cuota,
           probabilidad: Math.round(prob),
-          motivo_principal: p.motivo_principal || p.justificacion || '',
-          claves_metricas: Array.isArray(p.claves_metricas) ? p.claves_metricas.filter(Boolean) : [],
-          stake: p.stake || ''
-        };
+          // Un motivo o una métrica con cifras que no están en los datos no se muestra
+          motivo_principal: honest(reason) ? reason : '',
+          claves_metricas: Array.isArray(p.claves_metricas) ? p.claves_metricas.map(stripCites).filter((m) => m && honest(m)) : [],
+          stake: p.stake || '',
+          fuentes: p.fuentes,
+        }, facts, match.liveMarket);
       };
       if (!aiData.mainPick?.pick) throw new Error('La IA no devolvió una selección principal');
 
@@ -630,6 +806,7 @@ INSTRUCCIONES:
         cornersPick: normalizePick(aiData.cornersPick),
         cardsPick: normalizePick(aiData.cardsPick),
         scorePick: normalizePick(aiData.scorePick),
+        facts,
         source: 'ai',
         model: aiRes.provider,
       };
@@ -648,7 +825,7 @@ INSTRUCCIONES:
 
 /** Estimación inmediata calculada en el navegador con las estadísticas del partido (sin IA). */
 export function getLocalMatchPredictions(match) {
-  return { ...calculateDynamicSportsMetrics(match), source: 'local' };
+  return { ...calculateDynamicSportsMetrics(withLiveState(match)), source: 'local' };
 }
 
 // ---------------------------------------------------------------- Informe del modelo con IA
@@ -667,6 +844,7 @@ function numbersIn(text) {
  * Devuelve { headline, points: [{ text, cites }], risk, source: 'ai' | 'local', model }.
  */
 export async function explainPrediction(match, pred, sources) {
+  match = withLiveState(match);
   const local = localExplanation(match, pred, sources);
   if (!pred) return local;
 

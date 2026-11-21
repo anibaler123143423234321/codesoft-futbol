@@ -163,28 +163,33 @@ export function shinProbabilities(odds) {
 }
 
 // Ajusta λ local y λ visita para reproducir las probabilidades del mercado (mínimos cuadrados)
+// En vivo (`sh`, `sa` = marcador actual) ajusta los goles que FALTAN para que el resultado final
+// reproduzca las probabilidades del mercado en vivo.
 function fitLambdas(target) {
+  const sh = target.sh || 0;
+  const sa = target.sa || 0;
   const evaluate = (lh, la) => {
     const m = scoreMatrix(lh, la);
-    const p1 = sumWhere(m, (i, j) => i > j);
-    const px = sumWhere(m, (i, j) => i === j);
+    const p1 = sumWhere(m, (i, j) => i + sh > j + sa);
+    const px = sumWhere(m, (i, j) => i + sh === j + sa);
     const p2 = 1 - p1 - px;
     let err = (p1 - target.p1) ** 2 + (px - target.px) ** 2 + (p2 - target.p2) ** 2;
-    if (target.pOver != null) err += target.overWeight * (overProb(m, target.line) - target.pOver) ** 2;
+    if (target.pOver != null) err += target.overWeight * (overProb(m, target.line - sh - sa) - target.pOver) ** 2;
     return err;
   };
   // Búsqueda en rejilla gruesa y luego fina alrededor del mejor punto
+  const [lo, hi, coarse, floor] = target.live ? [0.02, 3, 0.04, 0.005] : [0.1, 4.5, 0.1, 0.05];
   let best = { lh: PRIOR_HOME, la: PRIOR_AWAY, err: Infinity };
-  for (let lh = 0.1; lh <= 4.5; lh += 0.1) {
-    for (let la = 0.1; la <= 4.5; la += 0.1) {
+  for (let lh = lo; lh <= hi; lh += coarse) {
+    for (let la = lo; la <= hi; la += coarse) {
       const err = evaluate(lh, la);
       if (err < best.err) best = { lh, la, err };
     }
   }
   for (const step of [0.02, 0.005]) {
     const c = { ...best };
-    for (let lh = Math.max(0.05, c.lh - 5 * step * 5); lh <= c.lh + 5 * step * 5; lh += step) {
-      for (let la = Math.max(0.05, c.la - 5 * step * 5); la <= c.la + 5 * step * 5; la += step) {
+    for (let lh = Math.max(floor, c.lh - 5 * step * 5); lh <= c.lh + 5 * step * 5; lh += step) {
+      for (let la = Math.max(floor, c.la - 5 * step * 5); la <= c.la + 5 * step * 5; la += step) {
         const err = evaluate(lh, la);
         if (err < best.err) best = { lh, la, err };
       }
@@ -225,6 +230,8 @@ function summarizeForm(games = []) {
  */
 export function buildPrediction(match) {
   if (!match) return null;
+  // Cuotas en vivo de la extensión (utils/liveMarket.js): mandan sobre las previas mientras el partido sigue
+  const lm = match.liveMarket?.matchResult ? match.liveMarket : null;
   const odds = match.oddsInfo;
   const hasOdds = !!odds?.hasMoneyline;
   const hasTotalOdds = hasOdds && odds.totalLine != null && odds.overOdds > 1 && odds.underOdds > 1;
@@ -239,7 +246,42 @@ export function buildPrediction(match) {
   let market = null;
   let fitError = null;
 
-  if (hasOdds) {
+  // En vivo: lo que falta del partido más el marcador actual (la fuente en vivo manda si está)
+  const isLive = Boolean(lm) || match.status === 'live';
+  const isFinished = !lm && match.status === 'finished';
+  const minute = lm?.minute != null ? Math.min(lm.minute, MATCH_MINUTES) : isLive ? Math.min(parseMinute(match.minute), MATCH_MINUTES) : 0;
+  const remaining = isFinished ? 0 : isLive ? Math.max(0, (MATCH_MINUTES - minute) / MATCH_MINUTES) : 1;
+  const sh = lm ? lm.score.home : isLive || isFinished ? Number(match.homeTeam?.score || 0) : 0;
+  const sa = lm ? lm.score.away : isLive || isFinished ? Number(match.awayTeam?.score || 0) : 0;
+  // Goles que faltan; con mercado en vivo salen directo del ajuste a sus cuotas
+  let remLh = null;
+  let remLa = null;
+
+  if (lm) {
+    methods.add('shin').add('strumbelj').add('dixonRobinson');
+    const mr = lm.matchResult;
+    const oneXTwo = shinProbabilities([mr.home, mr.draw, mr.away]);
+    const [p1, px, p2] = oneXTwo.probs;
+    market = { p1, px, p2, z: oneXTwo.z, margin: oneXTwo.margin, live: true };
+    let pOver = null;
+    if (lm.totalGoals) {
+      const tot = shinProbabilities([lm.totalGoals.over, lm.totalGoals.under]);
+      pOver = tot.probs[0];
+      market.pOver = pOver;
+      market.totalMargin = tot.margin;
+    }
+    const fit = fitLambdas({ p1, px, p2, pOver, line: lm.totalGoals?.line, overWeight: 1, sh, sa, live: true });
+    remLh = fit.lh;
+    remLa = fit.la;
+    lh = remaining > 0.02 ? remLh / remaining : remLh;
+    la = remaining > 0.02 ? remLa / remaining : remLa;
+    fitError = Math.sqrt(fit.err / (3 + (pOver != null ? 1 : 0)));
+    assumptions.push(`Cuotas EN VIVO de la casa (minuto ${Math.round(minute)}, ${sh}-${sa}): sin margen con Shin, y los goles que faltan se ajustan para reproducirlas (${remLh.toFixed(2)} local, ${remLa.toFixed(2)} visita).`);
+    if (lm.trend) {
+      const t = lm.trend;
+      assumptions.push(`El 1X2 en vivo se movió entre el minuto ${Math.round(t.fromMinute)} y el ${Math.round(t.toMinute)}: local ${t.from.home}→${t.to.home}, empate ${t.from.draw}→${t.to.draw}, visita ${t.from.away}→${t.to.away}.`);
+    }
+  } else if (hasOdds) {
     methods.add('shin').add('strumbelj');
     const oneXTwo = shinProbabilities([odds.homeOdds, odds.drawOdds, odds.awayOdds]);
     const [p1, px, p2] = oneXTwo.probs;
@@ -282,23 +324,20 @@ export function buildPrediction(match) {
   }
   assumptions.push(`Corrección de marcadores bajos con ρ = ${DC_RHO.toFixed(2)}, valor fijo del orden que reportan Dixon y Coles.`);
 
-  // En vivo: lo que falta del partido más el marcador actual
-  const isLive = match.status === 'live';
-  const isFinished = match.status === 'finished';
-  const minute = isLive ? Math.min(parseMinute(match.minute), MATCH_MINUTES) : 0;
-  const remaining = isFinished ? 0 : isLive ? Math.max(0, (MATCH_MINUTES - minute) / MATCH_MINUTES) : 1;
-  const sh = isLive || isFinished ? Number(match.homeTeam?.score || 0) : 0;
-  const sa = isLive || isFinished ? Number(match.awayTeam?.score || 0) : 0;
-  if (isLive) {
+  if (isLive && !lm) {
     methods.add('dixonRobinson');
     assumptions.push(`En vivo: los goles esperados que faltan se escalan al ${Math.round(remaining * 100)}% del partido que queda (minuto ${minute} de ${MATCH_MINUTES}), con ritmo de gol constante.`);
     if ((match.homeTeam?.redCards || 0) + (match.awayTeam?.redCards || 0) > 0) {
       assumptions.push('Hay expulsiones: el modelo no corrige por jugadores de menos, así que el pronóstico subestima al equipo con 11.');
     }
-    if (hasOdds) assumptions.push('Las cuotas son las previas al partido; en vivo no se comparan contra precios del mercado.');
+    if (hasOdds) assumptions.push('Sin cuotas en vivo (extensión no conectada o partido sin mercado): se usan las previas y no se comparan contra precios del mercado.');
+  }
+  if (remLh == null) {
+    remLh = lh * remaining;
+    remLa = la * remaining;
   }
 
-  const rem = scoreMatrix(lh * remaining || 1e-6, la * remaining || 1e-6);
+  const rem = scoreMatrix(remLh || 1e-6, remLa || 1e-6);
   // Matriz del resultado final desplazando por el marcador actual
   const N = MAX_GOALS + Math.max(sh, sa);
   const final = Array.from({ length: N + 1 }, () => new Array(N + 1).fill(0));
@@ -306,8 +345,17 @@ export function buildPrediction(match) {
 
   const home = match.homeTeam?.shortName || match.homeTeam?.name || 'Local';
   const away = match.awayTeam?.shortName || match.awayTeam?.name || 'Visita';
+  // Precios contra los que se mide el valor: los en vivo si hay; las previas solo antes del partido
+  const liveOdds = lm && {
+    homeOdds: lm.matchResult.home,
+    drawOdds: lm.matchResult.draw,
+    awayOdds: lm.matchResult.away,
+    totalLine: lm.totalGoals?.line ?? null,
+    overOdds: lm.totalGoals?.over ?? null,
+    underOdds: lm.totalGoals?.under ?? null,
+  };
   const pricesValid = hasOdds && !isLive && !isFinished;
-  const markets = buildMarkets(final, { home, away, odds: pricesValid ? odds : null, sh, sa });
+  const markets = buildMarkets(final, { home, away, odds: liveOdds || (pricesValid ? odds : null), sh, sa });
 
   // Córners, tarjetas y atajadas: promedios de los últimos partidos de cada equipo
   const props = buildPropMarkets(match, { home, away, isLive, remaining, isFinished });
@@ -323,8 +371,8 @@ export function buildPrediction(match) {
 
   // Calidad de datos → confianza del pronóstico (no confundir con la probabilidad)
   let quality = 0;
-  if (hasOdds) quality += 2;
-  if (hasTotalOdds) quality += 1;
+  if (hasOdds || lm) quality += 2;
+  if (hasTotalOdds || lm?.totalGoals) quality += 1;
   if (hasForm) quality += 1;
   const confidence = quality >= 3 ? 'Alta' : quality === 2 ? 'Media' : 'Baja';
 
@@ -332,8 +380,8 @@ export function buildPrediction(match) {
     home, away,
     lambdaHome: lh,
     lambdaAway: la,
-    expectedHome: sh + lh * remaining,
-    expectedAway: sa + la * remaining,
+    expectedHome: sh + remLh,
+    expectedAway: sa + remLa,
     outcome: { p1, px, p2 },
     market,
     fitError,
@@ -341,7 +389,8 @@ export function buildPrediction(match) {
     picks: pickHighlights(markets),
     props: props.summary,
     confidence,
-    quality: { hasOdds, hasTotalOdds, hasForm, hasProps: props.markets.length > 0, isLive, minute, remaining },
+    quality: { hasOdds: hasOdds || Boolean(lm), hasTotalOdds: hasTotalOdds || Boolean(lm?.totalGoals), hasLiveOdds: Boolean(lm), hasForm, hasProps: props.markets.length > 0, isLive, minute, remaining },
+    liveMarket: lm ? { minute: lm.minute, clock: lm.clock, capturedAt: lm.capturedAt, trend: lm.trend } : null,
     form: { home: homeForm, away: awayForm },
     methods: [...methods],
     assumptions,
@@ -385,7 +434,8 @@ function buildMarkets(m, { home, away, odds, sh, sa }) {
   }
 
   const current = sh + sa;
-  for (const line of [0.5, 1.5, 2.5, 3.5, 4.5]) {
+  const lines = [...new Set([0.5, 1.5, 2.5, 3.5, 4.5, ...(odds?.totalLine != null ? [odds.totalLine] : [])])].sort((a, b) => a - b);
+  for (const line of lines) {
     if (line < current) continue;
     const pOver = P((i, j) => i + j > line);
     const isMain = odds?.totalLine === line;
@@ -615,7 +665,17 @@ export function buildSources(match, pred) {
     url: espnUrl,
     accessed: fmtDate(pred.computedAt),
   });
-  if (pred.quality.hasOdds) {
+  if (pred.quality.hasLiveOdds && match.liveMarket) {
+    const lm = match.liveMarket;
+    const mr = lm.matchResult;
+    push({
+      key: 'odds',
+      type: 'data',
+      title: `Cuotas en vivo de la casa de apuestas (minuto ${lm.clock || Math.round(lm.minute || 0)})`,
+      detail: `1X2: ${mr.home.toFixed(2)} · ${mr.draw.toFixed(2)} · ${mr.away.toFixed(2)}${lm.totalGoals ? `. Más/menos de ${lm.totalGoals.line}: ${lm.totalGoals.over.toFixed(2)} · ${lm.totalGoals.under.toFixed(2)}` : ''}. Capturadas por la extensión del navegador.`,
+      accessed: fmtDate(lm.capturedAt || pred.computedAt),
+    });
+  } else if (pred.quality.hasOdds) {
     const o = match.oddsInfo;
     push({
       key: 'odds',

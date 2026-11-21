@@ -1,0 +1,58 @@
+/* Cancha de alineaciones (TacticalWorkspace) */
+.lp-wrap { display: flex; flex-direction: column; gap: 10px; padding: 10px; flex: 1; min-height: 0; overflow-y: auto; }
+.lp-wrap > * { flex: none; }
+/* En modo alineaciones los suplentes reemplazan al mapa de jugadores */
+.tw-pitchcol:has(.lp-wrap) .tw-players { display: none; }
+.lp-head { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.lp-head span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.lp-head b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.lp-head i, .lp-bench-head i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+.lp-pitch { width: 100%; height: auto; display: block; border-radius: var(--radius-lg); }
+.lp-grass { fill: #0d6b3a; }
+.lp-stripe { fill: #0f7440; }
+.lp-lines { fill: none; stroke: rgba(255, 255, 255, 0.8); stroke-width: 0.3; }
+.lp-player circle { stroke: #fff; stroke-width: 0.4; transition: transform 0.2s ease; }
+.lp-player:hover circle { transform: scale(1.12); }
+.lp-player circle.out { opacity: 0.55; }
+.lp-num { font: 700 2.7px var(--font-score); text-anchor: middle; fill: #fff; }
+.lp-pname {
+  font: 600 2.7px var(--font-main);
+  text-anchor: middle;
+  fill: #fff;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.65);
+  stroke-width: 0.5px;
+}
+.lp-out-mark { font-size: 2px; fill: #ff6b6b; }
+
+.lp-empty {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: #0d6b3a;
+  border-radius: var(--radius-lg);
+}
+
+.lp-benches { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lp-bench { background: var(--bg-darker); border-radius: var(--radius-md); padding: 10px; min-width: 0; }
+.lp-bench-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.lp-bench-head small { margin-left: auto; font-weight: 600; color: var(--text-muted); font-size: 11px; }
+.lp-bench ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lp-bench li { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+.lp-bench li.in { color: var(--text-primary); }
+.lp-jersey { font: 700 12px/1 var(--font-score); color: var(--text-muted); text-align: right; font-variant-numeric: tabular-nums; }
+.lp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-tag { font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: var(--radius-sm); }
+.lp-tag.in { color: var(--green-neon); background: rgba(25, 201, 100, 0.12); }
+.lp-outs { margin: 8px 0 0; font-size: 11.5px; color: var(--text-muted); }
+.lp-muted { margin: 0; font-size: 12px; color: var(--text-muted); }
+
+@media (max-width: 560px) {
+  .lp-benches { grid-template-columns: 1fr; }
+  .lp-pname { font-size: 3px; }
+}

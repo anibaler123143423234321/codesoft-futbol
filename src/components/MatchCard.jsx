@@ -1,4 +1,5 @@
 import React from 'react';
+import { Ball } from './SportIcon';
 import { Sparkles } from 'lucide-react';
 import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';
@@ -63,8 +64,8 @@ export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
             </div>
           )}
           {match.scorers && match.scorers.length > 0 && isLive && (
-            <span style={{ fontSize: '0.68rem', color: 'var(--cyan-neon)' }}>
-              ⚽ {match.scorers[match.scorers.length - 1].player.split(' ').pop()} {match.scorers[match.scorers.length - 1].minute}
+            <span style={{ fontSize: '0.68rem', color: 'var(--cyan-neon)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Ball size={11} /> {match.scorers[match.scorers.length - 1].player.split(' ').pop()} {match.scorers[match.scorers.length - 1].minute}
             </span>
           )}
         </div>

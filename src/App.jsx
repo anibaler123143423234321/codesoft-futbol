@@ -340,7 +340,6 @@ export default function App() {
             liveMatches={liveMatches}
             onSelectMatch={handleSelectMatch}
             onBack={() => handleNavChange('cartelera')}
-            onOpenPickModal={handleOpenPickModal}
           />
         )}
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PlayIcon } from './SportIcon';
 import {
   BarChart3,
   Shield,
@@ -498,14 +499,13 @@ export default function LiveStatsBars({
                 const isHome = item.team === 'home';
                 const isRedCard = item.type === 'redCard';
                 const isYellowCard = item.type === 'yellowCard';
-                const isPenalty = item.player?.includes('(P)');
 
                 return (
                   <div key={idx} className={`sofa-incident-item ${isHome ? 'home' : 'away'}`}>
                     {isHome && <span className="sofa-incident-min">{item.minute}</span>}
                     <div className="sofa-incident-body">
                       <span className="sofa-incident-icon">
-                        {isRedCard ? '🟥' : isYellowCard ? '🟨' : isPenalty ? '🎯' : '⚽'}
+                        <PlayIcon kind={isRedCard ? 'red' : isYellowCard ? 'yellow' : 'goal'} size={15} />
                       </span>
                       <div>
                         <span className="sofa-incident-player">{item.player}</span>

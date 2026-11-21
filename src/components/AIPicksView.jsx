@@ -5,6 +5,9 @@ import { fetchEspnMatchSummary, fetchTeamRecentStats } from '../api/espnApi';
 import { buildPrediction, buildSources, citeNumbers } from '../api/predictionModel';
 import { sounds } from '../utils/soundEffects';
 import { useMatchSounds } from '../hooks/useMatchSounds';
+import { useLiveOdds } from '../hooks/useLiveOdds';
+import { shouldWatchSource } from '../utils/liveBridge';
+import { withLiveMarket } from '../utils/liveMarket';
 import TeamLogo from './TeamLogo';
 import '../picks.css';
 
@@ -155,7 +158,11 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
 
   const recentStats = base ? recent[base.id] : undefined;
   const match = useMemo(() => mergeDetail(base, detail, recentStats), [base, detail, recentStats]);
-  const pred = useMemo(() => (match ? buildPrediction(match) : null), [match]);
+  // Cuotas en vivo de la extensión: el modelo se ancla a ellas mientras el partido sigue en la fuente
+  const { data: liveData, history: liveHistory } = useLiveOdds(match, shouldWatchSource(match));
+  const liveMatch = useMemo(() => withLiveMarket(match, { data: liveData, history: liveHistory }), [match, liveData, liveHistory]);
+  const liveOddsNow = liveMatch?.liveMarket?.matchResult || null;
+  const pred = useMemo(() => (liveMatch ? buildPrediction(liveMatch) : null), [liveMatch]);
   useMatchSounds(match);
 
   // Compara cada probabilidad con la lectura anterior del mismo partido para marcar subas y bajas
@@ -165,7 +172,7 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
     const probs = Object.fromEntries(pred.markets.map(mk => [mk.id, mk.p]));
     probs['1x2-1'] = pred.outcome.p1; probs['1x2-X'] = pred.outcome.px; probs['1x2-2'] = pred.outcome.p2;
     const q = pred.quality;
-    const sig = `${match.id}|${q.hasOdds}|${q.hasTotalOdds}|${q.hasForm}|${q.hasProps}`;
+    const sig = `${match.id}|${q.hasOdds}|${q.hasLiveOdds}|${q.hasTotalOdds}|${q.hasForm}|${q.hasProps}`;
     const before = lastProbs.current;
     lastProbs.current = { id: sig, probs };
     setUpdatedAt(new Date());
@@ -177,7 +184,7 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
     if (Object.keys(map).length) setDeltas({ id: match.id, map });
   }, [pred, match]);
   const delta = (k) => (deltas.id === match?.id ? deltas.map[k] : undefined);
-  const sources = useMemo(() => buildSources(match, pred), [match, pred]);
+  const sources = useMemo(() => buildSources(liveMatch, pred), [liveMatch, pred]);
 
   // El informe vale para este partido y este marcador
   const reportKey = match ? `${match.id}:${match.homeTeam?.score}-${match.awayTeam?.score}:${pred?.quality.hasForm}` : '';
@@ -189,7 +196,7 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
     setReportLoading(true);
     const key = reportKey;
     try {
-      const data = await explainPrediction(match, pred, sources);
+      const data = await explainPrediction(liveMatch, pred, sources);
       setReport({ key, data });
       if (data.source === 'ai') sounds.playGoalChime();
     } finally {
@@ -270,14 +277,14 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                   </div>
                   <div className="ap-prob-legend">
                     {[
-                      ['1', match.homeTeam?.shortName || match.homeTeam?.name, pred.outcome.p1, match.oddsInfo?.homeOdds, 'h'],
-                      ['X', 'Empate', pred.outcome.px, match.oddsInfo?.drawOdds, 'd'],
-                      ['2', match.awayTeam?.shortName || match.awayTeam?.name, pred.outcome.p2, match.oddsInfo?.awayOdds, 'a'],
+                      ['1', match.homeTeam?.shortName || match.homeTeam?.name, pred.outcome.p1, liveOddsNow?.home ?? match.oddsInfo?.homeOdds, 'h'],
+                      ['X', 'Empate', pred.outcome.px, liveOddsNow?.draw ?? match.oddsInfo?.drawOdds, 'd'],
+                      ['2', match.awayTeam?.shortName || match.awayTeam?.name, pred.outcome.p2, liveOddsNow?.away ?? match.oddsInfo?.awayOdds, 'a'],
                     ].map(([k, name, p, mo, cls]) => (
                       <div key={k} className={`ap-prob-item ${cls}`}>
                         <small><b>{k}</b> {name}</small>
                         <strong>{fmtPct(p, 1)} <Delta d={delta(`1x2-${k}`)} /></strong>
-                        <span>Justa {fmtOdds(1 / p)}{pred.quality.hasOdds ? ` · ${match.oddsInfo.provider} ${fmtOdds(mo)}` : ''}</span>
+                        <span>Justa {fmtOdds(1 / p)}{pred.quality.hasOdds ? ` · ${liveOddsNow ? 'En vivo' : match.oddsInfo.provider} ${fmtOdds(mo)}` : ''}</span>
                       </div>
                     ))}
                   </div>
@@ -415,7 +422,7 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                         : 'Sin estadísticas de partidos recientes en ESPN para estos equipos: no se calculan córners, tarjetas ni atajadas.'}
                     </p>
                   )}
-                  {pred.quality.hasOdds && !pred.quality.isLive && (
+                  {pred.quality.hasOdds && (!pred.quality.isLive || pred.quality.hasLiveOdds) && (
                     <p className="ap-hint">Ventaja = probabilidad × cuota de la casa − 1. Cuando es negativa, la diferencia es el margen que cobra la casa.</p>
                   )}
                 </section>
@@ -434,7 +441,9 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                       ? <li>Se quita el margen a las cuotas con el método de Shin<Cite nums={cites(['odds', 'shin', 'strumbelj'])} />.</li>
                       : <li>Sin cuotas: los goles esperados salen de los últimos partidos de cada equipo<Cite nums={cites(['form'])} />.</li>}
                     <li>Se buscan los goles esperados de cada equipo que reproducen esas probabilidades con un modelo de Poisson<Cite nums={cites(['maher'])} /> y la corrección de marcadores bajos de Dixon y Coles<Cite nums={cites(['dixonColes'])} />.</li>
-                    {pred.quality.isLive && <li>En vivo, los goles que faltan se escalan por el tiempo restante y se suman al marcador<Cite nums={cites(['espn', 'dixonRobinson'])} />.</li>}
+                    {pred.quality.hasLiveOdds
+                      ? <li>En vivo, se usan las cuotas en vivo del minuto {Math.round(pred.quality.minute)}: los goles que faltan se ajustan para reproducirlas y se suman al marcador<Cite nums={cites(['odds', 'dixonRobinson'])} />.</li>
+                      : pred.quality.isLive && <li>En vivo, los goles que faltan se escalan por el tiempo restante y se suman al marcador<Cite nums={cites(['espn', 'dixonRobinson'])} />.</li>}
                     <li>Cada mercado de goles es la suma de las probabilidades de los marcadores que lo cumplen.</li>
                     {pred.quality.hasProps && <li>Córners, tarjetas y atajadas usan los promedios de los últimos partidos de cada equipo<Cite nums={cites(['recent'])} /> con una distribución binomial negativa, que admite más variación que Poisson<Cite nums={cites(['greenwoodYule'])} />. En vivo se suma lo que ya ocurrió.</li>}
                   </ol>

@@ -35,6 +35,7 @@ export default function Footer() {
           </div>
         </div>
       </div>
+      <p className="footer-credit">Sonido de gol: «Goal!» de blaukreuz en Freesound (CC0).</p>
     </footer>
   );
 }

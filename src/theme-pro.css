@@ -136,7 +136,8 @@ button.spotlight-ai-banner:hover { border-color: var(--green-neon); }
   .mc-team-side.home { flex-direction: column-reverse; }
   .mc-team-info, .mc-team-info.home, .mc-team-info.away { align-items: center; text-align: center; min-width: 0; }
   .mc-team-name { max-width: none; font-size: 0.82rem; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .mc-cards-indicator { justify-content: center !important; }
+  .mc-summary, .mc-scorers { grid-column: 1 / -1; }
+  .mc-scorers { gap: 10px; font-size: 0.7rem; }
   .mc-score-center-box { padding-top: 4px; }
   .mc-scoreboard { font-size: 1.7rem; }
 }

@@ -2,16 +2,15 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { 
   Film, Link2, Camera, MonitorUp, FileVideo, Tv, 
-  Circle, Square, X, Search, RefreshCw, Play, 
-  CheckCircle2, AlertCircle, ExternalLink, AlertTriangle 
+  Circle, Square, X, Search, RefreshCw, 
+  CheckCircle2, ExternalLink, AlertTriangle 
 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 import { 
   findStreamForMatch, 
   fetchAllLiveStreamMatches, 
   fetchMatchStreamLink, 
-  extractM3u8Url,
-  getProxiedHlsUrl,
+  getProxiedHlsUrl, 
   isM3u8Url 
 } from '../api/footballStreamApi';
 
@@ -96,6 +95,7 @@ export default function SignalPlayer({
   const [matchedGame, setMatchedGame] = useState(null);
   const [allLiveGames, setAllLiveGames] = useState([]);
   const [playerType, setPlayerType] = useState('hls'); // 'hls' o 'iframe'
+  const [selectedServerIdx, setSelectedServerIdx] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [quotaError, setQuotaError] = useState(null);
 
@@ -113,6 +113,25 @@ export default function SignalPlayer({
 
   const parsed = mode === 'url' ? parseSignalUrl(activeUrl) : null;
   const clip = clips[Math.min(clipIdx, Math.max(0, clips.length - 1))] || null;
+
+  const currentServer = (liveStreamData?.servers && liveStreamData.servers[selectedServerIdx]) || null;
+  const activeM3u8Url = currentServer ? (currentServer.m3u8Url || '') : (liveStreamData?.m3u8Url || '');
+  const activeReferer = currentServer ? (currentServer.referer || '') : (liveStreamData?.referer || '');
+  const activeIframeUrl = currentServer ? (currentServer.iframeUrl || '') : (liveStreamData?.iframeUrl || '');
+
+  const handleSelectServer = useCallback((idx) => {
+    sounds.playClick();
+    setError('');
+    setSelectedServerIdx(idx);
+    const target = liveStreamData?.servers?.[idx];
+    if (target) {
+      if (target.m3u8Url) {
+        setPlayerType('hls');
+      } else if (target.iframeUrl) {
+        setPlayerType('iframe');
+      }
+    }
+  }, [liveStreamData?.servers]);
 
   const homeName = match?.homeTeam?.name || match?.homeTeam?.shortName || '';
   const awayName = match?.awayTeam?.name || match?.awayTeam?.shortName || '';
@@ -143,6 +162,15 @@ export default function SignalPlayer({
             const streamInfo = await fetchMatchStreamLink(found.id);
             setMatchedGame(found);
             setLiveStreamData(streamInfo);
+            setSelectedServerIdx(0);
+            const s0 = streamInfo?.servers?.[0];
+            if (s0 && !s0.m3u8Url && s0.iframeUrl) {
+              setPlayerType('iframe');
+            } else if (streamInfo?.m3u8Url) {
+              setPlayerType('hls');
+            } else if (streamInfo?.iframeUrl) {
+              setPlayerType('iframe');
+            }
           } catch (linkErr) {
             if (linkErr.type === 'QUOTA_EXCEEDED' || linkErr.type === 'NOT_SUBSCRIBED') {
               setQuotaError(linkErr);
@@ -166,6 +194,15 @@ export default function SignalPlayer({
         if (res.found && res.stream) {
           setMatchedGame(res.matchedMatch);
           setLiveStreamData(res.stream);
+          setSelectedServerIdx(0);
+          const s0 = res.stream?.servers?.[0];
+          if (s0 && !s0.m3u8Url && s0.iframeUrl) {
+            setPlayerType('iframe');
+          } else if (res.stream?.m3u8Url) {
+            setPlayerType('hls');
+          } else if (res.stream?.iframeUrl) {
+            setPlayerType('iframe');
+          }
         } else {
           setLiveStreamData(null);
           setMatchedGame(null);
@@ -211,6 +248,15 @@ export default function SignalPlayer({
       const streamInfo = await fetchMatchStreamLink(game.id);
       setMatchedGame(game);
       setLiveStreamData(streamInfo);
+      setSelectedServerIdx(0);
+      const s0 = streamInfo?.servers?.[0];
+      if (s0 && !s0.m3u8Url && s0.iframeUrl) {
+        setPlayerType('iframe');
+      } else if (streamInfo?.m3u8Url) {
+        setPlayerType('hls');
+      } else if (streamInfo?.iframeUrl) {
+        setPlayerType('iframe');
+      }
     } catch (err) {
       if (err.type === 'QUOTA_EXCEEDED' || err.type === 'NOT_SUBSCRIBED') {
         setQuotaError(err);
@@ -268,9 +314,8 @@ export default function SignalPlayer({
     }
 
     // Reproducción HLS para modo LIVESTREAM
-    if (mode === 'livestream' && playerType === 'hls' && liveStreamData?.m3u8Url) {
-      const hlsSource = getProxiedHlsUrl(liveStreamData.m3u8Url);
-      let triedFallback = false;
+    if (mode === 'livestream' && playerType === 'hls' && activeM3u8Url) {
+      const hlsSource = getProxiedHlsUrl(activeM3u8Url, activeReferer);
 
       if (Hls.isSupported()) {
         hls = new Hls({ 
@@ -281,24 +326,26 @@ export default function SignalPlayer({
           if (data.fatal) {
             console.warn('HLS directo experimentó un fallo:', data);
 
-            // Si es un error de red y todavía no probamos el proxy público de respaldo
-            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !triedFallback) {
-              triedFallback = true;
-              console.warn('Reintentando señal HLS con proxy de respaldo...');
-              const fallbackUrl = `https://corsproxy.io/?url=${encodeURIComponent(liveStreamData.m3u8Url)}`;
-              hls.loadSource(fallbackUrl);
-              hls.startLoad();
+            // 1. Si el servidor actual tiene visor web (iframe embebido), alternar de inmediato
+            const hasValidIframe = activeIframeUrl && !isM3u8Url(activeIframeUrl);
+            if (hasValidIframe) {
+              console.warn('HLS directo no disponible (restricción geográfica 403 o error de red). Alternando al visor web integrado...');
+              setPlayerType('iframe');
               return;
             }
 
-            // Si hay un visor web alternativo válido (iframe no .m3u8)
-            const hasValidIframe = liveStreamData?.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl);
-            if (hasValidIframe) {
-              console.warn('HLS no disponible, alternando a visor web...', data);
-              setPlayerType('iframe');
-            } else {
-              setError('La señal en vivo no responde en este momento. Podés intentar recargar o seleccionar otro partido.');
+            // 2. Si no hay visor web en este servidor, pasar al siguiente servidor disponible
+            if (liveStreamData?.servers && liveStreamData.servers.length > selectedServerIdx + 1) {
+              const nextIdx = selectedServerIdx + 1;
+              const nextServer = liveStreamData.servers[nextIdx];
+              console.warn(`Cambiando automáticamente al servidor ${nextIdx + 1}: ${nextServer?.name || ''}`);
+              setSelectedServerIdx(nextIdx);
+              setPlayerType(nextServer?.m3u8Url ? 'hls' : 'iframe');
+              return;
             }
+
+            // 3. Si se agotaron los servidores e iframes
+            setError('La transmisión en vivo no responde o presenta restricciones por región geográfica (403 Forbidden). Podés probar otro servidor o ingresar una señal propia en modo URL.');
           }
         });
         hls.loadSource(hlsSource);
@@ -310,7 +357,7 @@ export default function SignalPlayer({
     }
 
     return () => { hls?.destroy(); };
-  }, [mode, stream, parsed?.kind, parsed?.src, playerType, liveStreamData?.m3u8Url]);
+  }, [mode, stream, parsed?.kind, parsed?.src, playerType, activeM3u8Url, activeReferer, activeIframeUrl, selectedServerIdx, liveStreamData?.servers]);
 
   const switchMode = (next) => {
     sounds.playClick();
@@ -402,7 +449,7 @@ export default function SignalPlayer({
   const showVideoEl =
     (isStreamMode && stream) ||
     (mode === 'url' && parsed && parsed.kind !== 'iframe') ||
-    (mode === 'livestream' && playerType === 'hls' && liveStreamData?.m3u8Url) ||
+    (mode === 'livestream' && playerType === 'hls' && activeM3u8Url) ||
     (mode === 'file' && fileSrc) ||
     (mode === 'clips' && clip);
 
@@ -461,7 +508,23 @@ export default function SignalPlayer({
             </button>
           </form>
 
-          {liveStreamData && liveStreamData.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl) && (
+          {liveStreamData?.servers?.length > 1 && (
+            <div className="sp-player-toggle" title="Servidores de transmisión alternativos">
+              {liveStreamData.servers.map((s, idx) => (
+                <button 
+                  key={s.id ?? idx}
+                  type="button"
+                  className={`sp-toggle-btn ${selectedServerIdx === idx ? 'active' : ''}`}
+                  onClick={() => handleSelectServer(idx)}
+                  title={s.name}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {activeIframeUrl && !isM3u8Url(activeIframeUrl) && (
             <div className="sp-player-toggle">
               <button 
                 type="button"
@@ -522,10 +585,10 @@ export default function SignalPlayer({
       <div className="sp-stage">
         {/* Iframe para URL o Livestream visor web */}
         {((mode === 'url' && parsed?.kind === 'iframe') || 
-          (mode === 'livestream' && playerType === 'iframe' && liveStreamData?.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl))) && (
+          (mode === 'livestream' && playerType === 'iframe' && activeIframeUrl && !isM3u8Url(activeIframeUrl))) && (
           <iframe
-            key={mode === 'livestream' ? liveStreamData.iframeUrl : parsed.src}
-            src={mode === 'livestream' ? liveStreamData.iframeUrl : parsed.src}
+            key={mode === 'livestream' ? activeIframeUrl : parsed.src}
+            src={mode === 'livestream' ? activeIframeUrl : parsed.src}
             title="Señal en vivo"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
             referrerPolicy="no-referrer"
@@ -535,7 +598,7 @@ export default function SignalPlayer({
         {/* Video HTML5 / HLS */}
         {showVideoEl && (
           <video
-            key={mode === 'clips' ? `clip-${clip?.id}` : `${mode}-${playerType}`}
+            key={mode === 'clips' ? `clip-${clip?.id}` : `${mode}-${playerType}-${selectedServerIdx}`}
             ref={videoRef}
             src={directSrc}
             poster={mode === 'clips' ? clip?.thumbnail : undefined}
@@ -548,11 +611,15 @@ export default function SignalPlayer({
             onError={() => {
               if (mode === 'clips') onClipError?.(clip?.id);
               else if (mode === 'livestream') {
-                const hasValidIframe = liveStreamData?.iframeUrl && !isM3u8Url(liveStreamData.iframeUrl);
-                if (hasValidIframe) {
-                  setPlayerType('iframe');
+                if (liveStreamData?.servers && liveStreamData.servers.length > selectedServerIdx + 1) {
+                  setSelectedServerIdx(prev => prev + 1);
                 } else {
-                  setError('No se pudo reproducir este stream directo.');
+                  const hasValidIframe = activeIframeUrl && !isM3u8Url(activeIframeUrl);
+                  if (hasValidIframe) {
+                    setPlayerType('iframe');
+                  } else {
+                    setError('No se pudo reproducir este stream directo.');
+                  }
                 }
               }
               else if (directSrc) setError('No se pudo reproducir este video. Probá con un enlace directo o el visor web.');

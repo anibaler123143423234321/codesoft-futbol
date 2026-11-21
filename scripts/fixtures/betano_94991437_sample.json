@@ -1,0 +1,98 @@
+{
+  "fuente": "betano.pe",
+  "capturadoEn": "2026-11-21T14:19:08.724Z",
+  "eventId": 94991437,
+  "live": {
+    "version": 5554,
+    "syncedAtUtc": 1795270743226,
+    "sport": { "id": "FOOT", "name": "Fútbol" },
+    "zone": { "code": "england", "id": 1, "name": "Inglaterra" },
+    "league": { "id": 1, "name": "Premier League" },
+    "event": {
+      "id": 94991437,
+      "roster": {
+        "homeRoster": { "id": 106785, "name": "Manchester City", "players": {
+          "18909846": { "id": 18909846, "name": "Gianluigi Donnarumma", "shortName": "G. Donnarumma", "shirtNumber": 1, "position": "GK" },
+          "18918332": { "id": 18918332, "name": "Rúben Dias", "shortName": "R. Dias", "shirtNumber": 3, "isCaptain": true, "position": "DF" },
+          "19161844": { "id": 19161844, "name": "Elliot Anderson", "shortName": "E. Anderson", "shirtNumber": 5, "position": "MF" },
+          "18971583": { "id": 18971583, "name": "Erling Haaland", "shortName": "E. Haaland", "shirtNumber": 9, "position": "FW" },
+          "19163626": { "id": 19163626, "name": "Enzo Fernández", "shortName": "E. Fernández", "shirtNumber": 17, "position": "MF" }
+        } },
+        "awayRoster": { "id": 106357, "name": "Fulham", "players": {
+          "1022551": { "id": 1022551, "name": "Bernd Leno", "shortName": "B. Leno", "shirtNumber": 1, "position": "GK" },
+          "19153671": { "id": 19153671, "name": "Calvin Bassey", "shortName": "C. Bassey", "shirtNumber": 3, "isCaptain": true, "position": "DF" },
+          "19157885": { "id": 19157885, "name": "Rodrigo Muniz", "shortName": "R. Muniz", "shirtNumber": 9, "position": "FW" }
+        } },
+        "unknownPlayers": { "a15558a5": { "id": 0, "name": "Kaiser Dino", "unknownPlayerId": "a15558a5", "shirtNumber": 37, "position": "GK" } },
+        "lineups": {
+          "homeLineup": { "teamId": 106785, "formation": "4-2-3-1", "lineup": [
+            [{ "playerId": 18909846, "name": "G. Donnarumma" }],
+            [{ "playerId": 18918332, "name": "R. Dias" }],
+            [{ "playerId": 19161844, "name": "E. Anderson" }],
+            [{ "playerId": 18971583, "name": "E. Haaland" }]
+          ], "benchPlayers": [{ "playerId": 19163626, "name": "E. Fernández", "subbedIn": true }] },
+          "awayLineup": { "teamId": 106357, "formation": "4-3-3", "lineup": [
+            [{ "playerId": 1022551, "name": "B. Leno" }],
+            [{ "playerId": 19153671, "name": "C. Bassey" }],
+            [{ "playerId": 19157885, "name": "R. Muniz" }]
+          ], "benchPlayers": [{ "unknownPlayerId": "a15558a5", "name": "Kaiser Dino" }] }
+        },
+        "subs": {
+          "homeSubs": [{ "playerIn": { "playerId": 19163626, "name": "E. Fernández" }, "playerOut": { "playerId": 19244916, "name": "A. Bouaddi" }, "substitutedOnMinute": 85 }],
+          "awaySubs": []
+        }
+      },
+      "incidents": [
+        { "description": "Partido iniciado", "type": "EBEG", "props": { "title": "Partido iniciado" } },
+        { "description": "1a Tarjeta amarilla: Fulham (Alex Iwobi)", "time": "7'", "type": "YELL", "teamSide": 1, "props": { "title": "1a Tarjeta amarilla", "description": "Alex Iwobi", "minute": 7 } },
+        { "description": "0-1 Fulham Rodrigo Muniz (con Tiro)", "time": "16'", "type": "GOAL", "teamSide": 1, "props": { "scoreHome": 0, "scoreAway": 1, "title": "Gol", "description": "Rodrigo Muniz (con Tiro)", "minute": 16 } },
+        { "description": "1-1 Manchester City Elliot Anderson (con Tiro)", "time": "57'", "type": "GOAL", "teamSide": 0, "props": { "scoreHome": 1, "scoreAway": 1, "title": "Gol", "description": "Elliot Anderson (con Tiro)", "minute": 57 } },
+        { "description": "9a Cambio: Enzo Fernández (Entra), Ayyoub Bouaddi (Sale) (Manchester City)", "time": "85'", "type": "SUBS", "teamSide": 0, "props": { "playerIn": "Enzo Fernández", "playerOut": "Ayyoub Bouaddi", "title": "9a Cambio", "minute": 85 } },
+        { "description": "Tiempo de lesión Minutos: 3'", "time": "90'+1'", "type": "StoppageTime", "props": { "injuryMinutes": 3, "title": "Tiempo adicional", "minute": 90, "overtimeMinute": 1 } }
+      ],
+      "url": "/live/manchester-city-fulham/94991437/",
+      "participants": [
+        { "name": "Manchester City", "isHome": true, "color": "#8cb8fa", "teamId": 106785 },
+        { "name": "Fulham", "color": "#de1212", "teamId": 106357 }
+      ],
+      "isPitchAvailable": true,
+      "isLive": true,
+      "startTime": 1795264200000,
+      "liveData": {
+        "score": { "home": "1", "away": "1" },
+        "clock": { "secondsSinceStart": 5455 },
+        "results": {
+          "yellow": { "home": "1", "away": "3" },
+          "corners": { "home": "8", "away": "6" },
+          "xGoals": { "home": "1.88", "away": "0.72" },
+          "shots": { "home": "15", "away": "5" },
+          "scorers": [{ "description": "57' E. Anderson", "isHome": true }, { "description": "16' R. Muniz" }],
+          "injuryTime": 3
+        }
+      },
+      "betradarMatchId": 72221406
+    },
+    "markets": {
+      "3042189588": { "selectionIdList": [10737645951, 10737645952, 10737645953], "type": "MRES", "displayOrder": 0, "id": 3042189588, "name": "Resultado del partido" },
+      "3043659469": { "selectionIdList": [10743273021, 10743273022], "type": "HCTG", "handicap": 2.5, "displayOrder": 55, "id": 3043659469, "name": "Goles totales Más/Menos" },
+      "3077462589": { "selectionIdList": [10874552313, 10874552314, 10874552315], "type": "INTS", "displayOrder": 60, "id": 3077462589, "name": "Próximo gol (Gol 3)" },
+      "3070791714": { "selectionIdList": [10848420235, 10848420236], "type": "TCOU", "handicap": 4.5, "displayOrder": 360, "id": 3070791714, "name": "Tarjetas Totales Más/Menos" }
+    },
+    "selections": {
+      "10737645951": { "price": 7.1, "displayOrder": 1, "id": 10737645951, "name": "1", "fullName": "Manchester City" },
+      "10737645952": { "price": 1.13, "displayOrder": 2, "id": 10737645952, "name": "X", "fullName": "Empate" },
+      "10737645953": { "price": 24, "displayOrder": 3, "id": 10737645953, "name": "2", "fullName": "Fulham" },
+      "10743273021": { "price": 6, "handicap": 2.5, "displayOrder": 1, "id": 10743273021, "name": "Más de 2.5", "fullName": "Más de" },
+      "10743273022": { "price": 1.11, "handicap": 2.5, "displayOrder": 2, "id": 10743273022, "name": "Menos 2.5", "fullName": "Menos" },
+      "10874552313": { "price": 6.5, "displayOrder": 1, "id": 10874552313, "name": "Manchester City", "fullName": "Manchester City" },
+      "10874552314": { "price": 1.11, "displayOrder": 2, "id": 10874552314, "name": "Sin Goles", "fullName": "Sin Goles" },
+      "10874552315": { "price": 21, "displayOrder": 3, "id": 10874552315, "name": "Fulham", "fullName": "Fulham" },
+      "10848420235": { "price": 3.8, "handicap": 4.5, "displayOrder": 0, "id": 10848420235, "name": "Más de 4.5", "fullName": "Más de" },
+      "10848420236": { "price": 1.24, "handicap": 4.5, "displayOrder": 1, "id": 10848420236, "name": "Menos 4.5", "fullName": "Menos" }
+    }
+  },
+  "statsstream": { "data": { "match": {
+    "id": "4x42j8f8ikdvp1z6nmqoxstn8", "home_team_code": "MCI", "away_team_code": "FUL",
+    "date": "2026-11-21T12:30:00.000Z", "current_period": 4, "league_name": "Premier League"
+  } } }
+}

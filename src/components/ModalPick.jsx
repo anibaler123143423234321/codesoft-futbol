@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sparkles, X, Send, Target, TrendingUp, RotateCw, AlertTriangle, Check } from 'lucide-react';
 import { generateFullMatchAIPredictions, getLocalMatchPredictions, askTacticalAI } from '../api/cerebrasAi';
 import { sounds } from '../utils/soundEffects';
 import TeamLogo from './TeamLogo';
+import { useLiveOdds } from '../hooks/useLiveOdds';
+import { shouldWatchSource } from '../utils/liveBridge';
+import { withLiveMarket } from '../utils/liveMarket';
 import '../ai-modal.css';
 
 const PROMPT_IDEAS = ['¿Quién ganará?', 'Mercados de goles', 'Pronóstico de córners', 'Tarjetas y faltas', 'Marcador exacto'];
@@ -33,19 +36,40 @@ export default function ModalPick({ match, onClose }) {
   const chatEndRef = useRef(null);
   const closeRef = useRef(null);
 
+  // Cuotas en vivo (extensión): si el partido sigue en la fuente, la IA razona con ellas
+  const [watch] = useState(() => shouldWatchSource(match));
+  const liveOdds = useLiveOdds(match, watch);
+  const { data: liveData, history: liveHistory } = liveOdds;
+  const liveMatch = useMemo(() => withLiveMarket(match, { data: liveData, history: liveHistory }), [match, liveData, liveHistory]);
+  const liveMatchRef = useRef(liveMatch);
+  liveMatchRef.current = liveMatch;
+  const lm = liveMatch.liveMarket;
+  // Se espera la primera respuesta de la extensión (máx. 5 s) antes de lanzar la IA
+  const [waitedOut, setWaitedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setWaitedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+  const liveSettled = !watch || Boolean(liveOdds.data) || !['checking', 'searching', 'opening'].includes(liveOdds.status);
+  const ready = liveSettled || waitedOut;
+
   const home = match.homeTeam?.shortName || match.homeTeam?.name || 'Local';
   const away = match.awayTeam?.shortName || match.awayTeam?.name || 'Visita';
-  const isLive = match.status === 'live';
-  const isFinished = match.status === 'finished';
+  const isLive = Boolean(lm) || match.status === 'live';
+  const isFinished = !lm && match.status === 'finished';
+  const scoreHome = lm ? lm.score.home : match.homeTeam?.score ?? 0;
+  const scoreAway = lm ? lm.score.away : match.awayTeam?.score ?? 0;
+  const clock = lm?.clock || match.minute || '';
 
   // Hasta que la IA responde solo se muestra la pantalla de carga
   useEffect(() => {
+    if (!ready) return undefined;
     let alive = true;
     setPredictions(null);
     setAiState('pending');
     setElapsed(0);
 
-    generateFullMatchAIPredictions(match)
+    generateFullMatchAIPredictions(liveMatchRef.current)
       .then(data => {
         if (!alive) return;
         if (data?.source === 'ai') {
@@ -59,10 +83,9 @@ export default function ModalPick({ match, onClose }) {
       .catch(() => { if (alive) setAiState('failed'); });
 
     return () => { alive = false; };
-    // Solo se vuelve a pedir al cambiar de partido o al reintentar; las actualizaciones
-    // del marcador cada pocos segundos no deben relanzar un análisis de la IA.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match.id, attempt]);
+    // Solo se vuelve a pedir al cambiar de partido, al reintentar o cuando llegan las cuotas en vivo;
+    // las actualizaciones cada pocos segundos no deben relanzar un análisis de la IA.
+  }, [match.id, attempt, ready]);
 
   useEffect(() => {
     if (aiState !== 'pending') return;
@@ -95,7 +118,7 @@ export default function ModalPick({ match, onClose }) {
 
     const meta = {};
     try {
-      const reply = await askTacticalAI(match, q, meta);
+      const reply = await askTacticalAI(liveMatchRef.current, q, meta);
       setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: reply, source: meta.source }]);
     } catch {
       setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'No se pudo obtener una respuesta. Probá de nuevo en unos segundos.', source: 'error' }]);
@@ -139,10 +162,10 @@ export default function ModalPick({ match, onClose }) {
             </div>
             <div className="aim-score">
               {isLive || isFinished
-                ? <b>{match.homeTeam?.score ?? 0}<i>-</i>{match.awayTeam?.score ?? 0}</b>
+                ? <b>{scoreHome}<i>-</i>{scoreAway}</b>
                 : <b className="vs">VS</b>}
               <small className={isLive ? 'live' : ''}>
-                {isLive ? `EN VIVO · ${match.minute || ''}` : isFinished ? 'FINALIZADO' : (match.timeStr || 'Por iniciar')}
+                {isLive ? `EN VIVO · ${clock}` : isFinished ? 'FINALIZADO' : (match.timeStr || 'Por iniciar')}
               </small>
             </div>
             <div className="aim-team away">
@@ -157,7 +180,11 @@ export default function ModalPick({ match, onClose }) {
             <div className="aim-loading" role="status" aria-live="polite">
               <div className="aim-loader"><i /><i /><i /></div>
               <b>Analizando el partido…</b>
-              <span>La IA está leyendo marcador, estadísticas y cuotas · {elapsed}s</span>
+              <span>
+                {ready
+                  ? `La IA está leyendo marcador, estadísticas y ${lm ? 'cuotas en vivo' : 'cuotas'} · ${elapsed}s`
+                  : 'Buscando las cuotas en vivo del partido…'}
+              </span>
             </div>
           )}
 
@@ -168,7 +195,7 @@ export default function ModalPick({ match, onClose }) {
               <span>No se pudo generar el análisis. Podés reintentar o ver una estimación estadística calculada con los datos del partido.</span>
               <div className="aim-loading-actions">
                 <button className="primary" onClick={() => { sounds.playClick(); setAttempt(a => a + 1); }}>Reintentar</button>
-                <button onClick={() => { sounds.playClick(); setPredictions(getLocalMatchPredictions(match)); setAiState('local'); }}>Ver estimación estadística</button>
+                <button onClick={() => { sounds.playClick(); setPredictions(getLocalMatchPredictions(liveMatchRef.current)); setAiState('local'); }}>Ver estimación estadística</button>
               </div>
             </div>
           )}
@@ -176,7 +203,12 @@ export default function ModalPick({ match, onClose }) {
           {aiState === 'ai' && (
             <div className="aim-status ok" role="status">
               <Check size={14} />
-              <span><b>Análisis generado por IA</b> con los datos reales del partido.</span>
+              <span>
+                <b>Análisis generado por IA</b>{' '}
+                {lm
+                  ? `con las cuotas en vivo del minuto ${lm.clock || Math.round(lm.minute || 0)} y las estadísticas del partido.`
+                  : 'con los datos reales del partido.'}
+              </span>
             </div>
           )}
           {aiState === 'local' && (

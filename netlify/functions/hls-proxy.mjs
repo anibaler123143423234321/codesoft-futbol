@@ -1,9 +1,10 @@
 // Netlify Function v2: Proxy HLS para transmisiones en vivo sin restricciones de CORS.
 // Permite reproducir señales .m3u8 y segmentos .ts de cualquier servidor externo en el navegador.
 
-function rewriteM3u8(content, baseUrl, proxyEndpoint) {
+function rewriteM3u8(content, baseUrl, proxyEndpoint, customReferer = '') {
   const lines = content.split(/\r?\n/);
   const out = [];
+  const refParam = customReferer ? `&referer=${encodeURIComponent(customReferer)}` : '';
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -20,7 +21,7 @@ function rewriteM3u8(content, baseUrl, proxyEndpoint) {
         const rewrittenTag = line.replace(/URI="([^"]+)"/g, (_, uri) => {
           try {
             const absolute = new URL(uri, baseUrl).href;
-            return `URI="${proxyEndpoint}?url=${encodeURIComponent(absolute)}"`;
+            return `URI="${proxyEndpoint}?url=${encodeURIComponent(absolute)}${refParam}"`;
           } catch {
             return `URI="${uri}"`;
           }
@@ -33,7 +34,7 @@ function rewriteM3u8(content, baseUrl, proxyEndpoint) {
       // Línea de URI directa (segmento de video .ts / .m4s o sub-lista de reproducción .m3u8)
       try {
         const absolute = new URL(line, baseUrl).href;
-        out.push(`${proxyEndpoint}?url=${encodeURIComponent(absolute)}`);
+        out.push(`${proxyEndpoint}?url=${encodeURIComponent(absolute)}${refParam}`);
       } catch {
         out.push(rawLine);
       }
@@ -78,13 +79,25 @@ export default async (req) => {
     });
   }
 
+  const customReferer = reqUrl.searchParams.get('referer') || req.headers.get('x-proxy-referer') || '';
+
   const forwardHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
     'Accept': '*/*',
     'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-    'Referer': parsedTarget.origin + '/',
-    'Origin': parsedTarget.origin,
   };
+
+  // Solo enviar Referer / Origin si se solicita explícitamente.
+  // Enviar parsedTarget.origin como Referer causa 403 Forbidden ("deny by referer access rule") en servidores como Byte-nginx / ebaclofen.
+  if (customReferer) {
+    try {
+      const parsedRef = new URL(customReferer);
+      forwardHeaders['Referer'] = customReferer;
+      forwardHeaders['Origin'] = parsedRef.origin;
+    } catch {
+      forwardHeaders['Referer'] = customReferer;
+    }
+  }
 
   const range = req.headers.get('range');
   if (range) {
@@ -97,6 +110,22 @@ export default async (req) => {
       redirect: 'follow',
     });
 
+    const blockReason = upstreamRes.headers.get('x-block-reason');
+
+    if (!upstreamRes.ok) {
+      const errHeaders = new Headers(corsHeaders);
+      errHeaders.set('Content-Type', 'application/json');
+      if (blockReason) errHeaders.set('x-block-reason', blockReason);
+      return new Response(JSON.stringify({
+        error: `El servidor de streaming remoto respondió con código ${upstreamRes.status}`,
+        status: upstreamRes.status,
+        blockReason: blockReason || null,
+      }), {
+        status: upstreamRes.status,
+        headers: errHeaders,
+      });
+    }
+
     const finalBaseUrl = upstreamRes.url || target;
     const contentType = (upstreamRes.headers.get('content-type') || '').toLowerCase();
     const isM3u8ByPath = parsedTarget.pathname.toLowerCase().endsWith('.m3u8') || parsedTarget.search.toLowerCase().includes('.m3u8');
@@ -104,16 +133,16 @@ export default async (req) => {
 
     if (isM3u8ByPath || isM3u8ByType) {
       const text = await upstreamRes.text();
-      if (text.startsWith('#EXTM3U') || isM3u8ByPath) {
+      if (text.startsWith('#EXTM3U')) {
         const proxyEndpoint = reqUrl.origin ? `${reqUrl.origin}/api/hls-proxy` : '/api/hls-proxy';
-        const rewritten = rewriteM3u8(text, finalBaseUrl, proxyEndpoint);
+        const rewritten = rewriteM3u8(text, finalBaseUrl, proxyEndpoint, customReferer);
 
         const resHeaders = new Headers(corsHeaders);
         resHeaders.set('Content-Type', 'application/vnd.apple.mpegurl');
         resHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
 
         return new Response(rewritten, {
-          status: upstreamRes.status,
+          status: 200,
           headers: resHeaders,
         });
       }

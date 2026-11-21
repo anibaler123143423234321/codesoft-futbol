@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Sparkles, Radio, Crosshair, Tv, Maximize2, Minimize2, Pin, Activity } from 'lucide-react';
+import { Sparkles, Crosshair, Tv, Maximize2, Minimize2, Pin, Activity, Users } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 import { useLiveMatchTimer } from '../hooks/useLiveMatchTimer';
 import { fetchEspnLatestVideos } from '../api/espnApi';
 import SignalPlayer from './SignalPlayer';
+import LineupPitch from './LineupPitch';
+import { buildLiveView, isStageKind } from '../utils/livePitch';
+import LivePlayScene, { LiveCallout } from './LivePlayScene';
+import { PlayIcon } from './SportIcon';
+import AiMatchChat from './AiMatchChat';
+import { playIconKind } from '../utils/playIconKind';
 import '../tactical.css';
 
 const CATEGORIES = [
@@ -49,6 +55,21 @@ const AWAY_COLOR = '#4d8dff';
 const PITCH_W = 105;
 const PITCH_H = 68;
 
+// Colores de camiseta del flujo en vivo, con respaldo si faltan, se confunden entre sí o con el césped
+const PITCH_GREEN = '#0f7440';
+function hexDist(a, b) {
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [rgb(a), rgb(b)];
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+}
+function kitColors(tc) {
+  const ok = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) && hexDist(c, PITCH_GREEN) > 80;
+  const home = ok(tc?.home) ? tc.home : HOME_COLOR;
+  let away = ok(tc?.away) ? tc.away : AWAY_COLOR;
+  if (hexDist(home, away) < 90) away = hexDist(home, AWAY_COLOR) < 90 ? HOME_COLOR : AWAY_COLOR;
+  return { home, away };
+}
+
 // Coordenadas Opta (0-100 desde el arco propio) → cancha con el local atacando a la derecha
 function toPitch(team, x, y) {
   if (x == null || y == null) return null;
@@ -58,7 +79,7 @@ function toPitch(team, x, y) {
 }
 
 
-export default function TacticalWorkspace({ match, onOpenPickModal }) {
+export default function TacticalWorkspace({ match, aiMatch = null, aiReady = true, aiRefreshKey = 0, liveOddsData = null, livePitch = null, sourceLive = false }) {
   const { formattedTime, seconds, isLive, isFinished, isScheduled, isHalftime } = useLiveMatchTimer(match);
 
   const isHalf = isHalftime || 
@@ -85,16 +106,17 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
   const homeName = match.homeTeam?.shortName || match.homeTeam?.name || 'Local';
   const awayName = match.awayTeam?.shortName || match.awayTeam?.name || 'Visitante';
 
-  const [signalMode, setSignalMode] = useState('livestream');
-  const [signalTrigger, setSignalTrigger] = useState(0);
+  // La TV solo se monta con su pestaña abierta: así no gasta la cuota de la API de transmisiones.
+  // Arranca en clips de ESPN; la búsqueda de la señal en vivo solo corre cuando se pide.
+  const [signalMode, setSignalMode] = useState('clips');
 
-  const handleWatchLive = () => {
+  const [pitchMode, setPitchMode] = useState('lineup'); // 'lineup', 'betano' (jugada en vivo), 'dots' o 'tv'
+  const isTv = pitchMode === 'tv';
+
+  const openMode = (next) => {
     sounds.playClick();
-    setSignalMode('livestream');
-    setSignalTrigger(prev => prev + 1);
+    setPitchMode(next);
   };
-
-  const [pitchMode, setPitchMode] = useState('betano'); // 'betano' o 'dots'
   const [isPitchExpanded, setIsPitchExpanded] = useState(false);
 
   const [selectedId, setSelectedId] = useState(null);
@@ -103,6 +125,13 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
   const [playerFilter, setPlayerFilter] = useState(null);
   const [hiddenCats, setHiddenCats] = useState(() => new Set());
   const [tab, setTab] = useState('jugadas');
+  // El chat de IA se monta al abrir su pestaña y queda montado para no perder la conversación
+  const [aiOpened, setAiOpened] = useState(false);
+  const openTab = (next) => {
+    sounds.playClick();
+    if (next === 'ia') setAiOpened(true);
+    setTab(next);
+  };
   const listRef = useRef(null);
 
   // Al cambiar de partido se reinicia la selección
@@ -135,9 +164,36 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
   // Datos dinámicos para el Radar Táctico estilo Betano
   const activePlay = selected || (visiblePlays.length > 0 ? visiblePlays[visiblePlays.length - 1] : null);
 
+  // Jugadas en tiempo real (extensión): balón, estela, jugador y tipo de acción
+  const liveView = useMemo(
+    () => buildLiveView(livePitch?.events, { teamIds: liveOddsData?.teamIds, players: liveOddsData?.players }),
+    [livePitch?.events, liveOddsData?.teamIds, liveOddsData?.players],
+  );
+
   const betanoEventData = useMemo(() => {
+    // 1. Tiempo real: manda mientras la fuente siga en vivo, aunque ESPN ya marque descanso o final
+    // (el tiempo añadido sigue). Si el usuario eligió una jugada (sin seguir el vivo), se respeta.
+    if (liveView && sourceLive && (follow || !selected) && !liveView.isBreak) {
+      const team = liveView.side || 'center';
+      const teamName = team === 'away' ? awayName : team === 'home' ? homeName : '';
+      return {
+        actionTitle: liveView.label,
+        isDangerous: liveView.dangerous,
+        team,
+        teamName,
+        player: liveView.player ? `${liveView.player} · ${teamName}` : teamName,
+        minute: liveView.minute || formattedTime,
+        ball: liveView.ball,
+        target: liveView.target,
+        trail: liveView.trail,
+        isRealtime: true,
+        scene: liveView,
+      };
+    }
+
     // 1. Estado de Descanso / Entretiempo (cuando no se está inspeccionando una jugada pasada específica)
-    if (isHalf && !selected) {
+    // Con "seguir el vivo" activo, la última jugada elegida sola no debe tapar el descanso ni el final
+    if (isHalf && (follow || !selected)) {
       return {
         actionTitle: 'DESCANSO',
         isHalftime: true,
@@ -153,7 +209,7 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
     }
 
     // 2. Estado de Partido Finalizado
-    if (isFinished && !selected) {
+    if (isFinished && (follow || !selected)) {
       return {
         actionTitle: 'FINALIZADO',
         isFinished: true,
@@ -169,7 +225,7 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
     }
 
     // 3. Estado de Partido Por Iniciar
-    if (isScheduled && !selected) {
+    if (isScheduled && (follow || !selected)) {
       return {
         actionTitle: 'POR INICIAR',
         isScheduled: true,
@@ -257,7 +313,59 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
       ball: basePos,
       target: endPos,
     };
-  }, [activePlay, homeName, awayName, isLive, isHalf, isFinished, isScheduled, selected, match, formattedTime]);
+  }, [activePlay, homeName, awayName, isLive, isHalf, isFinished, isScheduled, selected, match, formattedTime, liveView, follow, sourceLive]);
+
+  const kit = useMemo(() => kitColors(liveOddsData?.teamColors), [liveOddsData?.teamColors]);
+  const legendColors = pitchMode === 'betano' && betanoEventData.isRealtime ? kit : { home: HOME_COLOR, away: AWAY_COLOR };
+  // Cartel del gol: la jugada llega antes que el marcador de la fuente, así que se parte del
+  // resultado que había justo antes del gol y se le suma, sin quedar nunca por debajo del real
+  const liveHome = Number(liveOddsData?.home?.score);
+  const liveAway = Number(liveOddsData?.away?.score);
+  const liveScore = Number.isFinite(liveHome) && Number.isFinite(liveAway) ? { home: liveHome, away: liveAway } : null;
+  const sceneKind = betanoEventData.isRealtime ? betanoEventData.scene.kind : null;
+  const preGoal = useRef(null);
+  useEffect(() => {
+    if (sceneKind !== 'goal' && liveScore) preGoal.current = liveScore;
+  });
+  let goalBoard = null;
+  if (sceneKind === 'goal' && liveScore) {
+    const before = preGoal.current || liveScore;
+    const side = betanoEventData.scene.side;
+    const expected = {
+      home: before.home + (preGoal.current && side === 'home' ? 1 : 0),
+      away: before.away + (preGoal.current && side === 'away' ? 1 : 0),
+    };
+    goalBoard = {
+      home: Math.max(expected.home, liveScore.home),
+      away: Math.max(expected.away, liveScore.away),
+      homeCode: liveOddsData?.home?.code,
+      awayCode: liveOddsData?.away?.code,
+      homeName,
+      awayName,
+    };
+  }
+
+  // Halo del balón con el color del equipo que tiene la jugada (solo en tiempo real)
+  const ballTint = betanoEventData.isRealtime && betanoEventData.team !== 'center'
+    ? { stroke: betanoEventData.team === 'away' ? kit.away : kit.home }
+    : undefined;
+
+  // Qué está pasando con la jugada en vivo (para no caer en silencio a las jugadas de ESPN)
+  const liveChip = useMemo(() => {
+    if (pitchMode !== 'betano' || !livePitch) return null;
+    if (betanoEventData.isRealtime) return { tone: 'live', text: isFinished ? 'Tiempo real · aún en juego' : 'Tiempo real' };
+    if (!isLive) return null;
+    const ext = livePitch.extension;
+    if (ext === undefined || liveView?.isBreak) return null;
+    if (ext === null) return import.meta.env.DEV ? { tone: 'muted', text: 'Sin extensión · jugadas de ESPN' } : null;
+    if (!livePitch.supported) return { tone: 'warn', text: 'Actualiza la extensión (chrome://extensions → recargar) para ver la jugada en vivo' };
+    if (liveView && !follow) return { tone: 'muted', text: 'Viendo una jugada elegida' };
+    if (livePitch.status === 'not-found') return { tone: 'muted', text: 'Este partido no tiene jugada en vivo · jugadas de ESPN' };
+    if (livePitch.status === 'opening') return { tone: 'muted', text: 'Abriendo la fuente de datos…' };
+    if (livePitch.status === 'error') return { tone: 'warn', text: 'La jugada en vivo no responde · reintentando' };
+    if (livePitch.events?.length && !liveOddsData) return { tone: 'muted', text: 'Cargando equipos…' };
+    return { tone: 'muted', text: 'Conectando con la jugada en vivo…' };
+  }, [pitchMode, isLive, isFinished, livePitch, betanoEventData.isRealtime, liveView, follow, liveOddsData]);
 
 
   const playersByTeam = useMemo(() => {
@@ -312,94 +420,48 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
 
   return (
     <section className="tw" aria-label="Panel táctico">
-      {/* Barra superior */}
-      <div className="tw-topbar">
-        <div className="tw-scorechips">
-          <span className="tw-teamchip"><i style={{ background: HOME_COLOR }} />{homeName}</span>
-          <span className="tw-clock">
-            {isScheduled ? 'VS' : `${match.homeTeam?.score ?? 0} - ${match.awayTeam?.score ?? 0}`}
-            <small>{formattedTime}</small>
-          </span>
-          <span className="tw-teamchip">{awayName}<i style={{ background: AWAY_COLOR }} /></span>
-        </div>
-        <div className="tw-source">
-          <strong>Panel táctico</strong>
-          <span>datos reales ESPN · {plays.length} eventos</span>
-        </div>
-        <div className="tw-actions">
-          <button
-            className={`tw-pill tw-pill-live ${signalMode === 'livestream' ? 'on' : ''}`}
-            onClick={handleWatchLive}
-            title="Buscar y ver transmisión en vivo de este partido"
-          >
-            <Tv size={13} /> Ver en vivo
-          </button>
-          {isLive && (
-            <button
-              className={`tw-pill ${follow ? 'on' : ''}`}
-              onClick={() => { sounds.playClick(); setFollow(true); }}
-              title="Seguir la última jugada táctica"
-            >
-              <Radio size={13} /> Jugadas
-            </button>
-          )}
-          {match.espnLink && (
-            <a className="tw-pill" href={match.espnLink} target="_blank" rel="noreferrer">
-              <ExternalLink size={13} /> ESPN
-            </a>
-          )}
-          <button className="tw-pill tw-pill-primary" onClick={() => onOpenPickModal(match)}>
-            <Sparkles size={13} /> Análisis con IA
-          </button>
-        </div>
-      </div>
-
       <div className={`tw-grid ${isPitchExpanded ? 'tw-pitch-expanded' : ''}`}>
-        {/* Video / señal */}
-        <div className="tw-panel tw-video">
-          <SignalPlayer
-            match={match}
-            externalMode={signalMode}
-            onModeChange={setSignalMode}
-            searchTrigger={signalTrigger}
-            clips={videos}
-            clipsAreMatch={hasMatchVideos}
-            onClipError={(id) => setBrokenIds(prev => new Set(prev).add(id))}
-            emptyText={isLive
-              ? 'ESPN todavía no publicó clips de este partido. Conectá tu propia señal desde las pestañas de arriba.'
-              : 'No hay clips oficiales para este partido. Conectá tu propia señal desde las pestañas de arriba.'}
-            scoreOverlay={(
-              <span className="sp-score">
-                <span>{formattedTime}</span>
-                <b>{homeName}</b>
-                <em>{isScheduled ? 'vs' : `${match.homeTeam?.score ?? 0} - ${match.awayTeam?.score ?? 0}`}</em>
-                <b>{awayName}</b>
-              </span>
-            )}
-          />
-        </div>
-
-        {/* Cancha 2D + jugadores */}
-        <div className="tw-panel tw-pitchcol">
+        {/* Cancha 2D, jugadores y TV en un mismo panel */}
+        <div className={`tw-panel tw-pitchcol ${isTv ? 'is-tv' : ''}`}>
           {/* Barra de control superior de la cancha estilo Betano */}
           <div className="betano-controls-bar">
             <div className="betano-mode-tabs">
               <button
                 type="button"
-                className={`betano-tab ${pitchMode === 'betano' ? 'active' : ''}`}
-                onClick={() => { sounds.playClick(); setPitchMode('betano'); }}
+                className={`betano-tab ${pitchMode === 'lineup' ? 'active' : ''}`}
+                aria-pressed={pitchMode === 'lineup'}
+                onClick={() => openMode('lineup')}
               >
-                <Activity size={12} /> Cancha Betano
+                <Users size={12} /> Alineaciones
+              </button>
+              <button
+                type="button"
+                className={`betano-tab ${pitchMode === 'betano' ? 'active' : ''}`}
+                aria-pressed={pitchMode === 'betano'}
+                onClick={() => openMode('betano')}
+              >
+                <Activity size={12} /> Jugada en vivo
               </button>
               <button
                 type="button"
                 className={`betano-tab ${pitchMode === 'dots' ? 'active' : ''}`}
-                onClick={() => { sounds.playClick(); setPitchMode('dots'); }}
+                aria-pressed={pitchMode === 'dots'}
+                onClick={() => openMode('dots')}
               >
                 <Crosshair size={12} /> Jugadas ({visiblePlays.length})
               </button>
+              <button
+                type="button"
+                className={`betano-tab ${isTv ? 'active' : ''}`}
+                aria-pressed={isTv}
+                onClick={() => openMode('tv')}
+                title="Clips y señal del partido"
+              >
+                <Tv size={12} /> TV
+              </button>
             </div>
 
+            {!isTv && (
             <div className="betano-status-actions">
               <button
                 type="button"
@@ -420,8 +482,40 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
                 <span>{follow ? 'En vivo' : 'Fijado'}</span>
               </button>
             </div>
+            )}
           </div>
 
+          {isTv ? (
+            <div className="tw-tv">
+              <SignalPlayer
+              match={match}
+              externalMode={signalMode}
+              onModeChange={setSignalMode}
+              clips={videos}
+              clipsAreMatch={hasMatchVideos}
+              onClipError={(id) => setBrokenIds(prev => new Set(prev).add(id))}
+              emptyText={isLive
+                ? 'ESPN todavía no publicó clips de este partido. Conectá tu propia señal desde las pestañas de arriba.'
+                : 'No hay clips oficiales para este partido. Conectá tu propia señal desde las pestañas de arriba.'}
+              scoreOverlay={(
+                <span className="sp-score">
+                  <span>{formattedTime}</span>
+                  <b>{homeName}</b>
+                  <em>{isScheduled ? 'vs' : `${match.homeTeam?.score ?? 0} - ${match.awayTeam?.score ?? 0}`}</em>
+                  <b>{awayName}</b>
+                </span>
+              )}
+            />
+            </div>
+          ) : pitchMode === 'lineup' ? (
+            <LineupPitch
+              rosters={match.rosters || []}
+              homeName={homeName}
+              awayName={awayName}
+              homeColor={HOME_COLOR}
+              awayColor={AWAY_COLOR}
+            />
+          ) : (
           <div className="tw-pitch">
             <svg viewBox={`-3 -3 ${PITCH_W + 6} ${PITCH_H + 6}`} preserveAspectRatio="xMidYMid meet">
               <rect x="-3" y="-3" width={PITCH_W + 6} height={PITCH_H + 6} fill="#0d6b3a" />
@@ -450,7 +544,26 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
               {/* MODO RADAR BETANO (Zona de Ataque + Vector del Balón o Descanso) */}
               {pitchMode === 'betano' && (
                 <g className="betano-layer">
-                  {(betanoEventData.isHalftime || betanoEventData.team === 'center') ? (
+                  {betanoEventData.isRealtime ? (
+                    <>
+                      {betanoEventData.trail?.length > 1 && (
+                        <g className="live-trail">
+                          <polyline points={betanoEventData.trail.map(p => `${p.x},${p.y}`).join(' ')} />
+                          {betanoEventData.trail.slice(0, -1).map((p, i, arr) => (
+                            <circle key={i} cx={p.x} cy={p.y} r="0.9" style={{ opacity: 0.25 + (0.6 * (i + 1)) / arr.length }} />
+                          ))}
+                        </g>
+                      )}
+                      <LivePlayScene
+                        key={betanoEventData.scene.key}
+                        view={betanoEventData.scene}
+                        homeColor={kit.home}
+                        awayColor={kit.away}
+                        teamName={betanoEventData.teamName}
+                        goal={goalBoard}
+                      />
+                    </>
+                  ) : (betanoEventData.isHalftime || betanoEventData.team === 'center') ? (
                     <g className="betano-center-halftime-layer">
                       <circle
                         cx="52.5"
@@ -466,58 +579,58 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
                       />
                     </g>
                   ) : (
-                    <>
-                      {/* Zona de Ataque sombreada (Chevron estilo Betano) */}
-                      {betanoEventData.team === 'home' ? (
-                        <polygon
-                          className={`betano-attack-zone ${betanoEventData.isDangerous ? 'dangerous' : ''}`}
-                          points="56,0 78,0 105,34 78,68 56,68 83,34"
-                        />
-                      ) : (
-                        <polygon
-                          className={`betano-attack-zone ${betanoEventData.isDangerous ? 'dangerous' : ''}`}
-                          points="49,0 27,0 0,34 27,68 49,68 22,34"
-                        />
-                      )}
+                    <line
+                      x1={betanoEventData.ball.x}
+                      y1={betanoEventData.ball.y}
+                      x2={betanoEventData.target.x}
+                      y2={betanoEventData.target.y}
+                      className="betano-vector-line"
+                    />
+                  )}
 
-                      {/* Vector y trayectoria hacia el arco rival */}
-                      <line
-                        x1={betanoEventData.ball.x}
-                        y1={betanoEventData.ball.y}
-                        x2={betanoEventData.target.x}
-                        y2={betanoEventData.target.y}
-                        className="betano-vector-line"
+                  {/* En las pausas (cambio, lesión, VAR…) el centro lo ocupa la escena: sin balón */}
+                  {!(betanoEventData.isRealtime && isStageKind(betanoEventData.scene.kind)) && (
+                    <>
+                      {/* Ondas de radar expansivas del balón (en tiempo real, con el color del equipo) */}
+                      <circle
+                        cx={betanoEventData.ball.x}
+                        cy={betanoEventData.ball.y}
+                        r="3.8"
+                        className="betano-ball-pulse-1"
+                        style={ballTint}
+                      />
+                      <circle
+                        cx={betanoEventData.ball.x}
+                        cy={betanoEventData.ball.y}
+                        r="6.8"
+                        className="betano-ball-pulse-2"
+                        style={ballTint}
+                      />
+
+                      {/* Balón táctico */}
+                      <circle
+                        cx={betanoEventData.ball.x}
+                        cy={betanoEventData.ball.y}
+                        r="2.2"
+                        className="betano-ball"
+                      />
+                      <circle
+                        cx={betanoEventData.ball.x}
+                        cy={betanoEventData.ball.y}
+                        r="0.8"
+                        fill="#0f172a"
                       />
                     </>
                   )}
 
-                  {/* Ondas de radar expansivas del balón */}
-                  <circle
-                    cx={betanoEventData.ball.x}
-                    cy={betanoEventData.ball.y}
-                    r="3.8"
-                    className="betano-ball-pulse-1"
-                  />
-                  <circle
-                    cx={betanoEventData.ball.x}
-                    cy={betanoEventData.ball.y}
-                    r="6.8"
-                    className="betano-ball-pulse-2"
-                  />
-
-                  {/* Balón táctico */}
-                  <circle
-                    cx={betanoEventData.ball.x}
-                    cy={betanoEventData.ball.y}
-                    r="2.2"
-                    className="betano-ball"
-                  />
-                  <circle
-                    cx={betanoEventData.ball.x}
-                    cy={betanoEventData.ball.y}
-                    r="0.8"
-                    fill="#0f172a"
-                  />
+                  {/* Rótulo junto al balón (tiempo real); en el gol y el VAR lo reemplaza la escena */}
+                  {betanoEventData.isRealtime && betanoEventData.scene.kind !== 'goal' && !isStageKind(betanoEventData.scene.kind) && (
+                    <LiveCallout
+                      view={betanoEventData.scene}
+                      color={betanoEventData.team === 'away' ? kit.away : kit.home}
+                      teamName={betanoEventData.teamName}
+                    />
+                  )}
                 </g>
               )}
 
@@ -565,10 +678,17 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
             </svg>
 
             {/* OVERLAY CENTRAL ESTILO BETANO */}
-            {pitchMode === 'betano' && (
+            {liveChip && (
+              <div className={`tw-live-chip ${liveChip.tone}`} role="status">
+                <i />
+                {liveChip.text}
+              </div>
+            )}
+
+            {pitchMode === 'betano' && !betanoEventData.isRealtime && (
               <div className="betano-center-box">
                 <div className={`betano-action-label ${betanoEventData.isDangerous ? 'danger' : ''} ${betanoEventData.isHalftime ? 'halftime' : ''}`}>
-                  {betanoEventData.isHalftime ? '☕ DESCANSO' : betanoEventData.actionTitle}
+                  {betanoEventData.isHalftime ? 'DESCANSO' : betanoEventData.actionTitle}
                 </div>
                 <div className="betano-player-name">
                   {betanoEventData.player}
@@ -582,8 +702,8 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
             )}
 
             <div className="tw-pitch-legend">
-              <span><i style={{ background: HOME_COLOR }} />{homeName} →</span>
-              <span>← {awayName}<i style={{ background: AWAY_COLOR }} /></span>
+              <span><i style={{ background: legendColors.home }} />{homeName} →</span>
+              <span>← {awayName}<i style={{ background: legendColors.away }} /></span>
             </div>
 
             {pitchMode === 'dots' && selected && (
@@ -596,7 +716,9 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
             )}
             {plays.length === 0 && <div className="tw-pitch-empty">{noPlaysMsg}</div>}
           </div>
+          )}
 
+          {!isTv && (
           <div className="tw-players">
             <div className="tw-players-head">
               <Crosshair size={12} />
@@ -632,17 +754,27 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
               ))}
             </div>
           </div>
+          )}
         </div>
 
         {/* Panel de jugadas / métricas */}
-        <div className="tw-panel tw-side">
-          <div className="tw-tabs">
-            <button className={tab === 'jugadas' ? 'active' : ''} onClick={() => setTab('jugadas')}>
+        <div className={`tw-panel tw-side ${tab === 'ia' ? 'is-ai' : ''}`}>
+          <div className="tw-tabs" role="tablist">
+            <button role="tab" aria-selected={tab === 'jugadas'} className={tab === 'jugadas' ? 'active' : ''} onClick={() => openTab('jugadas')}>
               Jugadas · {visiblePlays.length}
             </button>
-            <button className={tab === 'metricas' ? 'active' : ''} onClick={() => setTab('metricas')}>Métricas</button>
-            <button className={tab === 'filtros' ? 'active' : ''} onClick={() => setTab('filtros')}>Filtros</button>
+            <button role="tab" aria-selected={tab === 'metricas'} className={tab === 'metricas' ? 'active' : ''} onClick={() => openTab('metricas')}>Métricas</button>
+            <button role="tab" aria-selected={tab === 'filtros'} className={tab === 'filtros' ? 'active' : ''} onClick={() => openTab('filtros')}>Filtros</button>
+            <button role="tab" aria-selected={tab === 'ia'} className={`tw-tab-ai ${tab === 'ia' ? 'active' : ''}`} onClick={() => openTab('ia')}>
+              <Sparkles size={12} /> IA
+            </button>
           </div>
+
+          {aiOpened && (
+            <div className="tw-ai" hidden={tab !== 'ia'}>
+              <AiMatchChat match={aiMatch || match} ready={aiReady} refreshKey={aiRefreshKey} />
+            </div>
+          )}
 
           {tab === 'jugadas' && (
             <div className="tw-list" ref={listRef}>
@@ -658,6 +790,9 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
                 >
                   <time>{p.minute}</time>
                   <i style={{ background: p.team === 'away' ? AWAY_COLOR : HOME_COLOR }} />
+                  <span className="tw-play-icon">
+                    <PlayIcon kind={playIconKind(p.category, p.typeText)} size={15} />
+                  </span>
                   <span>
                     <b style={{ color: CAT_BY_KEY[p.category]?.color }}>{TYPE_ES[p.typeText] || p.typeText}</b>
                     {p.player && <> · {p.player}</>}
@@ -710,7 +845,7 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
                     className={`tw-chip ${hiddenCats.has(c.key) ? '' : 'active'}`}
                     onClick={() => toggleCat(c.key)}
                   >
-                    <i style={{ background: c.color }} />{c.label}
+                    <PlayIcon kind={playIconKind(c.key)} size={12} />{c.label}
                   </button>
                 ))}
               </div>
@@ -734,7 +869,7 @@ export default function TacticalWorkspace({ match, onOpenPickModal }) {
             return (
               <div key={c.key} className={`tw-row ${hiddenCats.has(c.key) ? 'off' : ''}`}>
                 <button className="tw-row-label" onClick={() => toggleCat(c.key)} title="Mostrar / ocultar">
-                  <i style={{ background: c.color }} />{c.label}
+                  <PlayIcon kind={playIconKind(c.key)} size={13} />{c.label}
                   <span className="tw-row-count" aria-label={`${homeName} ${m.home}, ${awayName} ${m.away}`}>
                     <b style={{ color: HOME_COLOR }}>{m.home}</b>·<b style={{ color: AWAY_COLOR }}>{m.away}</b>
                   </span>

@@ -456,19 +456,22 @@ function parseEspnSummary(summary, matchId, league) {
   const espnLink = (summary.header?.links || []).find(l => (l.rel || []).includes('summary'))?.href || `https://www.espn.com/soccer/match/_/gameId/${matchId}`;
 
   // Parse real rosters from ESPN
+  const toRosterPlayer = p => ({
+    name: p.athlete?.displayName,
+    shortName: p.athlete?.lastName || p.athlete?.shortName || p.athlete?.displayName,
+    jersey: p.jersey,
+    position: p.position?.abbreviation,
+    formationPlace: Number(p.formationPlace) || 0,
+    subbedIn: Boolean(p.subbedIn),
+    subbedOut: Boolean(p.subbedOut)
+  });
   const rostersList = (summary.rosters || []).map(r => ({
     teamName: r.team?.displayName,
     teamId: r.team?.id,
-    starters: (r.roster || []).filter(p => p.starter).map(p => ({
-      name: p.athlete?.displayName,
-      jersey: p.jersey,
-      position: p.position?.abbreviation
-    })),
-    substitutes: (r.roster || []).filter(p => !p.starter).map(p => ({
-      name: p.athlete?.displayName,
-      jersey: p.jersey,
-      position: p.position?.abbreviation
-    }))
+    homeAway: r.homeAway,
+    formation: r.formation || null,
+    starters: (r.roster || []).filter(p => p.starter).map(toRosterPlayer),
+    substitutes: (r.roster || []).filter(p => !p.starter).map(toRosterPlayer)
   }));
 
   // Game Info

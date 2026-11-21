@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "CodeSoft Cuotas en Vivo",
+  "version": "1.1.2",
+  "description": "Envía cuotas y estadísticas en vivo a CodeSoft Fútbol desde tu propio navegador.",
+  "background": { "service_worker": "background.js" },
+  "host_permissions": ["https://www.betano.pe/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.betano.pe/*"],
+      "js": ["source.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "https://*.netlify.app/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

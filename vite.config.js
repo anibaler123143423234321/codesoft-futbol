@@ -37,9 +37,10 @@ function chatWebSocketPlugin() {
   };
 }
 
-function rewriteM3u8Content(content, baseUrl, proxyEndpoint) {
+function rewriteM3u8Content(content, baseUrl, proxyEndpoint, customReferer = '') {
   const lines = content.split(/\r?\n/);
   const out = [];
+  const refParam = customReferer ? `&referer=${encodeURIComponent(customReferer)}` : '';
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -55,7 +56,7 @@ function rewriteM3u8Content(content, baseUrl, proxyEndpoint) {
         const rewrittenTag = line.replace(/URI="([^"]+)"/g, (_, uri) => {
           try {
             const absolute = new URL(uri, baseUrl).href;
-            return `URI="${proxyEndpoint}?url=${encodeURIComponent(absolute)}"`;
+            return `URI="${proxyEndpoint}?url=${encodeURIComponent(absolute)}${refParam}"`;
           } catch {
             return `URI="${uri}"`;
           }
@@ -67,7 +68,7 @@ function rewriteM3u8Content(content, baseUrl, proxyEndpoint) {
     } else {
       try {
         const absolute = new URL(line, baseUrl).href;
-        out.push(`${proxyEndpoint}?url=${encodeURIComponent(absolute)}`);
+        out.push(`${proxyEndpoint}?url=${encodeURIComponent(absolute)}${refParam}`);
       } catch {
         out.push(rawLine);
       }
@@ -104,13 +105,25 @@ function hlsProxyDevPlugin() {
           }
 
           const parsedTarget = new URL(targetUrl);
+          const customReferer = reqUrl.searchParams.get('referer') || req.headers['x-proxy-referer'] || '';
+
           const forwardHeaders = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
             'Accept': '*/*',
             'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-            'Referer': parsedTarget.origin + '/',
-            'Origin': parsedTarget.origin,
           };
+
+          // Solo enviar Referer / Origin si se solicita explícitamente.
+          // Enviar parsedTarget.origin como Referer causa 403 Forbidden ("deny by referer access rule") en servidores como Byte-nginx / ebaclofen.
+          if (customReferer) {
+            try {
+              const parsedRef = new URL(customReferer);
+              forwardHeaders['Referer'] = customReferer;
+              forwardHeaders['Origin'] = parsedRef.origin;
+            } catch {
+              forwardHeaders['Referer'] = customReferer;
+            }
+          }
 
           if (req.headers.range) {
             forwardHeaders['Range'] = req.headers.range;
@@ -121,6 +134,22 @@ function hlsProxyDevPlugin() {
             redirect: 'follow',
           });
 
+          // Reenviar x-block-reason si el servidor remoto lo envía (ej: geo)
+          const blockReason = upstreamRes.headers.get('x-block-reason');
+          if (blockReason) {
+            res.setHeader('x-block-reason', blockReason);
+          }
+
+          if (!upstreamRes.ok) {
+            res.statusCode = upstreamRes.status;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({
+              error: `El servidor de streaming remoto respondió con código ${upstreamRes.status}`,
+              status: upstreamRes.status,
+              blockReason: blockReason || null,
+            }));
+          }
+
           const finalBaseUrl = upstreamRes.url || targetUrl;
           const contentType = (upstreamRes.headers.get('content-type') || '').toLowerCase();
           const isM3u8ByPath = parsedTarget.pathname.toLowerCase().endsWith('.m3u8') || parsedTarget.search.toLowerCase().includes('.m3u8');
@@ -128,8 +157,8 @@ function hlsProxyDevPlugin() {
 
           if (isM3u8ByPath || isM3u8ByType) {
             const text = await upstreamRes.text();
-            if (text.startsWith('#EXTM3U') || isM3u8ByPath) {
-              const rewritten = rewriteM3u8Content(text, finalBaseUrl, '/api/hls-proxy');
+            if (text.startsWith('#EXTM3U')) {
+              const rewritten = rewriteM3u8Content(text, finalBaseUrl, '/api/hls-proxy', customReferer);
               res.statusCode = upstreamRes.status;
               res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
               res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

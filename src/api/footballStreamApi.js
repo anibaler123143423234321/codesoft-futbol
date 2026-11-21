@@ -51,7 +51,7 @@ export function isM3u8Url(url) {
  * Retorna la URL procesada a través del proxy CORS local/Netlify para evitar
  * el error "No 'Access-Control-Allow-Origin' header is present on the requested resource".
  */
-export function getProxiedHlsUrl(url) {
+export function getProxiedHlsUrl(url, referer = '') {
   if (!url) return '';
   const clean = url.trim();
   // Si ya es relativa o ya apunta al proxy, devolver tal cual
@@ -60,7 +60,11 @@ export function getProxiedHlsUrl(url) {
   }
   // Si es una URL http/https externa, enrutar por el proxy HLS
   if (/^https?:\/\//i.test(clean)) {
-    return `/api/hls-proxy?url=${encodeURIComponent(clean)}`;
+    const params = new URLSearchParams({ url: clean });
+    if (referer) {
+      params.set('referer', referer);
+    }
+    return `/api/hls-proxy?${params.toString()}`;
   }
   return clean;
 }
@@ -187,7 +191,66 @@ export async function fetchMatchStreamLink(matchId) {
 
   try {
     const data = await requestRapidApi(`/link/${matchId}`);
-    const rawUrl = data?.url || data?.links?.[0]?.url || '';
+    const rawUrl = data?.url || data?.links?.[0]?.url || data?.servers?.[0]?.url || '';
+
+    // Extraer referer si el proveedor lo envía en header.referer o similar
+    const findReferer = (item) => {
+      if (!item || typeof item !== 'object') return '';
+      return item.header?.referer || 
+             item.header?.Referer || 
+             item.headers?.referer || 
+             item.headers?.Referer || 
+             item.referer || 
+             item.Referer || 
+             '';
+    };
+
+    let referer = findReferer(data);
+
+    // Parsear servidores si existen
+    const rawServers = Array.isArray(data?.servers)
+      ? data.servers
+      : Array.isArray(data?.links)
+        ? data.links
+        : [];
+
+    const parsedServers = [];
+
+    for (let i = 0; i < rawServers.length; i++) {
+      const s = rawServers[i];
+      const link = s?.url || (typeof s === 'string' ? s : '');
+      if (!link) continue;
+
+      let sRef = findReferer(s) || referer;
+      let sM3u8 = '';
+      let sIframe = '';
+
+      if (link.includes('?url=')) {
+        sM3u8 = extractM3u8Url(link);
+        sIframe = link;
+        if (!sRef) {
+          try {
+            sRef = new URL(link).origin + '/';
+          } catch {
+            // ignore
+          }
+        }
+      } else if (isM3u8Url(link)) {
+        sM3u8 = link;
+      } else if (link.startsWith('http')) {
+        sIframe = link;
+      }
+
+      parsedServers.push({
+        id: i,
+        name: s?.name || `Servidor ${i + 1}`,
+        rawUrl: link,
+        m3u8Url: sM3u8,
+        iframeUrl: (sIframe && !isM3u8Url(sIframe)) ? sIframe : '',
+        referer: sRef,
+        type: s?.type || (sM3u8 ? 'hls' : 'iframe'),
+      });
+    }
 
     let m3u8Url = '';
     let iframeUrl = '';
@@ -203,18 +266,19 @@ export async function fetchMatchStreamLink(matchId) {
       }
     }
 
-    if (Array.isArray(data?.links)) {
-      for (const item of data.links) {
-        const link = item?.url || '';
-        if (!link) continue;
-        if (link.includes('?url=')) {
-          if (!m3u8Url) m3u8Url = extractM3u8Url(link);
-          if (!iframeUrl) iframeUrl = link;
-        } else if (isM3u8Url(link)) {
-          if (!m3u8Url) m3u8Url = link;
-        } else if (link.startsWith('http') && !iframeUrl) {
-          iframeUrl = link;
-        }
+    // Si aún no tenemos m3u8Url o iframeUrl, buscar en parsedServers
+    if (!m3u8Url && parsedServers.length > 0) {
+      const firstWithM3u8 = parsedServers.find(s => s.m3u8Url);
+      if (firstWithM3u8) {
+        m3u8Url = firstWithM3u8.m3u8Url;
+        if (!referer) referer = firstWithM3u8.referer;
+      }
+    }
+
+    if (!iframeUrl && parsedServers.length > 0) {
+      const firstWithIframe = parsedServers.find(s => s.iframeUrl);
+      if (firstWithIframe) {
+        iframeUrl = firstWithIframe.iframeUrl;
       }
     }
 
@@ -227,6 +291,8 @@ export async function fetchMatchStreamLink(matchId) {
       rawUrl,
       m3u8Url: m3u8Url || (isM3u8Url(rawUrl) ? rawUrl : ''),
       iframeUrl,
+      referer,
+      servers: parsedServers,
       links: data?.links || [],
     };
 
