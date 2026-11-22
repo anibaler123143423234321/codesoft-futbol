@@ -4,14 +4,15 @@
 // en el servidor (Vite en desarrollo, función de Netlify en producción).
 import { describeLiveMarket, liveFacts } from '../utils/liveMarket';
 import { venueOf } from './matchReasons';
+import { buildPrediction } from './predictionModel';
 
 const AI_ENDPOINT = '/api/nvidia/v1/chat/completions';
-// Modelos en orden de preferencia: el primero es rápido (~7 s); los demás son respaldo
+// Modelos en orden de preferencia: el primero es rápido (~3-4 s); los demás son respaldo
 // por si NVIDIA retira o satura alguno. NVIDIA_MODEL en .env fuerza uno al principio.
 const AI_MODELS = [
   ...(typeof __NVIDIA_MODEL__ !== 'undefined' && __NVIDIA_MODEL__ ? [__NVIDIA_MODEL__] : []),
-  'google/gemma-4-31b-it',
   'nvidia/nemotron-3.5-bolt-e4b',
+  'google/gemma-3-12b-it',
   'mistralai/mistral-large-4-1t-a52b',
 ];
 // Los modelos que razonan antes de responder son lentos y gastan tokens de salida en ese razonamiento
@@ -111,6 +112,72 @@ REGLAS CON CUOTAS EN VIVO:
 
 // ---------------------------------------------------------------- Datos numerados para citar
 
+const pctOf = (p) => `${Math.round(p * 100)}%`;
+
+/**
+ * Lo que dice el modelo cuantitativo del partido: en vivo, los goles que faltan, la chance de
+ * que haya otro gol y quién marca el próximo; antes del partido, 1X2 y goles esperados.
+ * null si no se puede calcular o el partido terminó.
+ */
+export function goalOutlook(match) {
+  let pred;
+  try { pred = buildPrediction(match); } catch { return null; }
+  if (!pred?.matrix || match?.status === 'finished') return null;
+  const { base, matrix, outcome } = pred;
+  const remH = Math.max(0, pred.expectedHome - base.home);
+  const remA = Math.max(0, pred.expectedAway - base.away);
+  const none = matrix[base.home]?.[base.away] || 0;
+  const one = (matrix[base.home + 1]?.[base.away] || 0) + (matrix[base.home]?.[base.away + 1] || 0);
+  // Con ritmos constantes, el próximo gol es de cada equipo en proporción a sus goles esperados
+  const share = remH + remA > 0 ? remH / (remH + remA) : 0.5;
+  return {
+    pred,
+    live: pred.quality.isLive,
+    minute: Math.round(pred.quality.minute || 0),
+    score: [base.home, base.away],
+    remH,
+    remA,
+    more1: 1 - none,
+    more2: Math.max(0, 1 - none - one),
+    none,
+    nextH: (1 - none) * share,
+    nextA: (1 - none) * (1 - share),
+    outcome,
+    over25: pred.markets.find((m) => m.id === 'o2.5')?.p,
+    btts: pred.markets.find((m) => m.id === 'btts-y')?.p,
+  };
+}
+
+// "Es poco probable que haya otro gol", "no habrá más goles", "probable que no haya más goles"…
+const NO_MORE_GOALS = /(?:poco probable|improbable)[^.]{0,25}(?:otro gol|m[áa]s goles|un gol m[áa]s)|no (?:haya|habr[áa]|caer[áa]|va a haber) (?:m[áa]s goles|otro gol|ning[úu]n gol m[áa]s)/i;
+
+/** Respuesta sin IA a "¿habrá más goles?" con los números del modelo en vivo. */
+function liveGoalAnswer(g, home, away) {
+  const word = { probable: 'Es probable', posible: 'Es posible', 'poco probable': 'Es poco probable' }[likelihood(g.more1)];
+  const lead = g.nextH >= g.nextA ? home : away;
+  const leadShare = Math.max(g.nextH, g.nextA) / Math.max(g.more1, 1e-9);
+  return `${word} que haya otro gol: el modelo le da ${pctOf(g.more1)} a que caiga al menos uno más desde el ${g.score[0]}-${g.score[1]} del minuto ${g.minute}, `
+    + `con ${(g.remH + g.remA).toFixed(2)} goles esperados en lo que falta. Si llega, lo más probable es que sea de ${lead} (${pctOf(leadShare)}).`;
+}
+
+const likelihood = (p) => (p > 0.6 ? 'probable' : p >= 0.3 ? 'posible' : 'poco probable');
+
+/** "Otro gol: probable (73%)…" con la palabra ya puesta, para que la IA no la invierta. */
+function moreGoalsLine(g) {
+  return `Otro gol: ${likelihood(g.more1)} (${pctOf(g.more1)} de que caiga al menos uno más; ${pctOf(g.none)} de que el partido termine ${g.score[0]}-${g.score[1]}).`;
+}
+
+function modelFact(g, home, away) {
+  const res = `Resultado final: ${home} ${pctOf(g.outcome.p1)} | empate ${pctOf(g.outcome.px)} | ${away} ${pctOf(g.outcome.p2)}.`;
+  if (g.live) {
+    return `Minuto ${g.minute}, ${g.score[0]}-${g.score[1]}. ${moreGoalsLine(g)} Al menos dos goles más: ${pctOf(g.more2)}. `
+      + `Goles esperados en lo que falta: ${home} ${g.remH.toFixed(2)}, ${away} ${g.remA.toFixed(2)}. `
+      + `Si hay otro gol, de quién: ${home} ${pctOf(g.nextH / Math.max(g.more1, 1e-9))}, ${away} ${pctOf(g.nextA / Math.max(g.more1, 1e-9))}. ${res}`;
+  }
+  return `Goles esperados: ${home} ${g.remH.toFixed(2)}, ${away} ${g.remA.toFixed(2)}. ${res}`
+    + `${g.over25 != null ? ` Más de 2.5 goles: ${pctOf(g.over25)}.` : ''}${g.btts != null ? ` Ambos marcan: ${pctOf(g.btts)}.` : ''}`;
+}
+
 /**
  * Todos los datos que recibe la IA, numerados como fuentes: lo de ESPN y lo de la fuente en vivo
  * (marcador, cada mercado con sus cuotas, movimiento, estadísticas, jugadas y suspensiones).
@@ -138,8 +205,15 @@ export function buildFactSheet(match) {
 
   const o = lm ? match?.preOddsInfo : match?.oddsInfo;
   if (o?.hasMoneyline) {
-    add('pre-odds', lm ? 'Cuotas previas al partido' : 'Cuotas', `${o.provider}: ${home} ${o.homeOdds} | Empate ${o.drawOdds} | ${away} ${o.awayOdds}${o.overUnder ? ` | línea de goles ${o.overUnder}` : ''}.`, o.provider || 'Cuotas');
+    const goalsNow = Number(match?.homeTeam?.score || 0) + Number(match?.awayTeam?.score || 0);
+    const line = parseFloat(String(o.overUnder || '').replace(/[^\d.]/g, ''));
+    const passed = Number.isFinite(line) && goalsNow > line
+      ? ` La línea de goles es de antes del partido y ya se superó (van ${goalsNow}): no dice nada de los goles que faltan.`
+      : '';
+    add('pre-odds', lm ? 'Cuotas previas al partido' : 'Cuotas', `${o.provider}: ${home} ${o.homeOdds} | Empate ${o.drawOdds} | ${away} ${o.awayOdds}${o.overUnder ? ` | línea de goles ${o.overUnder}` : ''}.${passed}`, o.provider || 'Cuotas');
   }
+  const outlook = goalOutlook(match);
+  if (outlook) add('model', outlook.live ? 'Modelo en vivo (Dixon-Coles)' : 'Modelo cuantitativo (Dixon-Coles)', modelFact(outlook, home, away), 'Modelo');
   const recent = (team) => (team?.recentGames || []).map((g) => `${g.opponent} (${g.score} ${g.result})`).join(', ') || team?.form || '';
   if (recent(match?.homeTeam)) add('espn-form-home', `Forma de ${home}`, recent(match.homeTeam), 'ESPN');
   if (recent(match?.awayTeam)) add('espn-form-away', `Forma de ${away}`, recent(match.awayTeam), 'ESPN');
@@ -413,7 +487,9 @@ ${liveRules(match)}
 INSTRUCCIÓN VITAL:
 - Responde en 2 o 3 oraciones, directo y concreto, usando SOLO los DATOS (escribe los números igual que ahí).
 - Cada oración termina con la fuente que usaste entre corchetes, por ejemplo [3] o [3][5]. Sin fuente no hay oración.
-- Si te piden un ganador, define uno y justifícalo con los DATOS. Nada de respuestas evasivas.`
+- Si te piden un ganador, define uno y justifícalo con los DATOS. Nada de respuestas evasivas.
+- Si preguntan por más goles en vivo, responde con el Modelo en vivo (al menos un gol más, goles que faltan, próximo gol) y las estadísticas. Una línea de goles que el marcador ya superó no sirve para eso.
+- Usa las palabras según la probabilidad: "poco probable" solo por debajo de 30%, "posible" de 30% a 60%, "probable" por encima de 60%.`
         },
         { role: 'user', content: userQuestion }
       ],
@@ -428,6 +504,12 @@ INSTRUCCIÓN VITAL:
       const closed = facts.find((f) => f.key === 'live-suspended');
       if (closed && !text.includes(`[${closed.n}]`)) {
         text = `Ojo: ${closed.text.split('. ')[0].replace(/\.$/, '')}; las cuotas son de antes de esa jugada [${closed.n}]. ${text}`;
+      }
+      // Si la IA dice que no habrá más goles y el modelo en vivo dice lo contrario, manda el modelo
+      const model = facts.find((f) => f.key === 'model');
+      const g = model && isLive && /\bgol|goles|over|under/.test(q) ? goalOutlook(match) : null;
+      if (g?.live && g.more1 >= 0.5 && NO_MORE_GOALS.test(text)) {
+        text = `${liveGoalAnswer(g, home, away)} [${model.n}]`;
       }
       const cites = validCites((text.match(/\[(\d+)\]/g) || []), facts);
       if (meta) {
@@ -463,10 +545,9 @@ INSTRUCCIÓN VITAL:
 
     if (q.includes('gol') || q.includes('goles') || q.includes('over') || q.includes('under') || q.includes('btts')) {
       const currentGoals = homeScore + awayScore;
-      if (isLateGame) {
-        return `Restando pocos minutos y con ${currentGoals} goles en el marcador, la opción más sólida es Menos de ${currentGoals + 1.5} Goles Totales (@1.28).`;
-      }
-      return `Al minuto ${minuteStr} con ${currentGoals} goles y ${homeTarget + awayTarget} tiros al arco, la proyección live apunta a Más de ${currentGoals + 1.5} Goles Totales (@1.80).`;
+      const g = goalOutlook(match);
+      if (g?.live) return `${liveGoalAnswer(g, home, away)} Van ${homeTarget + awayTarget} tiros al arco.`;
+      return `Al minuto ${minuteStr} van ${currentGoals} goles y ${homeTarget + awayTarget} tiros al arco.`;
     }
 
     if (q.includes('marcador') || q.includes('resultado') || q.includes('exacto')) {

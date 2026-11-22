@@ -14,6 +14,8 @@ const MAX_GOALS = 10;
 const DC_RHO = -0.1;
 // Duración efectiva de un partido con descuento típico
 const MATCH_MINUTES = 95;
+// Promedio aproximado de goles por remate al arco en ligas de primera división
+const GOALS_PER_SHOT_ON_TARGET = 0.3;
 // Referencia sin datos: goles esperados del local y la visita (supuesto del modelo)
 const PRIOR_HOME = 1.45;
 const PRIOR_AWAY = 1.15;
@@ -331,6 +333,18 @@ export function buildPrediction(match) {
       assumptions.push('Hay expulsiones: el modelo no corrige por jugadores de menos, así que el pronóstico subestima al equipo con 11.');
     }
     if (hasOdds) assumptions.push('Sin cuotas en vivo (extensión no conectada o partido sin mercado): se usan las previas y no se comparan contra precios del mercado.');
+    // Ritmo del partido: los remates al arco de ESPN corrigen el ritmo previo. Pesa más cuanto más se jugó
+    // (hasta la mitad al final), así un equipo que llega mucho no queda con el ritmo de antes del partido.
+    const sot = match.stats?.hasData ? (match.stats.attack || []).find((s) => s.label === 'TIROS AL ARCO') : null;
+    const sotH = Number(sot?.home);
+    const sotA = Number(sot?.away);
+    if (minute >= 15 && remaining > 0 && Number.isFinite(sotH) && Number.isFinite(sotA)) {
+      const played = minute / MATCH_MINUTES;
+      const w = 0.5 * played;
+      lh = (1 - w) * lh + w * ((sotH * GOALS_PER_SHOT_ON_TARGET) / played);
+      la = (1 - w) * la + w * ((sotA * GOALS_PER_SHOT_ON_TARGET) / played);
+      assumptions.push(`Ritmo del partido: ${sotH} y ${sotA} remates al arco hasta el minuto ${Math.round(minute)}, a unos ${GOALS_PER_SHOT_ON_TARGET} goles por remate al arco, pesan un ${Math.round(w * 100)}% en el ritmo de gol de lo que falta.`);
+    }
   }
   if (remLh == null) {
     remLh = lh * remaining;

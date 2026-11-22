@@ -11,14 +11,11 @@
  * se define VITE_THESPORTSDB_KEY en .env.
  */
 
-const API_KEY = import.meta.env.VITE_THESPORTSDB_KEY || '123';
-const SEARCH_URL = `https://www.thesportsdb.com/api/v1/json/${API_KEY}/searchplayers.php?p=`;
+const SEARCH_URL = '/api/sportsdb?p=';
 const STORE_KEY = 'cs_player_photos_v1';
 const HIT_TTL = 30 * 864e5;   // una foto encontrada vale 30 días
 const MISS_TTL = 7 * 864e5;   // "sin foto" se vuelve a intentar en 7 días
 const GAP_MS = 3000;          // 20 peticiones por minuto, por debajo del límite gratuito
-const RETRY_STEP_MS = 15000;  // tras un error se espera 15 s, 30 s, 45 s
-const MAX_TRIES = 4;
 const MAX_ENTRIES = 800;
 
 const STOP_WORDS = new Set(['fc', 'cf', 'cd', 'ca', 'club', 'de', 'del', 'la', 'el', 'sc', 'ud', 'rcd', 'real', 'afc', 'ac', 'as', 'ss', 'sd', 'fk', 'sk', 'sv', 'the', 'city', 'united', 'women', 'femenino']);
@@ -62,15 +59,23 @@ export function cachedPlayerPhoto(name, team) {
 }
 
 async function lookup(name, team) {
-  const res = await fetch(SEARCH_URL + encodeURIComponent(name.trim().replace(/\s+/g, '_')));
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  const last = normName(name).split(' ').pop();
-  const candidates = (data.player || []).filter((p) => p.strSport === 'Soccer' && normName(p.strPlayer).includes(last));
-  // Mismo nombre y mismo club; si no hay club que coincida, solo se acepta un homónimo único y exacto
-  const pick = candidates.find((p) => team && sameTeam(p.strTeam, team))
-    || (candidates.length === 1 && normName(candidates[0].strPlayer) === normName(name) ? candidates[0] : null);
-  return pick?.strCutout || pick?.strThumb || null;
+  try {
+    const res = await fetch(SEARCH_URL + encodeURIComponent(name.trim().replace(/\s+/g, '_')));
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.rateLimited) {
+      pausedUntil = Date.now() + 60000; // TheSportsDB rate limit: pausar 60 s
+      return null;
+    }
+    const last = normName(name).split(' ').pop();
+    const candidates = (data.player || []).filter((p) => p.strSport === 'Soccer' && normName(p.strPlayer).includes(last));
+    // Mismo nombre y mismo club; si no hay club que coincida, solo se acepta un homónimo único y exacto
+    const pick = candidates.find((p) => team && sameTeam(p.strTeam, team))
+      || (candidates.length === 1 && normName(candidates[0].strPlayer) === normName(name) ? candidates[0] : null);
+    return pick?.strCutout || pick?.strThumb || null;
+  } catch {
+    return null;
+  }
 }
 
 const queue = [];
@@ -91,14 +96,8 @@ async function pump() {
       persist();
       job.resolve(url);
     } catch {
-      // El 429 de TheSportsDB llega sin cabeceras CORS y el navegador lo ve como error de red:
-      // se frena la cola y se reintenta; si sigue fallando, no se guarda nada y se prueba en otra visita
-      job.tries = (job.tries || 0) + 1;
-      if (job.tries < MAX_TRIES) {
-        pausedUntil = Date.now() + RETRY_STEP_MS * job.tries;
-        queue.unshift(job);
-        continue;
-      }
+      cache[job.key] = { u: null, t: Date.now() };
+      persist();
       job.resolve(null);
     }
     await sleep(GAP_MS);

@@ -129,13 +129,31 @@ function hlsProxyDevPlugin() {
             forwardHeaders['Range'] = req.headers.range;
           }
 
-          const upstreamRes = await fetch(parsedTarget.toString(), {
+          let upstreamRes = await fetch(parsedTarget.toString(), {
             headers: forwardHeaders,
             redirect: 'follow',
           });
 
-          // Reenviar x-block-reason si el servidor remoto lo envía (ej: geo)
-          const blockReason = upstreamRes.headers.get('x-block-reason');
+          // Si el servidor upstream devuelve 403 y se había enviado un Referer,
+          // reintentar de inmediato sin Referer ni Origin. Servidores como Byte-nginx / ebaclofen
+          // rechazan el referer ("deny by referer access rule") pero funcionan sin él.
+          let effectiveReferer = customReferer;
+          if (upstreamRes.status === 403 && forwardHeaders['Referer']) {
+            const cleanHeaders = { ...forwardHeaders };
+            delete cleanHeaders['Referer'];
+            delete cleanHeaders['Origin'];
+            const retryRes = await fetch(parsedTarget.toString(), {
+              headers: cleanHeaders,
+              redirect: 'follow',
+            });
+            if (retryRes.ok) {
+              upstreamRes = retryRes;
+              effectiveReferer = '';
+            }
+          }
+
+          // Reenviar x-block-reason o x-exception-info si el servidor remoto lo envía
+          const blockReason = upstreamRes.headers.get('x-block-reason') || upstreamRes.headers.get('x-exception-info');
           if (blockReason) {
             res.setHeader('x-block-reason', blockReason);
           }
@@ -158,7 +176,7 @@ function hlsProxyDevPlugin() {
           if (isM3u8ByPath || isM3u8ByType) {
             const text = await upstreamRes.text();
             if (text.startsWith('#EXTM3U')) {
-              const rewritten = rewriteM3u8Content(text, finalBaseUrl, '/api/hls-proxy', customReferer);
+              const rewritten = rewriteM3u8Content(text, finalBaseUrl, '/api/hls-proxy', effectiveReferer);
               res.statusCode = upstreamRes.status;
               res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
               res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -206,6 +224,20 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       open: false,
       proxy: {
+        '/api/sportsdb': {
+          target: 'https://www.thesportsdb.com',
+          changeOrigin: true,
+          rewrite: (path) => {
+            const u = new URL(path, 'http://localhost');
+            const p = u.searchParams.get('p') || '';
+            const key = env.VITE_THESPORTSDB_KEY || '123';
+            return `/api/v1/json/${key}/searchplayers.php?p=${encodeURIComponent(p.replace(/\s+/g, '_'))}`;
+          },
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json',
+          },
+        },
         '/api/rapidapi-stream': {
           target: 'https://football-live-stream-api.p.rapidapi.com',
           changeOrigin: true,

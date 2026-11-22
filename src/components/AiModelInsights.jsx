@@ -210,10 +210,14 @@ export function ScoreMap({ pred, children }) {
 /** Dos mercados de goles como medidores cortos. */
 export function GoalMeters({ pred }) {
   const find = (id) => pred.markets.find((m) => m.id === id);
+  // En vivo, la chance de que caiga al menos un gol más desde el marcador actual
+  const none = pred.matrix?.[pred.base?.home]?.[pred.base?.away];
+  const more = pred.quality.isLive && none != null ? { id: 'more', p: 1 - none } : null;
   const items = [
+    { m: more, label: 'Otro gol' },
     { m: find('o2.5'), label: 'Más de 2.5 goles' },
     { m: find('btts-y'), label: 'Ambos marcan' },
-  ].filter((x) => x.m);
+  ].filter((x) => x.m).slice(0, 2);
   if (!items.length) return null;
   return (
     <div className="aiq-meters">

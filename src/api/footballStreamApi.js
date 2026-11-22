@@ -228,13 +228,6 @@ export async function fetchMatchStreamLink(matchId) {
       if (link.includes('?url=')) {
         sM3u8 = extractM3u8Url(link);
         sIframe = link;
-        if (!sRef) {
-          try {
-            sRef = new URL(link).origin + '/';
-          } catch {
-            // ignore
-          }
-        }
       } else if (isM3u8Url(link)) {
         sM3u8 = link;
       } else if (link.startsWith('http')) {

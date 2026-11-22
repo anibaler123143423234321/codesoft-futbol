@@ -105,12 +105,30 @@ export default async (req) => {
   }
 
   try {
-    const upstreamRes = await fetch(parsedTarget.toString(), {
+    let upstreamRes = await fetch(parsedTarget.toString(), {
       headers: forwardHeaders,
       redirect: 'follow',
     });
 
-    const blockReason = upstreamRes.headers.get('x-block-reason');
+    // Si el servidor upstream devuelve 403 y se había enviado un Referer,
+    // reintentar de inmediato sin Referer ni Origin. Servidores como Byte-nginx / ebaclofen
+    // rechazan el referer ("deny by referer access rule") pero funcionan sin él.
+    let effectiveReferer = customReferer;
+    if (upstreamRes.status === 403 && forwardHeaders['Referer']) {
+      const cleanHeaders = { ...forwardHeaders };
+      delete cleanHeaders['Referer'];
+      delete cleanHeaders['Origin'];
+      const retryRes = await fetch(parsedTarget.toString(), {
+        headers: cleanHeaders,
+        redirect: 'follow',
+      });
+      if (retryRes.ok) {
+        upstreamRes = retryRes;
+        effectiveReferer = '';
+      }
+    }
+
+    const blockReason = upstreamRes.headers.get('x-block-reason') || upstreamRes.headers.get('x-exception-info');
 
     if (!upstreamRes.ok) {
       const errHeaders = new Headers(corsHeaders);
@@ -135,7 +153,7 @@ export default async (req) => {
       const text = await upstreamRes.text();
       if (text.startsWith('#EXTM3U')) {
         const proxyEndpoint = reqUrl.origin ? `${reqUrl.origin}/api/hls-proxy` : '/api/hls-proxy';
-        const rewritten = rewriteM3u8(text, finalBaseUrl, proxyEndpoint, customReferer);
+        const rewritten = rewriteM3u8(text, finalBaseUrl, proxyEndpoint, effectiveReferer);
 
         const resHeaders = new Headers(corsHeaders);
         resHeaders.set('Content-Type', 'application/vnd.apple.mpegurl');
