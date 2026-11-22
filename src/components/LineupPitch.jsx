@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useEffect, useId, useState } from 'react';
+import PitchTurf from './PitchTurf';
+import PlayerAvatar from './PlayerAvatar';
+import usePlayerPhoto from '../hooks/usePlayerPhoto';
+import { isCutout, sizedPhoto } from '../api/playerPhotos';
 import '../lineup.css';
 
 const PITCH_W = 105;
@@ -78,6 +82,62 @@ const label = (p) => {
   return n.length > 11 ? `${n.slice(0, 10)}.` : n;
 };
 
+const R = 2.9;
+
+/** Jugador en la cancha: su foto dentro del círculo y el dorsal en una insignia; sin foto, el dorsal. */
+/** true cuando la imagen ya cargó (así no aparece un recuadro roto dentro del SVG). */
+function useImageReady(src) {
+  const [state, setState] = useState({ src: null, ok: false });
+  useEffect(() => {
+    if (!src) return undefined;
+    let alive = true;
+    const img = new Image();
+    img.onload = () => { if (alive) setState({ src, ok: true }); };
+    img.onerror = () => { if (alive) setState({ src, ok: false }); };
+    img.src = src;
+    return () => { alive = false; };
+  }, [src]);
+  return state.src === src && state.ok;
+}
+
+function PitchPlayer({ p, clipId }) {
+  const url = usePlayerPhoto(p.name, p.teamName, p.headshot, 2);
+  const href = url ? sizedPhoto(url, 200) : null;
+  const ok = useImageReady(href);
+  // Los recortes de TheSportsDB son de medio cuerpo: se amplían 1,7× hacia la cara
+  const box = ok && isCutout(url) ? { x: -4.93, y: -3.23, s: 9.86 } : { x: -R, y: -R, s: R * 2 };
+
+  return (
+    <g className={`lp-player${ok ? ' has-photo' : ''}`} transform={`translate(${p.x} ${p.y})`}>
+      <title>{`${p.name} · ${p.jersey ?? ''}${p.subbedOut ? ' (salió)' : ''}`}</title>
+      <circle r={R} fill={p.fill} className={p.subbedOut ? 'out' : ''} />
+      {ok ? (
+        <>
+          <image
+            href={href}
+            x={box.x}
+            y={box.y}
+            width={box.s}
+            height={box.s}
+            preserveAspectRatio="xMidYMin slice"
+            clipPath={`url(#${clipId})`}
+            className={p.subbedOut ? 'out' : ''}
+          />
+          <circle r={R} className="lp-ring" style={{ stroke: p.fill }} />
+          <g className="lp-badge" transform="translate(2.3 2.2)">
+            <circle r="1.3" fill={p.fill} />
+            <text dy="0.46">{p.jersey}</text>
+          </g>
+        </>
+      ) : (
+        <text className="lp-num" dy="0.95">{p.jersey}</text>
+      )}
+      <text className="lp-pname" dy={p.labelUp ? -4.2 : 6.2}>{label(p)}</text>
+      {p.subbedOut && <text className="lp-out-mark" x="-3.4" y="-2">▼</text>}
+    </g>
+  );
+}
+
 function Bench({ roster, color }) {
   const subs = roster?.substitutes || [];
   const outs = (roster?.starters || []).filter((p) => p.subbedOut);
@@ -95,6 +155,7 @@ function Bench({ roster, color }) {
           {subs.map((p) => (
             <li key={`${p.jersey}-${p.name}`} className={p.subbedIn ? 'in' : ''}>
               <span className="lp-jersey">{p.jersey}</span>
+              <PlayerAvatar name={p.name} team={roster?.teamName} headshot={p.headshot} size={24} priority={1} color={color} />
               <span className="lp-name">{p.name}</span>
               {p.subbedIn && <span className="lp-tag in">Entró</span>}
             </li>
@@ -111,6 +172,7 @@ function Bench({ roster, color }) {
 }
 
 export default function LineupPitch({ rosters = [], homeName, awayName, homeColor, awayColor }) {
+  const clipId = `lp-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const home = rosters.find((r) => r.homeAway === 'home') || rosters[0];
   const away = rosters.find((r) => r.homeAway === 'away') || rosters[1];
   const hasLineups = home?.starters?.length && away?.starters?.length;
@@ -124,8 +186,8 @@ export default function LineupPitch({ rosters = [], homeName, awayName, homeColo
   }
 
   const players = [
-    ...place(buildLines(home.starters, home.formation), 'home').map((p) => ({ ...p, fill: homeColor, side: 'home' })),
-    ...place(buildLines(away.starters, away.formation), 'away').map((p) => ({ ...p, fill: awayColor, side: 'away' })),
+    ...place(buildLines(home.starters, home.formation), 'home').map((p) => ({ ...p, fill: homeColor, side: 'home', teamName: home.teamName })),
+    ...place(buildLines(away.starters, away.formation), 'away').map((p) => ({ ...p, fill: awayColor, side: 'away', teamName: away.teamName })),
   ];
 
   return (
@@ -136,27 +198,12 @@ export default function LineupPitch({ rosters = [], homeName, awayName, homeColo
       </div>
       <svg className="lp-pitch" viewBox={`-2 -2 ${PITCH_W + 4} ${PITCH_H + 4}`} role="img"
         aria-label={`Alineaciones: ${home.teamName} ${home.formation || ''} contra ${away.teamName} ${away.formation || ''}`}>
-        <rect x="-2" y="-2" width={PITCH_W + 4} height={PITCH_H + 4} className="lp-grass" />
-        {Array.from({ length: 10 }, (_, i) => (
-          <rect key={i} x={i * 10.5} y="0" width="10.5" height={PITCH_H} className={i % 2 ? 'lp-stripe' : 'lp-grass'} />
-        ))}
-        <g className="lp-lines">
-          <rect x="0" y="0" width={PITCH_W} height={PITCH_H} />
-          <line x1={PITCH_W / 2} y1="0" x2={PITCH_W / 2} y2={PITCH_H} />
-          <circle cx={PITCH_W / 2} cy={PITCH_H / 2} r="9.15" />
-          <rect x="0" y="13.84" width="16.5" height="40.32" />
-          <rect x="0" y="24.84" width="5.5" height="18.32" />
-          <rect x={PITCH_W - 16.5} y="13.84" width="16.5" height="40.32" />
-          <rect x={PITCH_W - 5.5} y="24.84" width="5.5" height="18.32" />
-        </g>
+        <PitchTurf w={PITCH_W} h={PITCH_H} pad={2} />
+        <defs>
+          <clipPath id={clipId}><circle r={R} /></clipPath>
+        </defs>
         {players.map((p) => (
-          <g key={`${p.side}-${p.jersey}-${p.name}`} className="lp-player" transform={`translate(${p.x} ${p.y})`}>
-            <title>{`${p.name} · ${p.jersey ?? ''}${p.subbedOut ? ' (salió)' : ''}`}</title>
-            <circle r="2.9" fill={p.fill} className={p.subbedOut ? 'out' : ''} />
-            <text className="lp-num" dy="0.95">{p.jersey}</text>
-            <text className="lp-pname" dy={p.labelUp ? -4.2 : 6.2}>{label(p)}</text>
-            {p.subbedOut && <text className="lp-out-mark" x="2.6" y="-2">▼</text>}
-          </g>
+          <PitchPlayer key={`${p.side}-${p.jersey}-${p.name}`} p={p} clipId={clipId} />
         ))}
       </svg>
       <div className="lp-benches">

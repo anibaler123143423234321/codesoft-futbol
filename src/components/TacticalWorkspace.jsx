@@ -5,6 +5,7 @@ import { useLiveMatchTimer } from '../hooks/useLiveMatchTimer';
 import { fetchEspnLatestVideos } from '../api/espnApi';
 import SignalPlayer from './SignalPlayer';
 import LineupPitch from './LineupPitch';
+import PitchTurf from './PitchTurf';
 import { buildLiveView, isStageKind } from '../utils/livePitch';
 import LivePlayScene, { LiveCallout } from './LivePlayScene';
 import { PlayIcon } from './SportIcon';
@@ -14,7 +15,7 @@ import '../tactical.css';
 
 const CATEGORIES = [
   { key: 'goal', label: 'Goles', color: '#22c55e' },
-  { key: 'shot', label: 'Tiros', color: '#a78bfa' },
+  { key: 'shot', label: 'Tiros', color: '#7fb0ff' },
   { key: 'corner', label: 'Córners', color: '#38bdf8' },
   { key: 'foul', label: 'Faltas', color: '#f59e0b' },
   { key: 'card', label: 'Tarjetas', color: '#facc15' },
@@ -56,7 +57,7 @@ const PITCH_W = 105;
 const PITCH_H = 68;
 
 // Colores de camiseta del flujo en vivo, con respaldo si faltan, se confunden entre sí o con el césped
-const PITCH_GREEN = '#0f7440';
+const PITCH_GREEN = '#134a31';
 function hexDist(a, b) {
   const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const [x, y] = [rgb(a), rgb(b)];
@@ -195,7 +196,7 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
     // Con "seguir el vivo" activo, la última jugada elegida sola no debe tapar el descanso ni el final
     if (isHalf && (follow || !selected)) {
       return {
-        actionTitle: 'DESCANSO',
+        actionTitle: 'Descanso',
         isHalftime: true,
         isDangerous: false,
         team: 'center',
@@ -211,7 +212,7 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
     // 2. Estado de Partido Finalizado
     if (isFinished && (follow || !selected)) {
       return {
-        actionTitle: 'FINALIZADO',
+        actionTitle: 'Finalizado',
         isFinished: true,
         isDangerous: false,
         team: 'center',
@@ -227,7 +228,7 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
     // 3. Estado de Partido Por Iniciar
     if (isScheduled && (follow || !selected)) {
       return {
-        actionTitle: 'POR INICIAR',
+        actionTitle: 'Por iniciar',
         isScheduled: true,
         isDangerous: false,
         team: 'center',
@@ -263,13 +264,13 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
     let isDangerous = false;
 
     if (cat === 'goal') {
-      actionTitle = '¡GOL!';
+      actionTitle = '¡Gol!';
       isDangerous = true;
     } else if (cat === 'shot') {
       if (typeText.includes('target') || typeText.includes('arco')) {
-        actionTitle = 'Tiro al Arco';
+        actionTitle = 'Tiro al arco';
       } else if (typeText.includes('blocked') || typeText.includes('bloqueado')) {
-        actionTitle = 'Tiro Bloqueado';
+        actionTitle = 'Tiro bloqueado';
       } else {
         actionTitle = 'Tiro';
       }
@@ -278,15 +279,15 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
       actionTitle = 'Córner';
       isDangerous = true;
     } else if (cat === 'foul') {
-      actionTitle = 'Tiro Libre';
+      actionTitle = 'Tiro libre';
     } else if (cat === 'offside') {
-      actionTitle = 'Fuera de Juego';
+      actionTitle = 'Fuera de juego';
     } else if (cat === 'card') {
       actionTitle = 'Tarjeta';
     } else {
       const xCoord = activePlay.x != null ? activePlay.x : 50;
       if (xCoord > 65) {
-        actionTitle = 'Ataque Peligroso';
+        actionTitle = 'Ataque peligroso';
         isDangerous = true;
       } else {
         actionTitle = 'Ataque';
@@ -495,8 +496,8 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
               clipsAreMatch={hasMatchVideos}
               onClipError={(id) => setBrokenIds(prev => new Set(prev).add(id))}
               emptyText={isLive
-                ? 'ESPN todavía no publicó clips de este partido. Conectá tu propia señal desde las pestañas de arriba.'
-                : 'No hay clips oficiales para este partido. Conectá tu propia señal desde las pestañas de arriba.'}
+                ? 'ESPN todavía no publica clips de este partido. Conecta tu propia señal desde las pestañas de arriba.'
+                : 'No hay clips oficiales para este partido. Conecta tu propia señal desde las pestañas de arriba.'}
               scoreOverlay={(
                 <span className="sp-score">
                   <span>{formattedTime}</span>
@@ -518,28 +519,7 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
           ) : (
           <div className="tw-pitch">
             <svg viewBox={`-3 -3 ${PITCH_W + 6} ${PITCH_H + 6}`} preserveAspectRatio="xMidYMid meet">
-              <rect x="-3" y="-3" width={PITCH_W + 6} height={PITCH_H + 6} fill="#0d6b3a" />
-              {Array.from({ length: 10 }).map((_, i) => (
-                <rect key={i} x={i * 10.5} y="0" width="10.5" height={PITCH_H} fill={i % 2 ? '#0f7440' : '#0d6b3a'} />
-              ))}
-              <g fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.35">
-                <rect x="0" y="0" width={PITCH_W} height={PITCH_H} />
-                <line x1={PITCH_W / 2} y1="0" x2={PITCH_W / 2} y2={PITCH_H} />
-                <circle cx={PITCH_W / 2} cy={PITCH_H / 2} r="9.15" />
-                <rect x="0" y="13.84" width="16.5" height="40.32" />
-                <rect x="0" y="24.84" width="5.5" height="18.32" />
-                <rect x={PITCH_W - 16.5} y="13.84" width="16.5" height="40.32" />
-                <rect x={PITCH_W - 5.5} y="24.84" width="5.5" height="18.32" />
-                <path d="M16.5 26.7 A9.15 9.15 0 0 1 16.5 41.3" />
-                <path d={`M${PITCH_W - 16.5} 26.7 A9.15 9.15 0 0 0 ${PITCH_W - 16.5} 41.3`} />
-                <rect x="-1.8" y="30.34" width="1.8" height="7.32" />
-                <rect x={PITCH_W} y="30.34" width="1.8" height="7.32" />
-              </g>
-              <g fill="rgba(255,255,255,0.85)">
-                <circle cx={PITCH_W / 2} cy={PITCH_H / 2} r="0.5" />
-                <circle cx="11" cy={PITCH_H / 2} r="0.5" />
-                <circle cx={PITCH_W - 11} cy={PITCH_H / 2} r="0.5" />
-              </g>
+              <PitchTurf w={PITCH_W} h={PITCH_H} pad={3} />
 
               {/* MODO RADAR BETANO (Zona de Ataque + Vector del Balón o Descanso) */}
               {pitchMode === 'betano' && (
@@ -688,7 +668,7 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
             {pitchMode === 'betano' && !betanoEventData.isRealtime && (
               <div className="betano-center-box">
                 <div className={`betano-action-label ${betanoEventData.isDangerous ? 'danger' : ''} ${betanoEventData.isHalftime ? 'halftime' : ''}`}>
-                  {betanoEventData.isHalftime ? 'DESCANSO' : betanoEventData.actionTitle}
+                  {betanoEventData.isHalftime ? 'Descanso' : betanoEventData.actionTitle}
                 </div>
                 <div className="betano-player-name">
                   {betanoEventData.player}
@@ -722,7 +702,7 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
           <div className="tw-players">
             <div className="tw-players-head">
               <Crosshair size={12} />
-              <span>Mapa de jugadas · elegí un jugador</span>
+              <span>Mapa de jugadas · elige un jugador</span>
               {playerFilter && (
                 <button onClick={() => setPlayerFilter(null)}>Limpiar</button>
               )}
@@ -916,7 +896,7 @@ export default function TacticalWorkspace({ match, aiMatch = null, aiReady = tru
             {selected.text && <p>{selected.text}</p>}
           </div>
         ) : (
-          <p className="tw-tl-hint">Tocá un punto para ver minuto, equipo y jugador.</p>
+          <p className="tw-tl-hint">Toca un punto para ver el minuto, el equipo y el jugador.</p>
         )}
       </div>
     </section>

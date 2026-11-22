@@ -69,7 +69,7 @@ export default function CarteleraGrid({
           ACTUALIZADA AL MINUTO
         </div>
 
-        <h1 className="cartelera-title">LA CARTELERA DE HOY</h1>
+        <h1 className="cartelera-title">La cartelera de hoy</h1>
         
         <p className="cartelera-subtitle">
           Todos los partidos de hoy, con horarios, estadísticas en tiempo real y opciones para seguir cada encuentro.
@@ -78,11 +78,11 @@ export default function CarteleraGrid({
         <div className="cartelera-stats-row">
           <div className="cartelera-stat-item">
             <Calendar size={16} style={{ color: 'var(--gold-neon)' }} />
-            <span>{totalCount} PARTIDOS HOY</span>
+            <span>{totalCount} partidos hoy</span>
           </div>
           <div className="cartelera-stat-item live">
             <span className="live-dot" />
-            <span>{liveCount} EN VIVO AHORA</span>
+            <span>{liveCount} en vivo ahora</span>
           </div>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function CarteleraGrid({
         <div className="nav-pills cartelera-status-pills">
           {[
             { id: 'all', label: 'Todos' },
-            { id: 'live', label: `En Vivo (${liveCount})` },
+            { id: 'live', label: `En vivo (${liveCount})` },
             { id: 'scheduled', label: 'Próximos' },
             { id: 'finished', label: 'Finalizados' },
           ].map(tab => (

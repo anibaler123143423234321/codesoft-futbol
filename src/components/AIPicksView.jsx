@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Sparkles, Search, X, AlertTriangle, Play, RotateCw, ExternalLink, BookOpen, Database, ChevronDown, ShieldAlert, Flag, Square, Hand } from 'lucide-react';
+import { Sparkles, Search, X, AlertTriangle, Play, RotateCw, ExternalLink, BookOpen, Database, ChevronDown, ShieldAlert, Grid3x3, HelpCircle } from 'lucide-react';
 import { explainPrediction } from '../api/cerebrasAi';
 import { fetchEspnMatchSummary, fetchTeamRecentStats } from '../api/espnApi';
 import { buildPrediction, buildSources, citeNumbers } from '../api/predictionModel';
@@ -9,6 +9,8 @@ import { useLiveOdds } from '../hooks/useLiveOdds';
 import { shouldWatchSource } from '../utils/liveBridge';
 import { withLiveMarket } from '../utils/liveMarket';
 import TeamLogo from './TeamLogo';
+import { DuelBar, ScoreMap, GoalMeters } from './AiModelInsights';
+import MatchReasons from './MatchReasons';
 import '../picks.css';
 
 const FILTERS = [
@@ -39,9 +41,9 @@ function Delta({ d }) {
 }
 
 function statusLabel(m) {
-  if (m.status === 'live') return { text: `EN VIVO${m.minute ? ` · ${m.minute}` : ''}`, cls: 'live' };
+  if (m.status === 'live') return { text: `En vivo${m.minute ? ` · ${m.minute}` : ''}`, cls: 'live' };
   if (m.status === 'finished') return { text: 'Finalizado', cls: 'done' };
-  return { text: m.date || 'Por iniciar', cls: '' };
+  return { text: m.timeStr || m.date || 'Por iniciar', cls: '' };
 }
 
 // Cita numerada que lleva a su fuente en la lista del final
@@ -83,6 +85,10 @@ function mergeDetail(m, d, recent) {
     h2hHistory: d.h2hHistory,
     stats: d.stats?.hasData ? d.stats : m.stats,
     oddsInfo: oddsFrom,
+    table: d.table,
+    rawKeyEvents: d.rawKeyEvents,
+    gameInfo: d.gameInfo || m.gameInfo,
+    scorers: d.scorers?.length ? d.scorers : m.scorers,
     homeTeam: team(m.homeTeam, d.homeTeam, recent?.home),
     awayTeam: team(m.awayTeam, d.awayTeam, recent?.away),
   };
@@ -288,18 +294,29 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                       </div>
                     ))}
                   </div>
-                  <p className="ap-prob-note">
-                    Goles esperados: {pred.home} {pred.expectedHome.toFixed(2)} · {pred.away} {pred.expectedAway.toFixed(2)}
-                    <Cite nums={cites([pred.quality.hasOdds ? 'odds' : pred.quality.hasForm ? 'form' : 'espn', 'maher', 'dixonColes', ...(pred.quality.isLive ? ['dixonRobinson'] : [])])} />
-                  </p>
-                  {pred.props && (
-                    <ul className="ap-props" aria-label="Conteos esperados al final">
-                      <li><Flag size={13} /> Córners <b>{pred.props.corners[0].toFixed(1)} · {pred.props.corners[1].toFixed(1)}</b></li>
-                      <li><Square size={13} className="yc" /> Amarillas <b>{pred.props.yellow[0].toFixed(1)} · {pred.props.yellow[1].toFixed(1)}</b></li>
-                      <li><Hand size={13} /> Atajadas <b>{pred.props.saves[0].toFixed(1)} · {pred.props.saves[1].toFixed(1)}</b></li>
-                      <Cite nums={cites(['recent', 'greenwoodYule'])} />
-                    </ul>
-                  )}
+                  {/* Goles y conteos esperados al final, local contra visita */}
+                  <div className={`ap-duels${pred.props ? ' has-props' : ''}`}>
+                    <DuelBar
+                      label="Goles esperados"
+                      home={pred.expectedHome}
+                      away={pred.expectedAway}
+                      digits={2}
+                      max={Math.max(2.5, pred.expectedHome, pred.expectedAway)}
+                      homeName={pred.home}
+                      awayName={pred.away}
+                    >
+                      <Cite nums={cites([pred.quality.hasOdds ? 'odds' : pred.quality.hasForm ? 'form' : 'espn', 'maher', 'dixonColes', ...(pred.quality.isLive ? ['dixonRobinson'] : [])])} />
+                    </DuelBar>
+                    {pred.props && [
+                      ['Córners', pred.props.corners],
+                      ['Amarillas', pred.props.yellow],
+                      ['Atajadas', pred.props.saves],
+                    ].map(([label, [h, a]], i) => (
+                      <DuelBar key={label} label={label} home={h} away={a} homeName={pred.home} awayName={pred.away}>
+                        {i === 0 && <Cite nums={cites(['recent', 'greenwoodYule'])} />}
+                      </DuelBar>
+                    ))}
+                  </div>
                   {updatedAt && (
                     <p className="ap-updated">
                       {pred.quality.isLive && <span className="ap-live-dot" aria-hidden="true" />}
@@ -320,13 +337,19 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                     <Play size={14} /> Ver partido
                   </button>
                   <span className={`ap-conf-tag c-${pred.confidence.toLowerCase()}`} title="Según la calidad de los datos disponibles, no según la probabilidad">
-                    Confianza {pred.confidence}
+                    Confianza {pred.confidence.toLowerCase()}
                     {loadingDetail && <RotateCw size={12} className="ap-spin" aria-label="Cargando datos de ESPN" />}
                   </span>
                 </div>
               </div>
 
               <div className="ap-body">
+                {/* Por qué estas probabilidades */}
+                <section className="ap-block" aria-labelledby="ap-why-h">
+                  <h2 id="ap-why-h" className="ap-block-h"><HelpCircle size={14} /> Por qué estas probabilidades</h2>
+                  <MatchReasons key={liveMatch.id} match={liveMatch} pred={pred} />
+                </section>
+
                 {/* Pronósticos destacados */}
                 <section className="ap-block" aria-labelledby="ap-picks-h">
                   <h2 id="ap-picks-h" className="ap-block-h">Pronósticos del modelo</h2>
@@ -335,7 +358,10 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                       <article key={pk.tier + pk.id} className={`ap-pick t-${slug(pk.tier)}`}>
                         <span className="ap-pick-tier">{pk.tier}</span>
                         <h3>{pk.label}<Cite nums={cites(pk.marketOdds ? ['odds', ...pk.refs] : pk.refs)} /></h3>
-                        <div className="ap-pick-meter" aria-hidden="true"><i style={{ width: fmtPct(pk.p) }} /></div>
+                        <div className="ap-pick-meter" aria-hidden="true">
+                          <i style={{ width: fmtPct(pk.p) }} />
+                          {pk.marketOdds > 1 && <em style={{ left: fmtPct(Math.min(1, 1 / pk.marketOdds)) }} />}
+                        </div>
                         <dl>
                           <div><dt>Probabilidad</dt><dd>{fmtPct(pk.p, 1)} <Delta d={delta(pk.id)} /></dd></div>
                           <div><dt>Cuota justa</dt><dd>{fmtOdds(pk.fair)}</dd></div>
@@ -345,7 +371,18 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                     ))}
                   </div>
                   <p className="ap-hint">
-                    Cuota justa = 1 ÷ probabilidad. Una cuota de casa por encima de la justa indica valor según el modelo.
+                    Cuota justa = 1 ÷ probabilidad. La marca blanca es la probabilidad que implica la cuota de la casa: si la barra la pasa, hay valor según el modelo.
+                  </p>
+                </section>
+
+                {/* Mapa de marcadores */}
+                <section className="ap-block" aria-labelledby="ap-scores-h">
+                  <h2 id="ap-scores-h" className="ap-block-h"><Grid3x3 size={14} /> Mapa de marcadores</h2>
+                  <ScoreMap pred={pred}>
+                    <GoalMeters pred={pred} />
+                  </ScoreMap>
+                  <p className="ap-hint">
+                    Cada casilla es la probabilidad de ese resultado final{pred.quality.isLive ? ', contando desde el marcador actual' : ''}. Toca o pasa el cursor por el mapa o la lista para comparar.
                   </p>
                 </section>
 
@@ -480,7 +517,7 @@ export default function AIPicksView({ matches = [], onSelectMatch }) {
                 </section>
 
                 <p className="ap-legal">
-                  Pronóstico estadístico con fines informativos, no es una recomendación de apuesta. Ningún modelo garantiza resultados. Solo mayores de 18 años; jugá con responsabilidad.
+                  Pronóstico estadístico con fines informativos, no es una recomendación de apuesta. Ningún modelo garantiza resultados. Solo mayores de 18 años; juega con responsabilidad.
                 </p>
               </div>
             </>

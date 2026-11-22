@@ -65,7 +65,8 @@ export function parseEspnOdds(espnOdds) {
 }
 
 export const ESPN_SUPPORTED_LEAGUES = [
-  { id: 'all', name: 'Todos los Partidos', icon: '⚽' },
+  { id: 'all', name: 'Todos los partidos', icon: '⚽' },
+  { id: 'per.1', name: 'Liga 1 Perú', icon: '🇵🇪' },
   { id: 'uefa.champions', name: 'Champions League', icon: '⭐' },
   { id: 'esp.1', name: 'LaLiga EA Sports', icon: '🇪🇸' },
   { id: 'eng.1', name: 'Premier League', icon: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
@@ -82,24 +83,35 @@ export const ESPN_SUPPORTED_LEAGUES = [
 /**
  * Fetch real live matches from ESPN scoreboard
  */
+// El marcador "all" de ESPN deja fuera algunas ligas (la de Perú, por ejemplo): se piden aparte
+const EXTRA_ALL_LEAGUES = ['per.1'];
+
+async function fetchScoreboardEvents(league) {
+  const response = await fetch(`${getBaseUrl()}/site/v2/sports/soccer/${league}/scoreboard`, {
+    headers: { 'Accept': 'application/json' }
+  });
+  if (!response.ok) {
+    throw new Error(`ESPN Scoreboard status: ${response.status}`);
+  }
+  const data = await response.json();
+  return data.events || [];
+}
+
 export async function fetchEspnScoreboard(league = 'all') {
-  const baseUrl = getBaseUrl();
-  const targetLeague = league === 'all' ? 'all' : league;
-  const url = `${baseUrl}/site/v2/sports/soccer/${targetLeague}/scoreboard`;
-
   try {
-    const response = await fetch(url, {
-      headers: { 'Accept': 'application/json' }
+    if (league !== 'all') return parseEspnEvents(await fetchScoreboardEvents(league), league);
+
+    const [main, ...extras] = await Promise.allSettled(['all', ...EXTRA_ALL_LEAGUES].map(fetchScoreboardEvents));
+    const mainEvents = main.status === 'fulfilled' ? main.value : [];
+    const seen = new Set(mainEvents.map((ev) => ev.id));
+    const matches = parseEspnEvents(mainEvents, 'all');
+    extras.forEach((result, i) => {
+      if (result.status !== 'fulfilled') return;
+      // Estos partidos guardan su liga para que el filtro y el resumen usen la ruta correcta
+      matches.push(...parseEspnEvents(result.value.filter((ev) => !seen.has(ev.id)), EXTRA_ALL_LEAGUES[i]));
     });
-
-    if (!response.ok) {
-      throw new Error(`ESPN Scoreboard status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const events = data.events || [];
-
-    return parseEspnEvents(events, league);
+    if (main.status === 'rejected' && matches.length === 0) throw main.reason;
+    return matches;
   } catch (error) {
     console.error('Error fetching ESPN scoreboard:', error);
     return [];
@@ -134,6 +146,21 @@ export async function fetchEspnMatchSummary(matchId, league = 'all') {
 /**
  * Fetch real standings table directly from ESPN v2 API
  */
+// Zona de la tabla según la nota de ESPN, con nombre en español y color propio de la app
+function standingZone(description) {
+  const d = String(description || '');
+  if (!d) return null;
+  const qualifying = /qualif|play-?off|previa/i.test(d);
+  if (/relegation|descenso/i.test(d)) return { key: qualifying ? 'releg-po' : 'releg', label: qualifying ? 'Promoción de descenso' : 'Descenso' };
+  if (/promotion|ascenso/i.test(d)) return { key: 'promo', label: qualifying ? 'Promoción de ascenso' : 'Ascenso' };
+  if (/champions/i.test(d)) return { key: qualifying ? 'ucl-q' : 'ucl', label: qualifying ? 'Previa de Champions League' : 'Champions League' };
+  if (/europa/i.test(d)) return { key: qualifying ? 'uel-q' : 'uel', label: qualifying ? 'Previa de Europa League' : 'Europa League' };
+  if (/conference/i.test(d)) return { key: 'uecl', label: qualifying ? 'Previa de Conference League' : 'Conference League' };
+  if (/libertadores/i.test(d)) return { key: 'ucl', label: qualifying ? 'Previa de Libertadores' : 'Copa Libertadores' };
+  if (/sudamericana/i.test(d)) return { key: 'uel', label: 'Copa Sudamericana' };
+  return { key: 'other', label: d };
+}
+
 export async function fetchEspnStandings(league = 'esp.1') {
   const baseUrl = getBaseUrl();
   const targetLeague = league === 'all' ? 'esp.1' : league;
@@ -157,8 +184,11 @@ export async function fetchEspnStandings(league = 'esp.1') {
         statsMap[s.name] = s.displayValue ?? s.value;
       });
 
+      const rawStat = (name) => (entry.stats || []).find((s) => s.name === name)?.value;
       return {
         pos: idx + 1,
+        zone: standingZone(entry.note?.description),
+        rankChange: Number(rawStat('rankChange')) || 0,
         team: entry.team?.displayName || 'Equipo',
         shortName: entry.team?.shortDisplayName || entry.team?.name || 'Club',
         logo: entry.team?.logos?.[0]?.href || '',
@@ -168,7 +198,7 @@ export async function fetchEspnStandings(league = 'esp.1') {
         p: statsMap.losses ?? 0,
         gf: statsMap.pointsFor ?? 0,
         gc: statsMap.pointsAgainst ?? 0,
-        dg: statsMap.pointDifferential ?? 0,
+        dg: Number(rawStat('pointDifferential')) || 0,
         pts: statsMap.points ?? 0,
       };
     });
@@ -456,14 +486,18 @@ function parseEspnSummary(summary, matchId, league) {
   const espnLink = (summary.header?.links || []).find(l => (l.rel || []).includes('summary'))?.href || `https://www.espn.com/soccer/match/_/gameId/${matchId}`;
 
   // Parse real rosters from ESPN
+  // ESPN manda los cambios como { didSub: false } (o como booleano en partidos antiguos)
+  const didSub = (v) => (v && typeof v === 'object' ? Boolean(v.didSub) : Boolean(v));
   const toRosterPlayer = p => ({
+    id: p.athlete?.id || null,
     name: p.athlete?.displayName,
+    headshot: p.athlete?.headshot?.href || null,
     shortName: p.athlete?.lastName || p.athlete?.shortName || p.athlete?.displayName,
     jersey: p.jersey,
     position: p.position?.abbreviation,
     formationPlace: Number(p.formationPlace) || 0,
-    subbedIn: Boolean(p.subbedIn),
-    subbedOut: Boolean(p.subbedOut)
+    subbedIn: didSub(p.subbedIn),
+    subbedOut: didSub(p.subbedOut)
   });
   const rostersList = (summary.rosters || []).map(r => ({
     teamName: r.team?.displayName,
@@ -478,8 +512,27 @@ function parseEspnSummary(summary, matchId, league) {
   const gameInfo = {
     venue: summary.gameInfo?.venue?.fullName ? `${summary.gameInfo.venue.fullName}, ${summary.gameInfo.venue.address?.city || ''}` : null,
     attendance: summary.gameInfo?.attendance ? Number(summary.gameInfo.attendance).toLocaleString() : null,
-    officials: summary.gameInfo?.officials?.map(o => o.displayName).join(', ') || null
+    officials: summary.gameInfo?.officials?.map(o => o.displayName).join(', ') || null,
+    city: summary.gameInfo?.venue?.address?.city || null,
   };
+
+  // Posición de cada equipo en la tabla del torneo (ESPN la trae dentro del resumen)
+  const tableOf = (team) => {
+    for (const group of summary.standings?.groups || []) {
+      const entries = group.standings?.entries || [];
+      const idx = entries.findIndex(e => String(e.id) === String(team?.team?.id ?? team?.id) || e.team === team?.team?.displayName);
+      if (idx < 0) continue;
+      const st = Object.fromEntries((entries[idx].stats || []).map(x => [x.name, Number(x.value ?? x.displayValue)]));
+      return {
+        rank: Number.isFinite(st.rank) && st.rank > 0 ? st.rank : idx + 1,
+        points: st.points ?? null,
+        played: st.gamesPlayed ?? null,
+        size: entries.length,
+      };
+    }
+    return null;
+  };
+  const table = { home: tableOf(home), away: tableOf(away) };
 
   // Extract real market odds from ESPN pickcenter or competition odds
   const realOdds = parseEspnOdds(comp?.odds?.[0] || summary.odds?.[0] || summary.pickcenter?.[0]);
@@ -615,6 +668,7 @@ function parseEspnSummary(summary, matchId, league) {
     rosters: rostersList,
     recentForm: recentForm,
     h2hHistory: h2hHistory,
+    table,
     gameInfo: gameInfo,
     rawKeyEvents: keyEvents,
     plays,
@@ -624,7 +678,7 @@ function parseEspnSummary(summary, matchId, league) {
   };
 }
 
-export function resolveDetailedLeagueInfo(ev, comp, home, away, _league = 'all') {
+export function resolveDetailedLeagueInfo(ev, comp, home, away, league = 'all') {
   const slug = (ev?.season?.slug || ev?.season?.name || '').toLowerCase();
   const rawTitle = (ev?.league?.name || comp?.type?.text || comp?.notes?.[0]?.headline || '').toLowerCase();
   const homeName = (home?.team?.displayName || home?.name || '').toLowerCase();
@@ -635,10 +689,15 @@ export function resolveDetailedLeagueInfo(ev, comp, home, away, _league = 'all')
   const isFriendly = allText.includes('friendly') || allText.includes('amistoso');
   const isYouth = allText.includes(' u20') || allText.includes(' sub-20') || allText.includes(' u23') || allText.includes(' u19') || allText.includes(' ii') || allText.includes(' b ');
 
-  let title = 'FÚTBOL INTERNACIONAL';
+  let title = 'Fútbol internacional';
   let category = 'Fútbol';
 
-  if (slug.includes('premier-league') || allText.includes('premier league')) {
+  if (league === 'per.1' || rawTitle.includes('peruvian')) {
+    // ESPN marca la temporada peruana solo como "apertura"/"clausura": va antes de ese caso genérico
+    const phase = slug.includes('clausura') ? ' · Clausura' : slug.includes('apertura') ? ' · Apertura' : '';
+    title = `🇵🇪 Liga 1 Perú${phase}`;
+    category = 'Liga 1';
+  } else if (slug.includes('premier-league') || allText.includes('premier league')) {
     title = isWomen ? '👩 FA Women\'s Super League' : '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League';
     category = 'Premier League';
   } else if (slug.includes('laliga') || allText.includes('laliga')) {

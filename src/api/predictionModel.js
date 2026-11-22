@@ -383,6 +383,9 @@ export function buildPrediction(match) {
     expectedHome: sh + remLh,
     expectedAway: sa + remLa,
     outcome: { p1, px, p2 },
+    // Probabilidad de cada marcador final (filas: goles del local) y el marcador desde el que se cuenta
+    matrix: final,
+    base: { home: sh, away: sa },
     market,
     fitError,
     markets,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Lock, Radio } from 'lucide-react';
+import { Lock, Plug, Radio } from 'lucide-react';
 import { versionAtLeast } from '../utils/liveBridge';
 import { PITCH_MIN_VERSION } from '../hooks/useLivePitch';
 import { PlayIcon, YellowCard, CornerFlag } from './SportIcon';
@@ -285,8 +285,11 @@ export default function LiveOddsPanel({ match, isLive, isFinished = false, odds,
   if (status === 'no-extension') {
     return (
       <section className="lo-panel lo-hint">
-        <div className="lo-head"><h3>Cuotas en vivo</h3></div>
-        <p>No se detecta la extensión en este navegador. Instálala desde la carpeta <code>extension/</code> (chrome://extensions → Cargar descomprimida) y recarga esta página.</p>
+        <span className="lo-hint-icon" aria-hidden="true"><Plug size={16} /></span>
+        <div>
+          <h3>Cuotas en vivo</h3>
+          <p>Conecta la extensión <b>CodeSoft Cuotas en Vivo</b> para ver mercados y jugadas al segundo. Cárgala desde <code>extension/</code> en chrome://extensions y recarga.</p>
+        </div>
       </section>
     );
   }
@@ -298,7 +301,7 @@ export default function LiveOddsPanel({ match, isLive, isFinished = false, odds,
         <p className="lo-muted">
           {isFinished
             ? 'El partido terminó: ya no hay cuotas en vivo.'
-            : 'Las cuotas aparecen cuando el partido empieza. Abre un partido marcado EN VIVO.'}
+            : 'Las cuotas aparecen cuando el partido empieza. Abre un partido que esté en vivo.'}
         </p>
       </section>
     );

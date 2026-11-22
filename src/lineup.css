@@ -8,16 +8,14 @@
 .lp-head b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .lp-head i, .lp-bench-head i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 
-.lp-pitch { width: 100%; height: auto; display: block; border-radius: var(--radius-lg); }
-.lp-grass { fill: #0d6b3a; }
-.lp-stripe { fill: #0f7440; }
-.lp-lines { fill: none; stroke: rgba(255, 255, 255, 0.8); stroke-width: 0.3; }
-.lp-player circle { stroke: #fff; stroke-width: 0.4; transition: transform 0.2s ease; }
+.lp-pitch { width: 100%; height: auto; display: block; border-radius: var(--radius-lg); overflow: hidden; }
+.lp-player { filter: drop-shadow(0 0.5px 0.8px rgba(0, 0, 0, 0.55)); cursor: default; }
+.lp-player circle { stroke: rgba(255, 255, 255, 0.92); stroke-width: 0.35; transition: transform 0.2s var(--ease-out); }
 .lp-player:hover circle { transform: scale(1.12); }
 .lp-player circle.out { opacity: 0.55; }
-.lp-num { font: 700 2.7px var(--font-score); text-anchor: middle; fill: #fff; }
+.lp-num { font: 600 2.7px var(--font-score); font-stretch: 78%; text-anchor: middle; fill: #fff; letter-spacing: -0.02em; }
 .lp-pname {
-  font: 600 2.7px var(--font-main);
+  font: 500 2.6px var(--font-main);
   text-anchor: middle;
   fill: #fff;
   paint-order: stroke;
@@ -34,21 +32,21 @@
   text-align: center;
   font-size: 13px;
   color: var(--text-secondary);
-  background: #0d6b3a;
+  background: linear-gradient(180deg, #164f35, #0f3a26);
   border-radius: var(--radius-lg);
 }
 
 .lp-benches { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.lp-bench { background: var(--bg-darker); border-radius: var(--radius-md); padding: 10px; min-width: 0; }
-.lp-bench-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.lp-bench { background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; min-width: 0; }
+.lp-bench-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
 .lp-bench-head small { margin-left: auto; font-weight: 600; color: var(--text-muted); font-size: 11px; }
 .lp-bench ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.lp-bench li { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+.lp-bench li { display: grid; grid-template-columns: 22px 24px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 28px; font-size: 12.5px; color: var(--text-secondary); }
 .lp-bench li.in { color: var(--text-primary); }
-.lp-jersey { font: 700 12px/1 var(--font-score); color: var(--text-muted); text-align: right; font-variant-numeric: tabular-nums; }
+.lp-jersey { font: 600 12px/1 var(--font-score); font-stretch: 78%; color: var(--text-muted); text-align: right; font-variant-numeric: tabular-nums; }
 .lp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lp-tag { font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: var(--radius-sm); }
-.lp-tag.in { color: var(--green-neon); background: rgba(25, 201, 100, 0.12); }
+.lp-tag { font-size: 10.5px; font-weight: 600; padding: 2px 6px; border-radius: var(--radius-sm); }
+.lp-tag.in { color: var(--green-neon); background: rgba(60, 207, 126, 0.12); }
 .lp-outs { margin: 8px 0 0; font-size: 11.5px; color: var(--text-muted); }
 .lp-muted { margin: 0; font-size: 12px; color: var(--text-muted); }
 
@@ -56,3 +54,30 @@
   .lp-benches { grid-template-columns: 1fr; }
   .lp-pname { font-size: 3px; }
 }
+
+/* Césped de noche (PitchTurf) */
+.turf-a { fill: #11432c; }
+.turf-b { fill: #134a31; }
+.turf-lines { fill: none; stroke: rgba(255, 255, 255, 0.5); stroke-width: 0.28; }
+.turf-spots { fill: rgba(255, 255, 255, 0.55); }
+
+/* Pantallas anchas: suplentes a cada lado de la cancha, como en la transmisión */
+@media (min-width: 1360px) {
+  .tw-pitchcol .lp-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: 'head head head' 'hb pitch ab'; align-items: start; gap: 10px 14px; overflow: hidden; }
+  .tw-pitchcol .lp-head { grid-area: head; }
+  .tw-pitchcol .lp-pitch { grid-area: pitch; width: auto; height: 396px; max-height: none; aspect-ratio: 109 / 72; }
+  .tw-pitchcol .lp-benches { display: contents; }
+  .tw-pitchcol .lp-bench:first-child { grid-area: hb; }
+  .tw-pitchcol .lp-bench:last-child { grid-area: ab; }
+  .tw-pitchcol .lp-bench { max-height: 396px; overflow-y: auto; scrollbar-width: thin; }
+}
+
+/* Fotos en la cancha */
+.lp-player image { animation: lp-photo-in 0.4s var(--ease-out, ease) both; }
+.lp-player image.out { opacity: 0.55; }
+.lp-player .lp-ring { fill: none; stroke-width: 0.45; }
+.lp-badge circle { stroke: rgba(255, 255, 255, 0.95); stroke-width: 0.25; }
+.lp-badge text { font: 600 1.5px var(--font-score); font-stretch: 78%; text-anchor: middle; fill: #fff; }
+.lp-player:hover .lp-badge circle { transform: none; }
+@keyframes lp-photo-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lp-player image { animation: none; } }

@@ -30,11 +30,11 @@ export default function CommunityView() {
         <div>
           <div className="section-tag">
             <Users size={14} />
-            <span>COMUNIDAD</span>
+            <span>Comunidad</span>
           </div>
-          <h1 className="community-banner-title">Hablá de fútbol en vivo</h1>
+          <h1 className="community-banner-title">Habla de fútbol mientras se juega</h1>
           <p className="community-banner-subtitle">
-            Comentá la jornada en el chat, votá quién gana cada partido y compará tu lectura con la del análisis con IA.
+            Comenta la jornada en el chat, vota quién gana cada partido y compara tu lectura con la del análisis con IA.
           </p>
         </div>
       </div>
@@ -45,7 +45,7 @@ export default function CommunityView() {
             <MessageSquare size={18} style={{ color: 'var(--cyan-neon)' }} />
             <span>Chat global de la jornada</span>
           </h3>
-          <CommunityChat matchTitle="Jornada Global" />
+          <CommunityChat title="Sala general" />
         </div>
 
         <div>
@@ -55,26 +55,23 @@ export default function CommunityView() {
           </h3>
 
           <div className="community-votes-card">
-            {votes.length === 0 ? (
+            <div className="community-votes-total">
+              <b>{votes.length}</b>
+              <span>{votes.length === 1 ? 'pronóstico registrado' : 'pronósticos registrados'}</span>
+            </div>
+            <div className="community-votes-split">
+              {['home', 'draw', 'away'].map(k => (
+                <div key={k} className={`v-${k}`}>
+                  <b>{tally[k] || 0}</b>
+                  <span>{VOTE_LABEL[k]}</span>
+                </div>
+              ))}
+            </div>
+            {votes.length === 0 && (
               <p className="community-votes-empty">
-                Todavía no votaste en ningún partido. Abrí un partido en <b>En vivo</b> y respondé
+                Aún no has votado en ningún partido. Abre un partido en <b>En vivo</b> y responde
                 “¿Quién ganará?” para empezar tu historial.
               </p>
-            ) : (
-              <>
-                <div className="community-votes-total">
-                  <b>{votes.length}</b>
-                  <span>{votes.length === 1 ? 'pronóstico registrado' : 'pronósticos registrados'}</span>
-                </div>
-                <div className="community-votes-split">
-                  {['home', 'draw', 'away'].map(k => (
-                    <div key={k}>
-                      <b>{tally[k] || 0}</b>
-                      <span>{VOTE_LABEL[k]}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
             )}
 
             <div className="community-ranking-note">

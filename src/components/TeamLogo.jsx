@@ -50,7 +50,7 @@ export default function TeamLogo({
           style={{
             fontFamily: 'var(--font-score)',
             fontSize: `${Math.max(10, Math.floor(size * 0.32))}px`,
-            fontWeight: 800,
+            fontWeight: 600,
             letterSpacing: '0.5px',
             color: '#ffffff',
             textShadow: '0 1px 4px rgba(0,0,0,0.8)'

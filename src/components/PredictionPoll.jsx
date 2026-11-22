@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Check } from 'lucide-react';
 import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';
 
@@ -36,9 +36,17 @@ export default function PredictionPoll({ match }) {
     localStorage.setItem(pollKey, option);
   };
 
+  const options = [
+    { key: 'home', name: homeName, logo: match?.homeTeam?.logo, isHome: true },
+    { key: 'draw', name: 'Empate' },
+    { key: 'away', name: awayName, logo: match?.awayTeam?.logo, isHome: false },
+  ];
+  const favorite = probabilities
+    ? options.reduce((best, o) => (probabilities[o.key] > probabilities[best] ? o.key : best), 'home')
+    : null;
+
   return (
-    <div className="sofa-prediction-widget" id="poll-widget-container">
-      {/* SofaScore-style Header with Trophy Icon */}
+    <div className={`sofa-prediction-widget ${hasVoted ? 'has-voted' : ''}`} id="poll-widget-container">
       <div className="sofa-poll-header">
         <div>
           <h4 className="sofa-poll-title">¿Quién ganará?</h4>
@@ -46,61 +54,45 @@ export default function PredictionPoll({ match }) {
             {hasVoted
               ? `Tu pronóstico: ${voteLabel}`
               : probabilities
-                ? `Probabilidad según cuotas de ${oddsInfo.provider} · tocá para votar`
-                : 'Sin cuotas publicadas · tocá para dejar tu pronóstico'}
+                ? `Probabilidad según ${oddsInfo.provider} · toca para votar`
+                : 'Sin cuotas publicadas · toca para votar'}
           </span>
         </div>
-        <Trophy size={20} className="sofa-poll-trophy" />
+        <Trophy size={18} className="sofa-poll-trophy" aria-hidden="true" />
       </div>
 
-      {/* SofaScore-style Rounded Pill Buttons Row */}
-      <div className="sofa-poll-pills-row">
-        {/* Home Option */}
-        <button
-          className={`sofa-poll-pill ${hasVoted === 'home' ? 'voted' : ''}`}
-          onClick={() => handleVote('home')}
-          title={homeName}
-        >
-          <div className="sofa-pill-left">
-            <TeamLogo
-              src={match?.homeTeam?.logo}
-              alt={homeName}
-              size={20}
-              isHome={true}
-            />
-          </div>
-          <span className="sofa-pill-pct">{pct('home')}</span>
-        </button>
-
-        {/* Draw Option */}
-        <button
-          className={`sofa-poll-pill draw ${hasVoted === 'draw' ? 'voted' : ''}`}
-          onClick={() => handleVote('draw')}
-          title="Empate"
-        >
-          <div className="sofa-pill-left">
-            <span className="sofa-draw-x">X</span>
-          </div>
-          <span className="sofa-pill-pct">{pct('draw')}</span>
-        </button>
-
-        {/* Away Option */}
-        <button
-          className={`sofa-poll-pill ${hasVoted === 'away' ? 'voted' : ''}`}
-          onClick={() => handleVote('away')}
-          title={awayName}
-        >
-          <div className="sofa-pill-left">
-            <TeamLogo
-              src={match?.awayTeam?.logo}
-              alt={awayName}
-              size={20}
-              isHome={false}
-            />
-          </div>
-          <span className="sofa-pill-pct">{pct('away')}</span>
-        </button>
+      <div className="sofa-poll-pills-row" role="group" aria-label="Elige quién gana">
+        {options.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            className={`sofa-poll-pill ${o.key === 'draw' ? 'draw' : ''} ${hasVoted === o.key ? 'voted' : ''} ${favorite === o.key ? 'fav' : ''}`}
+            onClick={() => handleVote(o.key)}
+            disabled={Boolean(hasVoted) && hasVoted !== o.key}
+            aria-pressed={hasVoted === o.key}
+            title={o.name}
+          >
+            <span className="sofa-pill-left">
+              {o.key === 'draw'
+                ? <span className="sofa-draw-x">X</span>
+                : <TeamLogo src={o.logo} alt="" size={20} isHome={o.isHome} />}
+            </span>
+            <span className="sofa-pill-pct">{pct(o.key)}</span>
+            <span className="sofa-pill-name">
+              {hasVoted === o.key && <Check size={12} aria-label="Tu voto" />}
+              {o.name}
+            </span>
+          </button>
+        ))}
       </div>
+
+      {probabilities && (
+        <div className="sofa-poll-bar" aria-hidden="true">
+          <i className="home" style={{ flexGrow: probabilities.home }} />
+          <i className="draw" style={{ flexGrow: probabilities.draw }} />
+          <i className="away" style={{ flexGrow: probabilities.away }} />
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import Footer from './components/Footer';
 import { fetchEspnScoreboard, fetchEspnMatchSummary } from './api/espnApi';
 import { sounds } from './utils/soundEffects';
 import { usePolling } from './hooks/usePolling';
-import { RotateCw } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 // Vistas cargadas bajo demanda: el inicio no descarga el reproductor (hls.js) ni el resto de pantallas
 const loadCartelera = () => import('./components/CarteleraGrid');
@@ -31,7 +31,7 @@ const SUMMARY_IDLE_MS = 120000;     // partido abierto por iniciar
 function ViewFallback() {
   return (
     <div className="view-fallback" role="status" aria-live="polite">
-      <RotateCw className="animate-spin" size={22} />
+      <div className="app-splash-bar" aria-hidden="true"><i /></div>
       <span>Cargando…</span>
     </div>
   );
@@ -282,16 +282,11 @@ export default function App() {
 
   if (loading && matches.length === 0) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: '#fff' }}>
-        <div style={{ textAlign: 'center' }}>
-          <RotateCw className="animate-spin" size={48} style={{ color: 'var(--cyan-neon)', margin: '0 auto 16px' }} />
-          <h2 style={{ fontFamily: 'var(--font-score)', fontSize: '1.5rem', fontWeight: 800 }}>
-            Conectando con la API en vivo de ESPN...
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px' }}>
-            Obteniendo partidos oficiales, marcadores al minuto y estadísticas en directo.
-          </p>
-        </div>
+      <div className="app-splash" role="status" aria-live="polite">
+        <div className="app-splash-logo logo-icon" aria-hidden="true"><Zap size={22} fill="#05060a" /></div>
+        <b>CodeSoft <span>Fútbol</span></b>
+        <div className="app-splash-bar" aria-hidden="true"><i /></div>
+        <p>Cargando los partidos de hoy desde ESPN…</p>
       </div>
     );
   }
@@ -321,6 +316,7 @@ export default function App() {
             setView={handleNavChange}
             onOpenPickModal={handleOpenPickModal}
             liveCount={liveMatches.length}
+            liveMatches={liveMatches}
           />
         )}
 
@@ -372,7 +368,7 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <Footer />
+      <Footer setView={handleNavChange} />
     </div>
   );
 }

@@ -5,14 +5,13 @@ import {
   Send,
   X,
   Trash2,
-  Wifi,
   User
 } from 'lucide-react';
 import { SOCCER_GIFS } from '../api/mockData';
 import { socketService } from '../utils/socketService';
 import { sounds } from '../utils/soundEffects';
 
-export default function CommunityChat() {
+export default function CommunityChat({ title = 'Chat del partido' }) {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const [userName, setUserName] = useState(() => {
@@ -120,26 +119,12 @@ export default function CommunityChat() {
       <div className="chat-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <MessageSquare size={16} style={{ color: 'var(--cyan-neon)' }} />
-          <span className="chat-title">Chat del partido</span>
+          <span className="chat-title">{title}</span>
           
-          {/* WebSocket Live Indicator */}
-          <span 
-            style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '4px', 
-              fontSize: '0.65rem', 
-              background: 'rgba(25, 201, 100, 0.12)', 
-              color: 'var(--green-neon)', 
-              padding: '2px 7px', 
-              borderRadius: 'var(--radius-full)', 
-              border: '1px solid rgba(25, 201, 100, 0.3)',
-              fontWeight: 700 
-            }}
-            title="Conexión WebSocket en tiempo real activa"
-          >
-            <Wifi size={10} />
-            WebSocket Live
+          {/* Conexión en tiempo real */}
+          <span className="chat-online" title="Conectado en tiempo real">
+            <i aria-hidden="true" />
+            En línea
           </span>
         </div>
 
@@ -212,14 +197,10 @@ export default function CommunityChat() {
       {/* Messages Scroll Area */}
       <div className="chat-messages-box" ref={chatBoxRef}>
         {messages.length === 0 ? (
-          <div style={{ textAlign: 'center', margin: 'auto 0', padding: '16px 8px', color: 'var(--text-muted)' }}>
-            <MessageSquare size={24} style={{ margin: '0 auto 6px', opacity: 0.3 }} />
-            <p style={{ fontSize: '0.78rem', color: '#fff', fontWeight: 600, marginBottom: '2px' }}>
-              El chat está listo y en 0 mensajes
-            </p>
-            <p style={{ fontSize: '0.7rem' }}>
-              Sé el primero en enviar un comentario en vivo vía WebSocket.
-            </p>
+          <div className="chat-empty">
+            <MessageSquare size={22} aria-hidden="true" />
+            <p>Todavía no hay mensajes</p>
+            <span>Escribe el primero: ¿quién gana hoy?</span>
           </div>
         ) : (
           messages.map((msg) => (
@@ -233,7 +214,7 @@ export default function CommunityChat() {
                   <span className="chat-username">{msg.user}</span>
                   {msg.isVip && <span className="chat-user-badge badge-vip">VIP</span>}
                   {msg.isMod && <span className="chat-user-badge badge-mod">MOD</span>}
-                  {msg.isAi && <span className="chat-user-badge badge-ai" style={{ background: '#76b900', color: '#000' }}>NVIDIA IA</span>}
+                  {msg.isAi && <span className="chat-user-badge badge-ai">IA</span>}
                   <span className="chat-msg-time" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
                     {msg.time}
                   </span>
@@ -253,7 +234,7 @@ export default function CommunityChat() {
       {showGifPicker && (
         <div className="gif-picker-popover" style={{ padding: '8px' }}>
           <div className="gif-picker-header">
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fff' }}>Seleccionar GIF</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff' }}>Seleccionar GIF</span>
             <button className="btn-icon" onClick={() => setShowGifPicker(false)}>
               <X size={13} />
             </button>
@@ -320,7 +301,7 @@ export default function CommunityChat() {
         <div className="modal-backdrop" onClick={() => setShowDonationModal(false)}>
           <div className="modal-card" style={{ maxWidth: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <Heart size={44} style={{ color: 'var(--gold-neon)', margin: '0 auto 12px' }} fill="var(--gold-neon)" />
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>
               Apoyar a CodeSoft Fútbol
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>

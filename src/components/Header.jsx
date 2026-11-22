@@ -50,7 +50,7 @@ export default function Header({ currentView, setView, liveMatchesCount = 6 }) {
             <div className="logo-title">
               CodeSoft <span style={{ color: 'var(--cyan-neon)' }}>Fútbol</span>
             </div>
-            <div className="logo-subtitle">Live Sports & AI Analytics</div>
+            <div className="logo-subtitle">Fútbol en vivo · datos de ESPN</div>
           </div>
         </div>
 
@@ -79,7 +79,7 @@ export default function Header({ currentView, setView, liveMatchesCount = 6 }) {
                       fontSize: '0.68rem',
                       padding: '1px 6px',
                       borderRadius: '10px',
-                      fontWeight: 800
+                      fontWeight: 600
                     }}
                   >
                     {item.badge}
@@ -101,14 +101,14 @@ export default function Header({ currentView, setView, liveMatchesCount = 6 }) {
             {muted ? <VolumeX size={18} /> : <Volume2 size={18} style={{ color: 'var(--cyan-neon)' }} />}
           </button>
 
-          {/* NVIDIA NIM IA CTA */}
+          {/* Acceso a los picks con IA */}
           <button 
             className="btn-primary header-cta-btn" 
             id="btn-nvidia-ia"
             onClick={() => setView('picks')}
           >
-            <Sparkles size={14} style={{ color: '#76b900' }} />
-            <span className="btn-cta-full">NVIDIA IA</span>
+            <Sparkles size={14} />
+            <span className="btn-cta-full">Picks con IA</span>
             <span className="btn-cta-short">Picks</span>
           </button>
         </div>

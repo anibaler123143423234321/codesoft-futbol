@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Trophy, RotateCw } from 'lucide-react';
+import { BarChart3, Trophy, ChevronUp, ChevronDown } from 'lucide-react';
 import { ESPN_SUPPORTED_LEAGUES, fetchEspnStandings } from '../api/espnApi';
 import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';
@@ -33,6 +33,9 @@ export default function StatsView() {
     };
   }, [selectedLeague]);
 
+  // Una entrada por zona, en el orden en que aparecen en la tabla
+  const zones = standings.reduce((acc, r) => (r.zone && !acc.some((z) => z.key === r.zone.key) ? [...acc, r.zone] : acc), []);
+
   const activeLeagueObj = ESPN_SUPPORTED_LEAGUES.find(l => l.id === selectedLeague) || ESPN_SUPPORTED_LEAGUES[2];
 
   return (
@@ -41,10 +44,10 @@ export default function StatsView() {
       <div>
         <div className="section-tag">
           <BarChart3 size={14} />
-          <span>TABLA DE POSICIONES OFICIAL ESPN</span>
+          <span>Tabla de posiciones · ESPN</span>
         </div>
         <h1 className="stats-header-title">
-          Clasificación Oficial: {activeLeagueObj.name}
+          Clasificación de {activeLeagueObj.name}
         </h1>
       </div>
 
@@ -67,15 +70,24 @@ export default function StatsView() {
 
       {/* Standings Table from ESPN */}
       <div className="stats-table-card">
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Trophy size={18} style={{ color: 'var(--gold-neon)' }} />
-          <span>Tabla General de {activeLeagueObj.name}</span>
+        <h3 className="stats-table-title">
+          <Trophy size={18} />
+          <span>Tabla general</span>
+          {standings[0]?.pj ? <small>Jornada {Math.max(...standings.map((r) => Number(r.pj) || 0))}</small> : null}
         </h3>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
-            <RotateCw className="animate-spin" size={32} style={{ color: 'var(--cyan-neon)', margin: '0 auto 12px' }} />
-            <p>Cargando posiciones oficiales de ESPN...</p>
+          <div className="stats-skeleton" role="status" aria-label="Cargando la tabla de ESPN">
+            {Array.from({ length: 10 }, (_, i) => (
+              <div key={i} className="sk-row">
+                <i className="sk-pos" />
+                <i className="sk-logo" />
+                <i className="sk-name" style={{ width: `${34 + ((i * 17) % 30)}%` }} />
+                <i className="sk-num" />
+                <i className="sk-num" />
+                <i className="sk-num" />
+              </div>
+            ))}
           </div>
         ) : standings.length > 0 ? (
           <div className="stats-table-scroll-container">
@@ -96,14 +108,16 @@ export default function StatsView() {
               </thead>
               <tbody>
                 {standings.map((row) => (
-                  <tr key={row.pos}>
-                    <td className={`td-pos ${row.pos <= 4 ? 'top-tier' : ''}`}>
-                      {row.pos}
+                  <tr key={row.pos} className={row.zone ? `zone-${row.zone.key}` : undefined}>
+                    <td className="td-pos" title={row.zone?.label}>
+                      <span className="td-pos-num">{row.pos}</span>
                     </td>
                     <td className="td-club">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="td-club-row">
                         <TeamLogo src={row.logo} alt={row.team} size={22} />
                         <span className="td-club-name">{row.team}</span>
+                        {row.rankChange > 0 && <span className="td-move up" title={`Subió ${row.rankChange}`}><ChevronUp size={13} />{row.rankChange}</span>}
+                        {row.rankChange < 0 && <span className="td-move down" title={`Bajó ${-row.rankChange}`}><ChevronDown size={13} />{-row.rankChange}</span>}
                       </div>
                     </td>
                     <td className="td-center td-muted">{row.pj}</td>
@@ -122,6 +136,11 @@ export default function StatsView() {
                 ))}
               </tbody>
             </table>
+            {zones.length > 0 && (
+              <ul className="stats-zones" aria-label="Zonas de la tabla">
+                {zones.map((z) => <li key={z.key} className={`zone-${z.key}`}><i />{z.label}</li>)}
+              </ul>
+            )}
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)' }}>

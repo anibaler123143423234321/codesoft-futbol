@@ -105,7 +105,7 @@ export default function MatchCenter({
         </button>
 
         <div className="mc-top-status-pills">
-          <span className="match-league-label">{match.leagueName || 'FÚTBOL INTERNACIONAL'}</span>
+          <span className="match-league-label">{match.leagueName || 'Fútbol internacional'}</span>
           {match.espnLink && (
             <a className="mc-espn-link" href={match.espnLink} target="_blank" rel="noreferrer">
               ESPN <ExternalLink size={11} />
@@ -118,12 +118,12 @@ export default function MatchCenter({
           )}
           {liveNow && (
             <span className="pill-badge-red">
-              <span className="live-dot" /> EN VIVO {clockText}
+              <span className="live-dot" /> En vivo · {clockText}
             </span>
           )}
           {isFinished && !sourceLive && (
             <span className="pill-badge-green">
-              <Check size={12} /> FINALIZADO
+              <Check size={12} /> Finalizado
             </span>
           )}
         </div>
@@ -152,7 +152,7 @@ export default function MatchCenter({
           <TeamLogo
             src={match.homeTeam?.logo}
             alt={match.homeTeam?.name}
-            size={44}
+            size={56}
             isHome={true}
           />
         </div>
@@ -165,14 +165,14 @@ export default function MatchCenter({
             ) : liveNow ? (
               <>
                 <span className="live-dot" />
-                <span>EN VIVO</span>
+                <span>En vivo</span>
               </>
             ) : isFinished ? (
-              <span style={{ color: 'var(--cyan-neon)' }}>FINALIZADO</span>
+              <span className="mc-state-final">Finalizado</span>
             ) : (
-              <span style={{ color: 'var(--gold-neon)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <span className="mc-state-soon">
                 <Clock size={12} />
-                <span>POR INICIAR</span>
+                <span>Por iniciar</span>
               </span>
             )}
           </div>
@@ -189,9 +189,11 @@ export default function MatchCenter({
             )}
           </div>
 
-          <div className="mc-clock-time">
-            {clockText}
-          </div>
+          {!(isFinished && !sourceLive) && (
+            <div className="mc-clock-time">
+              {clockText}
+            </div>
+          )}
         </div>
 
         {/* Away Team */}
@@ -199,7 +201,7 @@ export default function MatchCenter({
           <TeamLogo
             src={match.awayTeam?.logo}
             alt={match.awayTeam?.name}
-            size={44}
+            size={56}
             isHome={false}
           />
           
@@ -241,17 +243,20 @@ export default function MatchCenter({
             <span title="Tarjetas amarillas">
               <YellowCard size={16} label="Amarillas" />
               <b>{summary.yellow[0]}-{summary.yellow[1]}</b>
+              <small>Amarillas</small>
             </span>
             {(summary.red[0] > 0 || summary.red[1] > 0) && (
               <span title="Tarjetas rojas">
                 <RedCard size={16} label="Rojas" />
                 <b>{summary.red[0]}-{summary.red[1]}</b>
+                <small>Rojas</small>
               </span>
             )}
             {summary.corners && (
               <span title="Córners">
                 <CornerFlag size={16} label="Córners" />
                 <b>{summary.corners[0]}-{summary.corners[1]}</b>
+                <small>Córners</small>
               </span>
             )}
             {summary.xg && (
@@ -309,7 +314,7 @@ export default function MatchCenter({
         {/* Right Column: Prediction Poll & Live Chat */}
         <div className="side-panel">
           <PredictionPoll match={match} />
-          <CommunityChat matchTitle={`${match.homeTeam?.shortName} vs ${match.awayTeam?.shortName}`} />
+          <CommunityChat />
         </div>
       </div>
     </div>

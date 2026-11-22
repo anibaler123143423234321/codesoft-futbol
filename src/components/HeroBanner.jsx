@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import {
   Tv,
   Sparkles,
@@ -15,81 +15,9 @@ export default function HeroBanner({
   onSelectMatch, 
   setView, 
   onOpenPickModal,
-  liveCount = 6 
+  liveCount = 6,
+  liveMatches = []
 }) {
-  const canvasRef = useRef(null);
-
-  // Subtle stadium radar particle effect on the preview screen
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-    let particles = [];
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    for (let i = 0; i < 35; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        radius: Math.random() * 2 + 1,
-        vx: (Math.random() - 0.5) * 0.6,
-        vy: (Math.random() - 0.5) * 0.6,
-        alpha: Math.random() * 0.5 + 0.2
-      });
-    }
-
-    const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw grid lines
-      ctx.strokeStyle = 'rgba(255, 106, 0, 0.06)';
-      ctx.lineWidth = 1;
-      const step = 25;
-      for (let x = 0; x < canvas.width; x += step) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += step) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-
-      // Draw particles
-      particles.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = canvas.width;
-        if (p.x > canvas.width) p.x = 0;
-        if (p.y < 0) p.y = canvas.height;
-        if (p.y > canvas.height) p.y = 0;
-
-        ctx.fillStyle = `rgba(255, 106, 0, ${p.alpha})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      animId = requestAnimationFrame(render);
-    };
-    render();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
   const match = featuredMatch || {};
 
   return (
@@ -98,17 +26,14 @@ export default function HeroBanner({
       <div className="hero-grid">
         {/* Left Column */}
         <div className="hero-left">
-          <div className="hero-tag">
-            <span style={{ width: '18px', height: '2px', background: 'var(--cyan-neon)', display: 'inline-block' }} />
-            FÚTBOL EN VIVO
-          </div>
+          <div className="hero-tag">Fútbol en vivo</div>
 
           <h1 className="hero-title">
             Partidos en vivo, análisis y picks para cada jornada.
           </h1>
 
           <p className="hero-desc">
-            Sigue la jornada deportiva, consulta partidos en vivo y descubre selecciones basadas en estadísticas oficiales de ESPN, análisis táctico y múltiples fuentes predictivas con Inteligencia Artificial.
+            Marcador al minuto, jugadas sobre la cancha, cuotas en vivo y picks con IA que citan cada dato. Todo con las estadísticas oficiales de ESPN.
           </p>
 
           <div className="hero-cta-group">
@@ -117,8 +42,8 @@ export default function HeroBanner({
               id="hero-btn-picks"
               onClick={() => setView('picks')}
             >
-              <Sparkles size={18} style={{ color: '#76b900' }} />
-              <span>Picks de NVIDIA IA</span>
+              <Sparkles size={18} />
+              <span>Ver picks con IA</span>
             </button>
 
             <button 
@@ -138,66 +63,25 @@ export default function HeroBanner({
         {/* Right Column: Spotlight Featured Match Card */}
         <div className="hero-right">
           <div className="spotlight-card">
-            {/* Visual Canvas / Player preview */}
-            <div className="spotlight-screen">
-              <canvas ref={canvasRef} className="spotlight-canvas-bg" />
-              <div className="spotlight-badge-center">
-                <span className="live-dot" />
-                <span>{match.status === 'live' ? `EN VIVO${match.minute ? ` · ${match.minute}` : ''}` : 'PARTIDO DESTACADO'}</span>
-              </div>
-            </div>
+            {/* Estado real del partido sobre la cancha */}
+            <SpotlightPitch match={match} />
 
             {/* Score & Clubs Body */}
             <div className="spotlight-body">
-              <div className="spotlight-teams">
-                {/* Home */}
-                <div className="spotlight-team">
-                  <TeamLogo
-                    src={match.homeTeam?.logo}
-                    alt={match.homeTeam?.name}
-                    size={60}
-                    isHome={true}
-                  />
-                  <div className="team-name" title={match.homeTeam?.name}>
-                    {match.homeTeam?.shortName || match.homeTeam?.name || 'Local'}
-                  </div>
-                </div>
-
-                {/* Score */}
-                <div className="spotlight-score">
-                  <span>{match.homeTeam?.score ?? 0}</span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '2rem' }}>-</span>
-                  <span>{match.awayTeam?.score ?? 0}</span>
-                </div>
-
-                {/* Away */}
-                <div className="spotlight-team">
-                  <TeamLogo
-                    src={match.awayTeam?.logo}
-                    alt={match.awayTeam?.name}
-                    size={60}
-                    isHome={false}
-                  />
-                  <div className="team-name" title={match.awayTeam?.name}>
-                    {match.awayTeam?.shortName || match.awayTeam?.name || 'Visita'}
-                  </div>
-                </div>
-              </div>
-
               {/* Cuotas 1X2 reales (solo si el proveedor las publica) */}
               {match.oddsInfo?.hasMoneyline ? (
                 <>
                   <div className="odds-bar">
                     <div className="odd-box">
-                      <div className="odd-label">LOCAL</div>
+                      <div className="odd-label">Local</div>
                       <div className="odd-val">{match.oddsInfo.homeOdds.toFixed(2)}</div>
                     </div>
                     <div className="odd-box">
-                      <div className="odd-label">EMPATE</div>
+                      <div className="odd-label">Empate</div>
                       <div className="odd-val">{match.oddsInfo.drawOdds.toFixed(2)}</div>
                     </div>
                     <div className="odd-box">
-                      <div className="odd-label">VISITA</div>
+                      <div className="odd-label">Visita</div>
                       <div className="odd-val">{match.oddsInfo.awayOdds.toFixed(2)}</div>
                     </div>
                   </div>
@@ -231,7 +115,7 @@ export default function HeroBanner({
                 }}
               >
                 <Play size={16} fill="currentColor" />
-                <span>Ver Transmisión y Estadísticas en Vivo</span>
+                <span>Ver transmisión y estadísticas</span>
               </button>
             </div>
           </div>
@@ -240,29 +124,30 @@ export default function HeroBanner({
 
       {/* Feature Offerings ("Por qué la gente se queda") */}
       <div className="features-section">
-        <div className="section-tag">
-          <span style={{ width: '14px', height: '2px', background: 'var(--cyan-neon)', display: 'inline-block' }} />
-          POR QUÉ LA GENTE SE QUEDA
-        </div>
-        <h2 className="section-title">Lo que ofrecemos</h2>
+        <div className="section-tag">La app</div>
+        <h2 className="section-title">Todo el partido en una pantalla</h2>
 
         <div className="features-grid">
-          {/* Card 1: Partidos en vivo */}
-          <div 
-            className="feature-card" {...pressable} 
-            style={{ cursor: 'pointer' }}
-            onClick={() => {
-              sounds.playClick();
-              setView('cartelera');
-            }}
-          >
+          {/* En vivo: los partidos que se están jugando ahora */}
+          <div className="feature-card" {...pressable} onClick={() => { sounds.playClick(); setView('cartelera'); }}>
             <div className="feature-card-header">
-              <span className="feature-pill-tag">TRANSMISIÓN</span>
+              <span className="feature-pill-tag">En vivo</span>
               <h3 className="feature-card-title">Partidos en vivo</h3>
-              <p className="feature-card-desc">
-                Sigue los partidos en vivo, consulta sus detalles y disfruta de la jornada deportiva con múltiples servidores en alta calidad.
-              </p>
+              <p className="feature-card-desc">Marcador, jugadas y alineaciones que se actualizan durante el partido.</p>
             </div>
+            <ul className="fc-live">
+              {liveMatches.slice(0, 3).map((m) => (
+                <li key={m.id}>
+                  <TeamLogo src={m.homeTeam?.logo} alt="" size={20} isHome />
+                  <span>{m.homeTeam?.shortName}</span>
+                  <b>{m.homeTeam?.score ?? 0}-{m.awayTeam?.score ?? 0}</b>
+                  <span>{m.awayTeam?.shortName}</span>
+                  <TeamLogo src={m.awayTeam?.logo} alt="" size={20} isHome={false} />
+                  <small>{m.minute}</small>
+                </li>
+              ))}
+              {liveMatches.length === 0 && <li className="fc-none">Ahora no hay partidos en juego</li>}
+            </ul>
             <div className="feature-card-badges">
               <span className="pill-badge-green">
                 <span className="live-dot" style={{ background: 'var(--green-neon)' }} />
@@ -271,75 +156,123 @@ export default function HeroBanner({
             </div>
           </div>
 
-          {/* Card 2: Picks con IA */}
-          <div 
-            className="feature-card" {...pressable} 
-            style={{ cursor: 'pointer' }}
-            onClick={() => {
-              sounds.playClick();
-              setView('picks');
-            }}
-          >
+          {/* Picks: probabilidad del partido destacado según sus cuotas */}
+          <div className="feature-card" {...pressable} onClick={() => { sounds.playClick(); setView('picks'); }}>
             <div className="feature-card-header">
-              <span className="feature-pill-tag" style={{ color: 'var(--green-neon)' }}>IA PREDICTIVA</span>
-              <h3 className="feature-card-title">Picks con IA</h3>
-              <p className="feature-card-desc">
-                La IA lee cuotas, estadísticas oficiales y forma reciente de cada partido y propone selecciones con su probabilidad estimada.
-              </p>
+              <span className="feature-pill-tag">Picks con IA</span>
+              <h3 className="feature-card-title">Probabilidades con fuente</h3>
+              <p className="feature-card-desc">Calculadas con las cuotas y las estadísticas de ESPN. Cada dato del informe dice de dónde sale.</p>
             </div>
+            <ImpliedBar match={match} />
             <div className="feature-card-badges">
-              <span className="pill-badge-blue">
-                <TrendingUp size={14} />
-                5 mercados
-              </span>
-              <span className="pill-badge-green">
-                <Sparkles size={14} />
-                Datos ESPN
-              </span>
+              <span className="pill-badge-blue"><TrendingUp size={14} />Cuotas y estadísticas</span>
             </div>
           </div>
 
-          {/* Card 3: Comunidad activa */}
-          <div 
-            className="feature-card" {...pressable} 
-            style={{ cursor: 'pointer' }}
-            onClick={() => {
-              sounds.playClick();
-              setView('comunidad');
-            }}
-          >
+          {/* Comunidad: la encuesta de cada partido */}
+          <div className="feature-card" {...pressable} onClick={() => { sounds.playClick(); setView('comunidad'); }}>
             <div className="feature-card-header">
-              <span className="feature-pill-tag" style={{ color: 'var(--gold-neon)' }}>COMUNIDAD</span>
-              <h3 className="feature-card-title">Comunidad activa</h3>
-              <p className="feature-card-desc">
-                Chat en tiempo real durante cada partido, encuestas en vivo y miles de personas compartiendo sus análisis y predicciones.
-              </p>
+              <span className="feature-pill-tag">Comunidad</span>
+              <h3 className="feature-card-title">Chat y encuesta por partido</h3>
+              <p className="feature-card-desc">Comenta la jornada y vota quién gana antes del pitazo final.</p>
+            </div>
+            <div className="fc-poll" aria-hidden="true">
+              <span><TeamLogo src={match.homeTeam?.logo} alt="" size={18} isHome />Local</span>
+              <span>Empate</span>
+              <span><TeamLogo src={match.awayTeam?.logo} alt="" size={18} isHome={false} />Visita</span>
             </div>
             <div className="feature-card-badges">
-              <span className="pill-badge-green">
-                <Users size={14} />
-                Chat por partido
-              </span>
-              <span className="pill-badge-blue">
-                <Sparkles size={14} />
-                Encuestas en vivo
-              </span>
+              <span className="pill-badge-green"><Users size={14} />Chat por partido</span>
             </div>
           </div>
         </div>
 
-        {/* NVIDIA IA Big Banner Button */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-          <button 
-            className="btn-primary" 
-            style={{ padding: '14px 34px', fontSize: '1rem' }}
-            onClick={() => setView('picks')}
-          >
-            <Sparkles size={18} style={{ color: '#76b900' }} />
-            <span>Explorar Todos los Picks de NVIDIA IA</span>
+        <div className="features-cta">
+          <button className="btn-primary" onClick={() => setView('picks')}>
+            <Sparkles size={18} />
+            <span>Ver todos los picks</span>
           </button>
         </div>
       </div>
     </section>
+  );
+}
+
+// Cancha de noche con el estado real del partido: escudos, liga y minuto jugado
+function SpotlightPitch({ match }) {
+  const live = match.status === 'live';
+  const done = match.status === 'finished';
+  const minute = parseInt(match.minute, 10) || 0;
+  const pct = done ? 100 : live ? Math.min(100, (minute / 90) * 100) : 0;
+  const status = live ? `En vivo · ${match.minute || ''}`.trim() : done ? 'Finalizado' : (match.timeStr || 'Próximo');
+  return (
+    <div className="spotlight-screen">
+      <svg className="sp-pitch" viewBox="0 0 105 68" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <radialGradient id="sp-flood" cx="50%" cy="-10%" r="95%">
+            <stop offset="0" stopColor="#fff6e8" stopOpacity="0.2" />
+            <stop offset="0.6" stopColor="#fff6e8" stopOpacity="0.04" />
+            <stop offset="1" stopColor="#000" stopOpacity="0.35" />
+          </radialGradient>
+        </defs>
+        {Array.from({ length: 10 }, (_, i) => (
+          <rect key={i} x={i * 10.5} y="0" width="10.5" height="68" className={i % 2 ? 'sp-grass-b' : 'sp-grass-a'} />
+        ))}
+        <g className="sp-lines">
+          <rect x="3" y="3" width="99" height="62" />
+          <line x1="52.5" y1="3" x2="52.5" y2="65" />
+          <circle cx="52.5" cy="34" r="9.15" />
+          <rect x="3" y="16.85" width="16.5" height="34.3" />
+          <rect x="85.5" y="16.85" width="16.5" height="34.3" />
+          <rect x="3" y="26" width="5.5" height="16" />
+          <rect x="96.5" y="26" width="5.5" height="16" />
+        </g>
+        <rect width="105" height="68" fill="url(#sp-flood)" />
+      </svg>
+      <div className="sp-board">
+        <div className="sp-team">
+          <TeamLogo src={match.homeTeam?.logo} alt={match.homeTeam?.name} size={64} isHome />
+          <span title={match.homeTeam?.name}>{match.homeTeam?.shortName || match.homeTeam?.name || 'Local'}</span>
+        </div>
+        <div className="sp-score" aria-label={`${match.homeTeam?.score ?? 0} a ${match.awayTeam?.score ?? 0}`}>
+          <b>{match.homeTeam?.score ?? 0}</b><i>-</i><b>{match.awayTeam?.score ?? 0}</b>
+        </div>
+        <div className="sp-team">
+          <TeamLogo src={match.awayTeam?.logo} alt={match.awayTeam?.name} size={64} isHome={false} />
+          <span title={match.awayTeam?.name}>{match.awayTeam?.shortName || match.awayTeam?.name || 'Visita'}</span>
+        </div>
+      </div>
+      <div className="sp-top">
+        <span className={`sp-status ${live ? 'live' : ''}`}>{live && <span className="live-dot" />}{status}</span>
+        {match.leagueName && <span className="sp-league">{match.leagueName}</span>}
+      </div>
+      <div className="sp-clock" aria-label={live ? `Minuto ${minute} de 90` : status}>
+        <div className="sp-track">
+          <span className="sp-fill" style={{ width: `${pct}%` }} />
+          <span className="sp-half" />
+          {live && <span className="sp-now" style={{ left: `${pct}%` }} />}
+        </div>
+        <div className="sp-ticks"><span>0'</span><span>45'</span><span>90'</span></div>
+      </div>
+    </div>
+  );
+}
+
+// Probabilidad implícita 1X2 del partido destacado (inversa de cada cuota, sin el margen de la casa)
+function ImpliedBar({ match }) {
+  const o = match.oddsInfo;
+  if (!o?.hasMoneyline) return <p className="fc-none">Sin cuotas publicadas para el partido destacado</p>;
+  const inv = [o.homeOdds, o.drawOdds, o.awayOdds].map((x) => 1 / x);
+  const total = inv.reduce((a, b) => a + b, 0);
+  const [h, d, a] = inv.map((x) => Math.round((x / total) * 100));
+  return (
+    <div className="fc-prob">
+      <div className="fc-prob-bar"><i className="h" style={{ flexGrow: h }} /><i className="d" style={{ flexGrow: d }} /><i className="a" style={{ flexGrow: a }} /></div>
+      <div className="fc-prob-legend">
+        <span><b>{h}%</b>{match.homeTeam?.shortName}</span>
+        <span><b>{d}%</b>Empate</span>
+        <span><b>{a}%</b>{match.awayTeam?.shortName}</span>
+      </div>
+    </div>
   );
 }

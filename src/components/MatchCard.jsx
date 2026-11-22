@@ -5,9 +5,13 @@ import TeamLogo from './TeamLogo';
 import { sounds } from '../utils/soundEffects';
 import { pressable } from '../utils/a11y';
 
+const fmt = (n) => (Number.isFinite(Number(n)) ? Number(n).toFixed(2) : '—');
+
 export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
+
+  const odds = match.oddsInfo?.hasMoneyline ? match.oddsInfo : null;
 
   const handleClick = () => {
     sounds.playClick();
@@ -27,11 +31,11 @@ export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
     >
       {/* Top Header: League & Status */}
       <div className="match-card-top">
-        <span className="match-league-label">{match.leagueName || 'LALIGA'}</span>
+        <span className="match-league-label">{match.leagueName || 'Fútbol'}</span>
         
         <span className={`match-status-badge ${isLive ? 'live' : isFinished ? 'finished' : 'scheduled'}`}>
           {isLive && <span className="live-dot" />}
-          <span>{isLive ? match.timeStr : isFinished ? 'FINALIZADO' : match.timeStr}</span>
+          <span>{isLive ? `En vivo${match.minute ? ` · ${match.minute}` : ''}` : isFinished ? 'Finalizado' : match.timeStr}</span>
         </span>
       </div>
 
@@ -59,12 +63,10 @@ export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
               <span>{match.awayTeam?.score ?? 0}</span>
             </div>
           ) : (
-            <div style={{ fontFamily: 'var(--font-score)', fontSize: '1.2rem', color: 'var(--text-muted)' }}>
-              VS
-            </div>
+            <div className="match-vs">vs</div>
           )}
           {match.scorers && match.scorers.length > 0 && isLive && (
-            <span style={{ fontSize: '0.68rem', color: 'var(--cyan-neon)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <span className="match-last-scorer">
               <Ball size={11} /> {match.scorers[match.scorers.length - 1].player.split(' ').pop()} {match.scorers[match.scorers.length - 1].minute}
             </span>
           )}
@@ -84,20 +86,28 @@ export default function MatchCard({ match, onSelectMatch, onOpenPickModal }) {
         </div>
       </div>
 
-      {/* Bottom: Action badge & AI quick pick */}
+      {/* Abajo: acción, o las cuotas 1X2 si el partido aún no empieza */}
       <div className="match-card-bottom">
-        <span className={`match-action-pill ${isLive ? 'live' : isFinished ? 'finished' : 'scheduled'}`}>
-          {isLive ? (
-            <>
-              <span className="live-dot" />
-              <span>SEGUIR EN VIVO</span>
-            </>
-          ) : isFinished ? (
-            <span>RESUMEN FINAL</span>
-          ) : (
-            <span>{match.timeStr || match.date || 'Por iniciar'}</span>
-          )}
-        </span>
+        {!isLive && !isFinished && odds ? (
+          <div className="match-odds-row" aria-label={`Cuotas de ${odds.provider}`}>
+            <span><small>1</small>{fmt(odds.homeOdds)}</span>
+            <span><small>X</small>{fmt(odds.drawOdds)}</span>
+            <span><small>2</small>{fmt(odds.awayOdds)}</span>
+          </div>
+        ) : (
+          <span className={`match-action-pill ${isLive ? 'live' : isFinished ? 'finished' : 'scheduled'}`}>
+            {isLive ? (
+              <>
+                <span className="live-dot" />
+                <span>Seguir en vivo</span>
+              </>
+            ) : isFinished ? (
+              <span>Ver resumen</span>
+            ) : (
+              <span>Ver previa</span>
+            )}
+          </span>
+        )}
 
         {match.aiPick && (
           <span 

@@ -121,7 +121,7 @@ export default function ModalPick({ match, onClose }) {
       const reply = await askTacticalAI(liveMatchRef.current, q, meta);
       setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: reply, source: meta.source }]);
     } catch {
-      setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'No se pudo obtener una respuesta. Probá de nuevo en unos segundos.', source: 'error' }]);
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'No se pudo obtener una respuesta. Prueba de nuevo en unos segundos.', source: 'error' }]);
     } finally {
       setIsAiTyping(false);
     }
@@ -165,7 +165,7 @@ export default function ModalPick({ match, onClose }) {
                 ? <b>{scoreHome}<i>-</i>{scoreAway}</b>
                 : <b className="vs">VS</b>}
               <small className={isLive ? 'live' : ''}>
-                {isLive ? `EN VIVO · ${clock}` : isFinished ? 'FINALIZADO' : (match.timeStr || 'Por iniciar')}
+                {isLive ? `En vivo · ${clock}` : isFinished ? 'Finalizado' : (match.timeStr || 'Por iniciar')}
               </small>
             </div>
             <div className="aim-team away">
@@ -192,7 +192,7 @@ export default function ModalPick({ match, onClose }) {
             <div className="aim-loading failed" role="alert">
               <AlertTriangle size={26} />
               <b>La IA no respondió</b>
-              <span>No se pudo generar el análisis. Podés reintentar o ver una estimación estadística calculada con los datos del partido.</span>
+              <span>No se pudo generar el análisis. Puedes reintentar o ver una estimación estadística calculada con los datos del partido.</span>
               <div className="aim-loading-actions">
                 <button className="primary" onClick={() => { sounds.playClick(); setAttempt(a => a + 1); }}>Reintentar</button>
                 <button onClick={() => { sounds.playClick(); setPredictions(getLocalMatchPredictions(liveMatchRef.current)); setAiState('local'); }}>Ver estimación estadística</button>
@@ -276,7 +276,7 @@ export default function ModalPick({ match, onClose }) {
           {/* Conversación */}
           {aiState !== 'pending' && (
           <section className="aim-chat">
-            <span className="aim-eyebrow">Preguntale a la IA</span>
+            <span className="aim-eyebrow">Pregúntale a la IA</span>
             <div className="aim-prompts">
               {PROMPT_IDEAS.map(idea => (
                 <button key={idea} onClick={() => handleAskQuestion(idea)} disabled={isAiTyping}>{idea}</button>
@@ -310,7 +310,7 @@ export default function ModalPick({ match, onClose }) {
         >
           <input
             type="text"
-            placeholder="Escribí tu pregunta sobre este partido…"
+            placeholder="Escribe tu pregunta sobre este partido…"
             aria-label="Pregunta para la IA"
             value={inputQuestion}
             onChange={(e) => setInputQuestion(e.target.value)}
@@ -321,7 +321,7 @@ export default function ModalPick({ match, onClose }) {
           </button>
         </form>
         )}
-        <p className="aim-foot">Pronósticos probabilísticos, no garantías. Jugá con responsabilidad.</p>
+        <p className="aim-foot">Pronósticos probabilísticos, no garantías. Juega con responsabilidad.</p>
       </div>
     </div>
   );

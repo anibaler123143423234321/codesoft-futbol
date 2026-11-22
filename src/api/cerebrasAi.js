@@ -3,6 +3,7 @@
 // viajar en el bundle: todas las peticiones pasan por el proxy /api/nvidia, que agrega la clave
 // en el servidor (Vite en desarrollo, función de Netlify en producción).
 import { describeLiveMarket, liveFacts } from '../utils/liveMarket';
+import { venueOf } from './matchReasons';
 
 const AI_ENDPOINT = '/api/nvidia/v1/chat/completions';
 // Modelos en orden de preferencia: el primero es rápido (~7 s); los demás son respaldo
@@ -142,6 +143,16 @@ export function buildFactSheet(match) {
   const recent = (team) => (team?.recentGames || []).map((g) => `${g.opponent} (${g.score} ${g.result})`).join(', ') || team?.form || '';
   if (recent(match?.homeTeam)) add('espn-form-home', `Forma de ${home}`, recent(match.homeTeam), 'ESPN');
   if (recent(match?.awayTeam)) add('espn-form-away', `Forma de ${away}`, recent(match.awayTeam), 'ESPN');
+  const tb = match?.table;
+  if (tb?.home?.rank && tb?.away?.rank) {
+    const row = (name, t) => `${name} ${t.rank}.º${t.points != null ? ` con ${t.points} puntos` : ''}${t.played ? ` en ${t.played} partidos` : ''}`;
+    add('espn-table', 'Tabla del torneo', `${row(home, tb.home)} | ${row(away, tb.away)}.`, 'ESPN');
+  }
+  const place = venueOf(match);
+  if (place.name || place.city) {
+    add('espn-venue', 'Estadio', `${[place.name, place.city].filter(Boolean).join(', ')} (local: ${home}).`, 'ESPN');
+  }
+  if (place.alt) add('altitude', 'Altura de la ciudad', `${place.city || place.name}: unos ${place.alt} m sobre el nivel del mar (aproximado).`, 'Dato geográfico');
   const h2h = (match?.h2hHistory || []).slice(-4).map((h) => `${h.date}: ${h.homeTeam} ${h.homeScore}-${h.awayScore} ${h.awayTeam}`).join(' | ');
   if (h2h) add('espn-h2h', 'Enfrentamientos directos', h2h, 'ESPN');
   return facts;
